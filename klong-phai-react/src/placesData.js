@@ -1,6 +1,9 @@
 // src/placesData.js
 
 export const placesDatabase = [
+
+
+        /*TRAVEL*/
   {
     id: 0,
     title: "ทัณฑสถานหญิงนครราชสีมา",
@@ -10,10 +13,10 @@ export const placesDatabase = [
   },
   {
     id: 1,
-    title: "Cook & Coff @ คลองไผ่ จิบกาแฟ..แลวิว",
+    title: "Cook & Coff @ คลองไผ่ จิบกาแฟ..แลวิว (จุดชมวิวเขาเขื่อนลั่น)",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3856.502284992033!2d101.55996527511113!3d14.853166085663636!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x311e9b5e6cfb5bef%3A0xc46232196aba0505!2zQ29vayAmIENvZmYgQCDguITguKXguK3guIfguYTguJzguYgg4LiI4Li04Lia4LiB4Liy4LmB4LifLi7guYHguKXguKfguLTguKc!5e0!3m2!1sth!2sth!4v1783443128281!5m2!1sth!2sth",
-    type: "restaurant" // ประเภทร้านอาหาร
+    type: "travel" // ประเภทร้านอาหาร
   },
   {
     id: 2,
@@ -69,7 +72,7 @@ export const placesDatabase = [
     title: "Cook & Coff ณ เขาพริก",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     mapUrl: "https://www.google.com/maps/embed?pb=7",
-    type: "restaurant"
+    type: "travel"
   },
   {
     id: 10,
@@ -83,7 +86,7 @@ export const placesDatabase = [
     title: "ที่พักสงฆ์พระพุทธบาทคีรีวันน์เขาพลิก (บนเขาพริก)",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     mapUrl: "https://www.google.com/maps/embed?pb=",
-    type: "accommodation" // ประเภทที่พัก
+    type: "travel" // ประเภทที่พัก
   },
   {
     id: 12,
@@ -92,9 +95,123 @@ export const placesDatabase = [
     mapUrl: "https://maps.google.com/maps?q=ทัณฑสถานหญิงนครราชสีมา&output=embed",
     type: "travel"
   },
+
+
+
+
+     
+  
+  /*ACCOMMODATION */
   {
     id: 13,
-    title: "ร้านอาหารริมน้ำชวนชิม",
+    title: "Rain Tree Holiday House บ้านพักเรนทรีติดลำตะคอง",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  {
+    id: 14,
+    title: "คลองหลังบ้าน&แคมป์ปิ้ง",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  {
+    id: 15,
+    title: "บ้านเอย โฮมสเตย์",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  {
+    id: 16,
+    title: "พี่ตั๋น รีสอร์ต แอนด์ แจ่วฮ้อน ณ คลองไผ่",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  {
+    id: 17,
+    title: "น้ำพุแคมป์",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  {
+    id: 18,
+    title: "Wongpeng Place",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  {
+    id: 19,
+    title: "เขาพริก โฮมสเตย์ (คลองไผ่)",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "accommodation"
+  },
+
+  
+  /*RESTAURANT*/
+  {
+    id: 20,
+    title: "ธงชัยหมูกระทะคลองไผ่",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 21,
+    title: "ครัวไก่แจ้ผัดไท",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 22,
+    title: "หลังเรือนจำคลองไผ่",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 23,
+    title: "ชาบูหม้อไฟ",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 24,
+    title: "ครัวฉันเอง",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 25,
+    title: "พี่ตั้ม น้ำปั่น",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 26,
+    title: "ป้ามัทอาหารตามสั่ง แกงใต้",
+    img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
+    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    type: "restaurant"
+  },
+  {
+    id: 27,
+    title: "สมพรเนื้อย่างเกาหลีคลองไผ่",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
     type: "restaurant"

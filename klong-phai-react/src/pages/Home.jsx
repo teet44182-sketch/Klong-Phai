@@ -2,35 +2,41 @@
 import React, { useState } from 'react';
 import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
+import watKaoprickImg from '../assets/watkaoprick.jpg'; 
 
 export default function Home({ onOpenMap }) {
   const [keyword, setKeyword] = useState('');
 
-  // กรองข้อมูล: ถ้าไม่มีคำค้นหาให้โชว์แค่ 3 แถวแรกเป็นคำแนะนำเริ่มต้น แต่ถ้าพิมพ์เสิร์ชให้ฟิลเตอร์หาชื่อที่ตรงกัน
-  const filteredPlaces = keyword.trim() === '' 
-    ? placesDatabase.slice(0, 3) 
-    : placesDatabase.filter(place => place.title.toLowerCase().includes(keyword.toLowerCase()));
+  const filteredPlaces = placesDatabase.filter(place => 
+    place.title.toLowerCase().includes(keyword.toLowerCase())
+  );
 
   return (
-    <>
-      <div className="hero-section"></div>
+    <div className="home-page-wrapper">
+      <div className="hero-section">
+        <img 
+          src={watKaoprickImg} 
+          alt="วัดเขาพริก" 
+          className="hero-bg-img"
+        />
 
-      <div className="search-container-fixed">
-        <h1>เที่ยวชุมชน คลองไผ่</h1>
-        <div className="search-box">
-          <input 
-            type="text" 
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="ค้นหาสถานที่ท่องเที่ยว..." 
-          />
+        <div className="search-container-inside">
+          <h1>เที่ยวชุมชน คลองไผ่</h1>
+          <div className="search-box">
+            <input 
+              type="text" 
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="ค้นหาสถานที่ท่องเที่ยว..." 
+            />
+          </div>
         </div>
       </div>
 
-      {/* แถบแผงรายการด้านล่าง จะยกตัวขึ้น (lift-up) อัตโนมัติเมื่อมีการพิมพ์เสิร์ช */}
-      <div className={`search-panel-bottom ${keyword.trim() !== '' ? 'lift-up' : ''}`}>
+      {/* แผงแสดงผลลัพธ์การเสิร์ช (ควบคุมการสไลด์ขึ้นลงแบบนุ่มนวลผ่าน CSS) */}
+      <div className={`search-panel-bottom ${keyword.trim() !== '' ? 'lift-up' : 'hidden-panel'}`}>
         <h2 className="panel-title">
-          {keyword.trim() === '' ? 'แนะนำสถานที่ท่องเที่ยว ✨' : `🔍 ผลการค้นหาสำหรับ "${keyword}" (${filteredPlaces.length} รายการ)`}
+          {keyword.trim() !== '' && `🔍 ผลการค้นหาสำหรับ "${keyword}" (${filteredPlaces.length} รายการ)`}
         </h2>
         
         <div className="results-grid">
@@ -46,6 +52,6 @@ export default function Home({ onOpenMap }) {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
