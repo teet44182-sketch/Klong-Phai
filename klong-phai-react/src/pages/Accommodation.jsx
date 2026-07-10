@@ -64,7 +64,7 @@ export default function Accommodation({ onOpenMap }) {
             marginBottom: 0,
             textShadow: '2px 2px 10px rgba(0,0,0,0.6)' 
           }}>
-            🏨 แนะนำที่พัก คลองไผ่
+            ที่พัก
           </h2>
         </div>
       </div>

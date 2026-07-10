@@ -20,7 +20,7 @@ body {
   min-height: 100vh;      
   position: relative; 
   overflow-x: hidden;
-  overflow-y: auto;       
+  overflow-y: auto;
 }
 
 .home-page-wrapper {
@@ -293,18 +293,12 @@ body {
   max-width: 1126px;
   margin: 0 auto;
   background-color: #2b2b2b;
-  
-  /* 🎯 แก้ปัญหา Navbar บัง: เปลี่ยนมาใช้ Padding ด้านบน 90px เพื่อดันหัวข้อให้ต่ำลงมาจากแนว Navbar */
   padding: 90px 20px 40px 20px;
   z-index: 20; 
-  
-  /* 🎯 แก้ปัญหาเลื่อนฟิลเตอร์ไม่ได้: ล็อกส่วนสูงและเปิด scroll-y ภายในกล่องให้ตอบสนองแม่นยำ */
   height: calc(100vh - 70px); 
   max-height: 80vh;
   overflow-y: auto;
-  scrollbar-width: thin; /* สไตล์แถบ scroll เล็กสำหรับบราวเซอร์ยุคใหม่ */
-  
-  /* เก็บซ่อนไว้ใต้จอตอนเริ่มต้น */
+  scrollbar-width: thin;
   transform: translateY(100vh);
   opacity: 0;
   visibility: hidden;
@@ -314,7 +308,7 @@ body {
 /* แสดงแผงข้อมูลเมื่อติดคลาส .lift-up */
 .search-panel-bottom.lift-up {
   transform: translateY(0);
-  margin-top: 0; /* 🎯 เอาค่าติดลบออก เพื่อป้องกันกล่องเลื่อนไปซ้อนใต้ Navbar */
+  margin-top: 0; 
   opacity: 1;
   visibility: visible;
 }
@@ -336,14 +330,14 @@ body {
   font-size: 1.2rem;
   margin-bottom: 20px;
   color: #ffffff;
-  padding-top: 0; /* เคลียร์แพดดิ้งเดิมออกเพราะใช้จากตัวแผงหลักแล้ว */
+  padding-top: 0; 
 }
 
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-  gap: 25px; 
-  padding-bottom: 50px; /* ระยะเว้นขอบล่างสุดเวลาเลื่อนสกรอลล์ดูการ์ดแถวสุดท้าย */
+  gap: 25px;
+  padding-bottom: 50px; 
 }
 
 /* ปรับให้รองรับหน้าจอเล็ก */
@@ -357,7 +351,7 @@ body {
   .search-panel-bottom { 
     padding: 80px 15px 40px 15px;
     height: calc(100vh - 70px);
-    max-height: 60vh; /* บีบแผงให้เตี้ยลงบนมือถือ เพื่อไม่ให้บังช่องเสิร์ชด้านบน */
+    max-height: 60vh; 
   }
   .search-panel-bottom.lift-up {
     margin-top: 0;
@@ -433,6 +427,27 @@ body {
   padding-top: 30px;
   color: #aaa;
   font-style: italic;
+}
+
+/* ==========================================
+   CARD INTERACTIVE ANIMATION (เอฟเฟกต์ตอนชี้และตอนกดการ์ด)
+   ========================================== */
+.card-interactive {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease !important;
+}
+
+/* 1. เมื่อนำเมาส์ไปวาง (Hover): การ์ดจะขยายใหญ่ขึ้นเล็กน้อยและเงาเข้มขึ้นดูมีมิติ */
+.card-interactive:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 2. เมื่อทำการคลิกกดเมาส์ลงไป (Active): การ์ดจะยุบตัวลงไปเหมือนสปริงปุ่มกด */
+.card-interactive:active {
+  transform: translateY(-1px) scale(0.97);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: transform 0.05s ease !important; 
 }
 
 /* ==========================================

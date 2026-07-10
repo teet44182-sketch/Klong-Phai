@@ -64,7 +64,7 @@ export default function Restaurant({ onOpenMap }) {
             marginBottom: 0,
             textShadow: '2px 2px 10px rgba(0,0,0,0.6)' 
           }}>
-            🍴 แนะนำร้านอาหาร คลองไผ่
+            ร้านอาหาร
           </h2>
         </div>
       </div>

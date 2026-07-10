@@ -3,8 +3,12 @@ import React from 'react';
 
 export default function Card({ place, onOpenMap }) {
   return (
-    // 🎯 เมื่อกดที่ตัวการ์ด (รูปภาพ หรือพื้นที่การ์ด) จะส่งข้อมูลสถานที่กลับไปให้ App.jsx เปิดกล่อง Pop-up [cite: 8]
-    <div className="card" onClick={() => onOpenMap(place)} style={{ cursor: 'pointer' }}>
+    /* 🎯 จุดตายสำคัญ: ต้องเปลี่ยนมาใช้คลาส "card card-interactive" เท่านั้น 
+       เพื่อให้ CSS ใน App.css รู้จักและสั่งเด้งดึ๋งเวลา Hover และ ยุบตัวเวลาคลิก (Active) ได้อย่างสมบูรณ์ */
+    <div 
+      className="card card-interactive" 
+      onClick={() => onOpenMap(place)}
+    >
       
       {/* ส่วนแสดงรูปภาพสถานที่ */}
       <img className="card-img" src={place.img} alt={place.title} />
