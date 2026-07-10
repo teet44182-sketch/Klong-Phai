@@ -14,22 +14,22 @@
   font-weight: 500 !important;
 }
 
+body { 
+  background-color: #2b2b2b; 
+  color: #fff; 
+  min-height: 100vh;      
+  position: relative; 
+  overflow-x: hidden;
+  overflow-y: auto;       
+}
+
 .home-page-wrapper {
   width: 100%;
-  height: 100vh;           
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #2b2b2b;
   position: relative;
-  overflow: hidden;        
-}
-
-body { 
-  background-color: #2b2b2b; 
-  color: #fff; 
-  height: 100vh; 
-  position: relative; 
-  overflow: hidden;        
 }
 
 #root {
@@ -43,10 +43,7 @@ body {
    ========================================== */
 .navbar {
   width: 100%;
-  /* ปรับเป็น 0.1 หรือ 0.2 จะช่วยให้เห็นเอฟเฟกต์เบลอได้ดีกว่า 0.0 ครับ */
-  background-color: rgba(51, 51, 51, 0.1); 
-  
-  /* เบลอให้ชัดขึ้นอีกนิดเพื่อให้ดูเป็นกระจก */
+  background-color: rgba(51, 51, 51, 0.1);
   backdrop-filter: blur(12px); 
   -webkit-backdrop-filter: blur(12px);
   
@@ -54,40 +51,37 @@ body {
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
-  position: fixed; 
+  position: fixed;
   top: 0;
   left: 0; 
   z-index: 1000; 
   
-  /* ลบเงาทิ้งเพื่อให้ดูโปร่งและลอยตัว */
   box-shadow: none; 
   height: 70px;
-  
-  /* เพิ่มขอบล่างบางๆ ให้ดูสวยงาม (ถ้าชอบ) หรือลบออกได้ครับ */
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .nav-logo { 
-  color: #ffffff; 
+  color: #ffffff;
   font-size: 22px; 
   font-weight: bold;
   text-decoration: none; 
-  font-family: 'Mitr', sans-serif; 
+  font-family: 'Mitr', sans-serif;
 }
 
 .nav-logo span { 
-  color: #00a854; 
+  color: #00a854;
 }
 
 .nav-links { 
   display: flex; 
   align-items: center;
-  gap: 25px; 
+  gap: 25px;
 }
 
 .nav-links a { 
   color: #ddd; 
-  text-decoration: none; 
+  text-decoration: none;
   font-size: 14px; 
   transition: color 0.3s;
 }
@@ -97,13 +91,13 @@ body {
 }
 
 .btn-green { 
-  background: #00a854; 
+  background: #00a854;
   color: #fff !important; 
   padding: 10px 24px;
   border-radius: 50px; 
   font-weight: 500; 
   text-decoration: none; 
-  transition: background 0.3s; 
+  transition: background 0.3s;
 }
 
 .btn-green:hover { 
@@ -114,7 +108,7 @@ body {
    3. DROPDOWN STYLE (ระบบเมนูคลิกแบบใส 25%)
    ========================================== */
 .dropdown {
-  position: relative; 
+  position: relative;
   display: inline-block;
 }
 
@@ -195,21 +189,21 @@ body {
    4. HERO & SEARCH SECTION (ส่วนหัวภาพปกและกล่องค้นหา)
    ========================================== */
 .hero-section {
-  width: 100%;             /* 🎯 เปลี่ยนเป็น 100% เพื่อให้อยู่ในเฟรม ไม่หลุดขอบจอ */
-  height: calc(100vh - 70px); /* 🎯 หักลบความสูงของ Navbar (70px) ออก จะได้ไม่ดันหน้าจอให้งอก Scrollbar */
-  margin-top: 70px;        /* 🎯 ผลักลงมาให้พ้นใต้แถบ Navbar พอดี */
+  width: 100%;
+  height: calc(100vh - 70px);
+  margin-top: 70px;
   display: flex;
   justify-content: center;
   align-items: center; 
   position: relative;
   overflow: hidden;
   z-index: 10;
-  transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1); /* เอฟเฟกต์ตอนหดรูปขึ้นเมื่อเริ่มพิมพ์เสิร์ช */
+  transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* เมื่อเริ่มพิมพ์ค้นหา รูปภาพจะหดสัดส่วนขึ้นไปหลบแผงผลลัพธ์ */
+/* เมื่อเริ่มพิมพ์ค้นหาหรือเลือกฟิลเตอร์ รูปภาพจะหดสัดส่วนขึ้นไปหลบแผงผลลัพธ์ */
 .home-page-wrapper:has(.lift-up) .hero-section {
-  height: 45vh;
+  height: 40vh;
 }
 
 .hero-bg-img {
@@ -291,27 +285,38 @@ body {
 }
 
 /* ==========================================
-   5. PANEL & RESULTS GRID (แผงผลลัพธ์ดึงขึ้น-ลง)
+   5. PANEL & RESULTS GRID (แก้ไขจุดบกพร่องเรื่องการ Scroll และโดนบดบัง)
    ========================================== */
-/* 🎯 แก้ไขใส่จุด . นำหน้าคลาสเรียบร้อย เพื่อให้คำสั่งซ่อนใต้จอทำงานถูกต้อง */
 .search-panel-bottom {
-  position: relative;         
+  position: relative;
   width: 100%;
   max-width: 1126px;
   margin: 0 auto;
-  background-color: #2b2b2b; 
-  padding: 40px 20px 20px 20px;
+  background-color: #2b2b2b;
+  
+  /* 🎯 แก้ปัญหา Navbar บัง: เปลี่ยนมาใช้ Padding ด้านบน 90px เพื่อดันหัวข้อให้ต่ำลงมาจากแนว Navbar */
+  padding: 90px 20px 40px 20px;
   z-index: 20; 
   
-  height: calc(55vh - 20px); 
-  overflow-y: auto;          
-  overflow-x: hidden;        
-
-  /* 🎯 ดันแผงสีเทาลงไปเก็บซ่อนไว้ใต้ขอบจอหน้าจอ 100% ตอนเริ่มต้น ไม่ให้โผล่มาบังรูปภาพ */
+  /* 🎯 แก้ปัญหาเลื่อนฟิลเตอร์ไม่ได้: ล็อกส่วนสูงและเปิด scroll-y ภายในกล่องให้ตอบสนองแม่นยำ */
+  height: calc(100vh - 70px); 
+  max-height: 80vh;
+  overflow-y: auto;
+  scrollbar-width: thin; /* สไตล์แถบ scroll เล็กสำหรับบราวเซอร์ยุคใหม่ */
+  
+  /* เก็บซ่อนไว้ใต้จอตอนเริ่มต้น */
   transform: translateY(100vh);
   opacity: 0;
   visibility: hidden;
-  transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease, visibility 0.7s;
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, visibility 0.5s;
+}
+
+/* แสดงแผงข้อมูลเมื่อติดคลาส .lift-up */
+.search-panel-bottom.lift-up {
+  transform: translateY(0);
+  margin-top: 0; /* 🎯 เอาค่าติดลบออก เพื่อป้องกันกล่องเลื่อนไปซ้อนใต้ Navbar */
+  opacity: 1;
+  visibility: visible;
 }
 
 .search-panel-bottom.hidden-panel {
@@ -321,36 +326,9 @@ body {
 }
 
 .hidden-panel {
-  display: none !important; /* สั่งซ่อนทันทีถ้ายังไม่ได้พิมพ์ */
+  display: none !important;
   opacity: 0;
   visibility: hidden;
-}
-.search-panel-bottom {
-  position: relative;         
-  width: 100%;
-  max-width: 1126px;
-  margin: 0 auto;
-  background-color: #2b2b2b;
-  padding: 40px 20px 40px 20px; /* เพิ่ม padding ด้านล่าง เพื่อไม่ให้การ์ดตัวสุดท้ายชิดขอบเกินไป */
-  z-index: 20; 
-  
-  /* 🎯 แก้ไข: ใช้ height ที่ยืดหยุ่นขึ้น */
-  height: auto;               /* ปล่อยให้มันสูงตามเนื้อหาจริง */
-  max-height: 75vh;          /* จำกัดความสูงไว้ไม่เกิน 75% ของจอ เพื่อให้เลื่อนได้ */
-  overflow-y: auto;          /* เปิดให้เลื่อนเฉพาะข้างใน */
-  
-  transform: translateY(100vh);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.5s ease-in-out;
-}
-
-/* เมื่อพิมพ์ค้นหา ดันแผงสีเทาขึ้นมาเกยทับช่อง Search Bar ครึ่งหนึ่งพอดีตามรูปภาพเรฟเฟอเรนซ์ */
-.search-panel-bottom.lift-up {
-  transform: translateY(0);
-  margin-top: -43px; 
-  opacity: 1;
-  visibility: visible;
 }
 
 .panel-title {
@@ -358,30 +336,31 @@ body {
   font-size: 1.2rem;
   margin-bottom: 20px;
   color: #ffffff;
-  padding-top: 15px; 
+  padding-top: 0; /* เคลียร์แพดดิ้งเดิมออกเพราะใช้จากตัวแผงหลักแล้ว */
 }
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* ปรับขนาดให้พอดีการ์ด */
-  gap: 25px; /* เพิ่มระยะห่างระหว่างการ์ดให้สมดุล */
-  padding-bottom: 50px; /* เพิ่มพื้นที่ว่างด้านล่างเพื่อให้เลื่อนดูได้ครบทุกการ์ด */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+  gap: 25px; 
+  padding-bottom: 50px; /* ระยะเว้นขอบล่างสุดเวลาเลื่อนสกรอลล์ดูการ์ดแถวสุดท้าย */
 }
 
 /* ปรับให้รองรับหน้าจอเล็ก */
 @media (max-width: 768px) {
   .results-grid {
-    grid-template-columns: 1fr; /* บนมือถือให้เรียง 1 คอลัมน์ จะได้ไม่เบียด */
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 600px) {
   .search-panel-bottom { 
-    padding: 20px 15px; 
-    height: calc(55vh - 20px);
+    padding: 80px 15px 40px 15px;
+    height: calc(100vh - 70px);
+    max-height: 60vh; /* บีบแผงให้เตี้ยลงบนมือถือ เพื่อไม่ให้บังช่องเสิร์ชด้านบน */
   }
   .search-panel-bottom.lift-up {
-    margin-top: -41px; 
+    margin-top: 0;
   }
   .results-grid { 
     grid-template-columns: 1fr;
@@ -515,8 +494,6 @@ body {
 /* ==========================================
    8. PAGE UTILITIES (หน้าเพจย่อยเพิ่มเติม)
    ========================================== */
-
-
 .page-title {
   font-family: 'Mitr', sans-serif;
   font-size: 1.8rem;
