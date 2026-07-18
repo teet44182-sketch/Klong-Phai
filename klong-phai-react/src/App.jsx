@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 
-// 🔒 นำเข้าอุปกรณ์ส่งออกสำหรับ Authentication และ Database จากไฟล์เชื่อมต่อที่คุณสร้างไว้
-import { auth, googleProvider, db } from './firebase'; 
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
+// 🔒 นำเข้าอุปกรณ์ส่งออกสำหรับ Authentication และ Database พร้อมระบบ Anonymous Auth 
+import { auth, db } from './firebase'; 
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, runTransaction } from 'firebase/firestore';
 
 // นำเข้าหน้าเพจต่าง ๆ
 import Home from './pages/Home';
@@ -19,22 +19,51 @@ import CheckInPoints from './pages/CheckInPoints';
 import MapModal from './components/MapModal';
 
 export default function App() {
-  // 🔒 State คุมข้อมูลผู้ใช้งานที่ผ่านการยืนยันตัวตน Google Auth
-  const [user, setUser] = useState(null);
+  // 🔒 State คุมข้อมูลบัญชีนิรนาม (Anonymous) ประจำเครื่องเพื่อใช้ในการล็อกแต้ม Like กันสแปม
+  const [anonUser, setAnonUser] = useState(null);
 
-  // State คุมการเปิด/ปิด Pop-up แผนที่
+  // State คุมระบบแสดงผล Pop-up
   const [modalInfo, setModalInfo] = useState({ isOpen: false, url: '' });
-  
-  // State คุมการเปิด/ปิด และเก็บข้อมูลของสถานที่ที่จะเอามาโชว์ในกล่องรายละเอียด
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
-
-  // 🎯 State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
 
-  // 🎯 ☁️ ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase
+  // 🎯 ☁️ ระบบ Like State ดึงข้อมูลสดๆ แบบ Realtime จาก Firebase
   const [likes, setLikes] = useState({});
+  const [userLikedPlaces, setUserLikedPlaces] = useState({}); // เช็คสถานะการกด (❤️ / 🤍)
 
-  // ☁️ ดึงยอดไลก์สะสมจาก Firebase Firestore แบบ Realtime เมื่อเปิดเว็บ[cite: 3]
+  // ✍️ State สำหรับควบคุมฟอร์มคอมเมนต์ (ชื่อผู้เขียน และ ข้อความรีวิว) ตามภาพดีไซน์
+  const [inputName, setInputName] = useState('');
+  const [inputText, setInputText] = useState('');
+
+  // 🔒 ระบบแอบรันเข้าสู่ระบบแบบไม่ระบุตัวตน (Anonymous) ทันทีเพื่อสร้าง UID ประจำเครื่องแบบไร้ตัวตน
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setAnonUser(currentUser);
+
+        // ดึงข้อมูลประวัติการกดไลก์ของ UID เครื่องนี้จากฐานข้อมูลมาตรวจสอบแบบ Realtime
+        if (currentUser.uid) {
+          const unsubscribeUserLikes = onSnapshot(collection(db, "likes"), (snapshot) => {
+            snapshot.docs.forEach(async (placeDoc) => {
+              const userLikeRef = doc(db, "likes", placeDoc.id, "userLikes", currentUser.uid);
+              const userLikeSnap = await getDoc(userLikeRef);
+              setUserLikedPlaces(prev => ({ ...prev, [placeDoc.id]: userLikeSnap.exists() }));
+            });
+          });
+        }
+      } else {
+        // หากเครื่องนี้ยังไม่มีตัวตนในระบบ Firebase ให้แอบสร้าง ID ประจำเครื่องทันที
+        try {
+          await signInAnonymously(auth);
+        } catch (error) {
+          console.error("Anonymous Auth Error:", error);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ☁️ ดึงยอดไลก์รวมทั้งหมดขึ้นมาแสดงผลจาก Firebase แบบ Realtime
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -46,52 +75,43 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🎯 ☁️ ฟังก์ชันไลก์แบบสลับสถานะ (Toggle) ไม่ต้อง Login แต่กันสแปมเบื้องต้นด้วย localStorage[cite: 3]
+  // 🎯 ☁️ ฟังก์ชันสลับสถานะกดไลก์ (Toggle Like) ผูกกับ UID กันปั๊มยอด 100% แม้เปิด Incognito
   const handleLike = async (placeId) => {
-    // ตรวจสอบสถานะในเครื่องผู้ใช้ว่าเคยกดไลก์สถานที่นี้ไปแล้วหรือยัง[cite: 3]
-    const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
-    const likeDocRef = doc(db, "likes", String(placeId));
+    if (!anonUser) return;
+
+    const placeRef = doc(db, "likes", String(placeId));
+    const userLikeRef = doc(db, "likes", String(placeId), "userLikes", anonUser.uid);
 
     try {
-      if (isLiked) {
-        // 👎 ถ้าเคยไลก์แล้ว -> กดซ้ำจะทำการลดแต้มไลก์ (Unlike) และบันทึกสถานะใหม่ลงเครื่อง[cite: 3]
-        await setDoc(likeDocRef, {
-          count: increment(-1)
-        }, { merge: true });
-        localStorage.setItem(`like_${placeId}`, 'false');
-      } else {
-        // 👍 ถ้ายังไม่เคยไลก์ -> จะทำการเพิ่มแต้มไลก์ (Like) และบันทึกสถานะลงเครื่อง[cite: 3]
-        await setDoc(likeDocRef, {
-          count: increment(1)
-        }, { merge: true });
-        localStorage.setItem(`like_${placeId}`, 'true');
-      }
+      // ใช้ Transaction ป้องกันการส่งข้อมูลซ้ำซ้อนพร้อมๆ กัน
+      await runTransaction(db, async (transaction) => {
+        const placeSnap = await transaction.get(placeRef);
+        const userLikeSnap = await transaction.get(userLikeRef);
+
+        let currentCount = placeSnap.exists() ? (placeSnap.data().count || 0) : 0;
+
+        if (userLikeSnap.exists()) {
+          // 👎 เครื่องนี้เคยกดไปแล้ว -> ลบสิทธิ์ และลดคะแนนลง 1
+          transaction.delete(userLikeRef);
+          transaction.set(placeRef, { count: Math.max(0, currentCount - 1) }, { merge: true });
+        } else {
+          // 👍 เครื่องนี้ยังไม่เคยกด -> บันทึกหลักฐาน UID ประจำเครื่อง และบวกแต้มเพิ่ม 1
+          transaction.set(userLikeRef, { likedAt: serverTimestamp() });
+          transaction.set(placeRef, { count: currentCount + 1 }, { merge: true });
+        }
+      });
     } catch (error) {
-      console.error("Error updating like on Firebase:", error);
+      console.error("Error updating secure like:", error);
     }
   };
 
-  // 🔒 เปลี่ยนจากข้อมูล Mockup มารับข้อมูลจริงแบบแบ่งแยกหมวดหมู่ตาม ID สถานที่จากระบบ Firebase Cloud Firestore
+  // 🔒 ดึงข้อมูลคอมเมนต์รีวิวทั้งหมดจัดกลุ่มตามไอดีสถานที่แบบ Realtime
   const [reviewsData, setReviewsData] = useState({});
 
-  // 🔒 ควบคุมเฉพาะช่องเขียนคอมเมนต์รีวิวประจำกล่องรายละเอียด (ช่องใส่ชื่อไม่ต้องมีแล้วเพราะใช้ Google Account)
-  const [inputText, setInputText] = useState('');
-
-  // 🔒 ฟังก์ชันเฝ้าตรวจสถานะล็อกอิน Google (ดักตรวจเงียบๆ แบบเงื่อนไขปลอดภัยสูงสุด)
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 🔒 ฟังก์ชันดึงชุดคอมเมนต์รีวิวจาก Firebase แบบ Realtime อัปเดตตารางหน้าจอทันทีเมื่อมีการพิมพ์คอมเมนต์เพิ่ม
   useEffect(() => {
     const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // ดำเนินการกระจายข้อความรีวิวจัดสรรเข้าไปตาม Id ของสถานที่แต่ละจุดโดยอัตโนมัติ
       const groupedReviews = {};
       allReviews.forEach(review => {
         if (!groupedReviews[review.placeId]) {
@@ -104,60 +124,31 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🔒 ฟังก์ชันคลิกกระตุ้นให้แสดงหน้าต่างป๊อปอัปตรวจสอบสิทธิ์ของกูเกิลเพื่อเข้าสู่ระบบ
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Login Error:", error);
-    }
-  };
+  const openMap = (url) => setModalInfo({ isOpen: true, url: url });
+  const closeMap = () => setModalInfo({ isOpen: false, url: '' });
+  const openDetail = (place) => setDetailModal({ isOpen: true, placeData: place });
 
-  // 🔒 ฟังก์ชันออกจากระบบล็อกอิน Google
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout Error:", error);
-    }
-  };
-
-  // ฟังก์ชันช่วยสั่งเปิดหน้าต่างแผนที่
-  const openMap = (url) => {
-    setModalInfo({ isOpen: true, url: url });
-  };
-
-  // ฟังก์ชันสั่งปิดหน้าต่างแผนที่
-  const closeMap = () => {
-    setModalInfo({ isOpen: false, url: '' });
-  };
-
-  // ฟังก์ชันสำหรับสั่งเปิดกล่องรายละเอียดสถานที่
-  const openDetail = (place) => {
-    setDetailModal({ isOpen: true, placeData: place });
-  };
-
-  // 🔒 ฟังก์ชันบันทึกรีวิวเขียนลงคลาวด์ Firebase แบบระบุเงื่อนไขตรวจสอบความปลอดภัยอย่างรัดกุม
+  // ✍️ ฟังก์ชันส่งคอมเมนต์รีวิวแบบกรอกชื่อเองอิสระตามหน้า UI ใหม่ของคุณ
   const handleReviewSubmit = async (e, placeId) => {
     e.preventDefault();
-    if (!inputText.trim() || !user) return;
+    if (!inputText.trim()) return;
+
+    // หากไม่พิมพ์ชื่อมา ระบบจะใส่ชื่อตั้งต้นให้อัตโนมัติ
+    const authorName = inputName.trim() || "ผู้เยี่ยมชมทั่วไป";
 
     try {
       await addDoc(collection(db, "reviews"), {
-        placeId: placeId,               // ไอดีสถานที่ที่รีวิว
-        name: user.displayName,          // ดึงชื่อเต็มของเจ้าของบัญชี Google อัตโนมัติ ป้องกันการปลอมแปลงชื่อ
-        userPhoto: user.photoURL,        // ลิงก์รูปอวาตาร์ภาพโปรไฟล์ Google
-        text: inputText.trim(),          // ข้อความรีวิว
-        userId: user.uid,               // 🔒 แนบไอดีจำเพาะ (UID) ส่งไปเทียบค่าความถูกต้องของ Rules หลังบ้านเพื่อความปลอดภัยสูงสุด
-        createdAt: serverTimestamp()    // ใช้เวลาเซิร์ฟเวอร์คลาวด์กลางบันทึกค่าล็อกเวลา ป้องกันการดัดแปลงเวลาหน้าเครื่องคอมพิวเตอร์ผู้ใช้
+        placeId: placeId,
+        name: authorName,
+        text: inputText.trim(),
+        createdAt: serverTimestamp() // บันทึกเวลาจาก Server กลาง ป้องกันการปั๊มหรือเปลี่ยนเวลาเครื่อง
       });
-      setInputText('');
+      setInputText(''); // เคลียร์ช่องพิมพ์รีวิวหลังส่งสำเร็จ
     } catch (error) {
       console.error("Error saving review into Firebase:", error);
     }
   };
 
-  // 🎯 ดักจับเหตุการณ์คลิกนอกพื้นที่ Dropdown เพื่อสั่งหุบแผงเมนูกระจกฝ้าอัตโนมัติ
   useEffect(() => {
     const handleOutsideClick = () => setIsFilterDropdownActive(false);
     window.addEventListener('click', handleOutsideClick);
@@ -166,31 +157,21 @@ export default function App() {
 
   return (
     <Router>
-      {/* 👑 Navbar สไตล์เดิมของคุณ ล็อกตำแหน่งให้อยู่บนสุดเสมอ */}
       <nav className="navbar">
         <Link to="/" className="nav-logo"><span>#</span> คลองไผ่</Link>
         <div className="nav-links">
           <Link to="/">หน้าแรก</Link>
           
-          {/* 🎯 ปุ่ม "ร้านอาหาร / ที่พัก" แบบ Filter Dropdown บน Navbar ผูกเข้ากับระบบฝ้ากระจกใน CSS */}
           <div className={`dropdown ${isFilterDropdownActive ? 'active' : ''}`}>
-            <button 
-              className="dropdown-btn" 
-              onClick={(e) => {
-                e.stopPropagation(); // กันไม่ให้เกิด Event บับเบิลไปโดน window.click ล่างสุด
-                setIsFilterDropdownActive(!isFilterDropdownActive);
-              }}
-            >
+            <button className="dropdown-btn" onClick={(e) => { e.stopPropagation(); setIsFilterDropdownActive(!isFilterDropdownActive); }}>
               ร้านอาหาร / ที่พัก
             </button>
             <div className="dropdown-content">
-              {/* ส่ง Query String เพื่อให้หน้า Home นำค่าไปเปลี่ยนรูปแบบฟิลเตอร์อัตโนมัติ พร้อมสั่งปิดเมนูย่อยทันทีเมื่อคลิก */}
               <Link to="/restaurant" onClick={() => setIsFilterDropdownActive(false)}>🍴 ร้านอาหาร</Link>
               <Link to="/accommodation" onClick={() => setIsFilterDropdownActive(false)}>🏨 ที่พัก</Link>
             </div>
           </div>
 
-          {/* ปรับแก้เอาคลาส dropdown-btn ออกเพื่อไม่ให้แสดงเครื่องหมายลูกศรซ้อนทับ */}
           <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }}>
             10 จุดเช็คอิน
           </Link>
@@ -201,7 +182,6 @@ export default function App() {
         </div>
       </nav>
 
-      {/* 🎯 จัดการเปลี่ยนหน้าตาม URL พร้อมส่ง props ไลก์เข้าไป */}
       <Routes>
         <Route path="/" element={<Home onOpenMap={openDetail} likes={likes} onLike={handleLike} />} />
         <Route path="/checkin" element={<CheckInPoints onOpenMap={openDetail} likes={likes} onLike={handleLike} />} />
@@ -210,14 +190,9 @@ export default function App() {
         <Route path="/map" element={<CommunityMap />} />
       </Routes>
 
-      {/* 🗺️ โครงสร้าง Pop-up แผนที่ส่วนกลางเดิมของคุณ */}
-      <MapModal 
-        isOpen={modalInfo.isOpen} 
-        mapUrl={modalInfo.url} 
-        onClose={closeMap} 
-      />
+      <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} />
 
-      {/* 🎯 🗂️ โครงสร้าง Pop-up รายละเอียดสถานที่ตัวใหม่ */}
+      {/* 🗂️ โครงสร้าง Pop-up กล่องแสดงรายละเอียดข้อมูลสถานที่ */}
       <div 
         className={`map-modal-overlay ${detailModal.isOpen ? 'active' : ''}`}
         style={{ zIndex: 2100 }} 
@@ -225,29 +200,15 @@ export default function App() {
       >
         <div 
           className="map-modal-content"
-          style={{ 
-            backgroundColor: '#2b2b2b', 
-            color: '#fff', 
-            maxWidth: '550px', 
-            padding: '0', 
-            maxHeight: '85vh', 
-            overflowY: 'auto', 
-            border: '1px solid rgba(255,255,255,0.1)',
-            scrollbarWidth: 'thin'
-          }}
+          style={{ backgroundColor: '#2b2b2b', color: '#fff', maxWidth: '550px', padding: '0', maxHeight: '85vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', scrollbarWidth: 'thin' }}
           onClick={(e) => e.stopPropagation()} 
         >
           {detailModal.placeData && (
             <div>
-              {/* รูปภาพหัวป๊อปอัป */}
               <div style={{ width: '100%', height: '220px', position: 'relative' }}>
-                <img 
-                  src={detailModal.placeData.img} 
-                  alt={detailModal.placeData.title} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
+                <img src={detailModal.placeData.img} alt={detailModal.placeData.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 
-                {/* 🎯 แสดงจำนวนไลก์สะสมในหน้าต่างรายละเอียดด้วย */}
+                {/* 🎯 ปุ่มแสดงผลสถานะไลก์: หากเครื่องนี้เคยกดไปแล้วจะขึ้น ❤️ ถ้ายังไม่เคยจะเป็น 🤍 */}
                 <div style={{
                   position: 'absolute',
                   bottom: '10px',
@@ -259,176 +220,115 @@ export default function App() {
                   fontWeight: 'bold',
                   color: '#fff'
                 }}>
-                  ❤️ {likes[detailModal.placeData.id] || 0} ถูกใจ
+                  {userLikedPlaces[detailModal.placeData.id] ? '❤️' : '🤍'} {likes[detailModal.placeData.id] || 0} ถูกใจ
                 </div>
 
-                <span 
-                  className="map-modal-close" 
-                  style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', top: '10px', right: '15px' }}
-                  onClick={() => setDetailModal({ isOpen: false, placeData: null })}
-                >
-                  &times;
-                </span>
+                <span className="map-modal-close" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', top: '10px', right: '15px' }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>&times;</span>
               </div>
 
-              {/* ข้อความรายละเอียด */}
               <div style={{ padding: '25px' }}>
-                <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '15px' }}>
-                  {detailModal.placeData.title}
-                </h2>
-                
-                <p style={{ fontSize: '0.95rem', color: '#ddd', lineHeight: '1.6', marginBottom: '20px', whiteSpace: 'pre-line' }}>
-                  {detailModal.placeData.detailDescription || "ไม่มีข้อมูลรายละเอียดเพิ่มเติมในขณะนี้"}
-                </p>
+                <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '15px' }}>{detailModal.placeData.title}</h2>
+                <p style={{ fontSize: '0.95rem', color: '#ddd', lineHeight: '1.6', marginBottom: '20px', whiteSpace: 'pre-line' }}>{detailModal.placeData.detailDescription || "ไม่มีข้อมูลรายละเอียดเพิ่มเติมในขณะนี้"}</p>
 
-                {/* ส่วนแสดงเวลาและเบอร์โทรเพิ่มความสมบูรณ์ */}
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', fontSize: '0.85rem', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {detailModal.placeData.workingHours && <div>⏰ <b>เวลาทำการ:</b> {detailModal.placeData.workingHours}</div>}
                   {detailModal.placeData.phone && <div>📞 <b>เบอร์โทรศัพท์:</b> {detailModal.placeData.phone}</div>}
                 </div>
 
-                {/* ปุ่มเปิดแผนที่ต่อเนื่องเชื่อมโยงระบบเดิม */}
                 <div style={{ marginTop: '25px', textAlign: 'center', marginBottom: '25px' }}>
-                  <button 
-                    style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }}
-                    onClick={() => {
-                      openMap(detailModal.placeData.mapUrl); 
-                    }}
-                  >
-                    🗺️ ดูแผนที่นำทาง
-                  </button>
+                  <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl)}>🗺️ ดูแผนที่นำทาง</button>
                 </div>
 
-                {/* 💬 ส่วนระบบรีวิวและแสดงความคิดเห็นประจำสถานที่เชื่อม Firebase */}
-                <div style={{
-                  borderTop: '1px solid rgba(255,255,255,0.1)',
-                  paddingTop: '25px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.1rem' }}>
-                      💬 รีวิวจากผู้เข้าชม
+                {/* 💬 กล่องระบบพูดคุยและแสดงความคิดเห็นสไตล์เรียบหรูตามรูปแบบรูปภาพต้นฉบับของคุณ */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '25px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00c853', margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      💬 พูดคุยเกี่ยวกับสถานที่นี้
                     </h3>
-                    
-                    {/* 🔒 แสดงโปรไฟล์และปุ่มกด Logout ออกจากระบบเมื่อล็อกอินอยู่ */}
-                    {user && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#aaa' }}>
-                          <img src={user.photoURL} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
-                          <span>{user.displayName}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleLogout}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#ff4d4d',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            textDecoration: 'underline',
-                            padding: 0,
-                            fontFamily: 'Prompt, sans-serif'
-                          }}
-                        >
-                          ออกจากระบบ
-                        </button>
-                      </div>
-                    )}
                   </div>
 
-                  {/* 🔒 ฟอร์มเขียนรีวิว: ปรับเงื่อนไขสลับหน้า UI ตามสิทธิ์ความปลอดภัยสูงสุด */}
-                  {user ? (
-                    <form onSubmit={(e) => handleReviewSubmit(e, detailModal.placeData.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                      <textarea 
-                        placeholder="เขียนคอมเมนต์ที่นี่..."
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        required
-                        rows="2"
-                        style={{
-                          padding: '10px 14px',
-                          background: 'rgba(255, 255, 255, 0.06)',
-                          border: '1px solid rgba(255, 255, 255, 0.12)',
-                          borderRadius: '6px',
-                          color: '#fff',
-                          fontSize: '0.9rem',
-                          outline: 'none',
-                          resize: 'none',
-                          lineHeight: '1.5',
-                          fontFamily: 'Prompt, sans-serif'
-                        }}
-                      />
-                      <button 
-                        type="submit"
-                        style={{
-                          alignSelf: 'flex-end',
-                          background: '#00a854',
-                          color: '#fff',
-                          padding: '8px 20px',
-                          border: 'none',
-                          borderRadius: '50px',
-                          fontFamily: 'Mitr, sans-serif',
-                          fontSize: '0.85rem',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        ส่งรีวิว
-                      </button>
-                    </form>
-                  ) : (
-                    // 🔒 ปุ่มล็อกอินด้วยช่องทางยืนยัน Google Auth หากยังไม่ได้ทำการล็อกอินเข้าสู่ระบบ
-                    <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)', marginBottom: '20px' }}>
-                      <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 12px 0' }}>🔒 กรุณาเข้าสู่ระบบกูเกิลเพื่อยืนยันตัวตนก่อนส่งคอมเมนต์รีวิว</p>
-                      <button 
-                        type="button"
-                        onClick={handleLogin}
-                        style={{
-                          background: '#fff',
-                          color: '#222',
-                          padding: '8px 16px',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontFamily: 'Mitr, sans-serif',
-                          fontSize: '0.85rem',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        Google Sign-In
-                      </button>
-                    </div>
-                  )}
+                  {/* ฟอร์มกรอกข้อมูลประกอบด้วยช่องใส่ชื่อ และข้อความแบบเขียนได้อิสระทันที */}
+                  <form onSubmit={(e) => handleReviewSubmit(e, detailModal.placeData.id)} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px' }}>
+                    <input 
+                      type="text"
+                      placeholder="ชื่อของคุณ"
+                      value={inputName}
+                      onChange={(e) => setInputName(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.95rem',
+                        outline: 'none',
+                        fontFamily: 'Prompt, sans-serif'
+                      }}
+                    />
+                    
+                    <textarea 
+                      placeholder="เขียนรีวิวหรือแนะนำสิ่งที่คุณประทับใจเกี่ยวกับจุดนี้..." 
+                      value={inputText} 
+                      onChange={(e) => setInputText(e.target.value)} 
+                      required 
+                      rows="3" 
+                      style={{ 
+                        padding: '14px 16px', 
+                        background: 'rgba(255, 255, 255, 0.06)', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                        borderRadius: '8px', 
+                        color: '#fff', 
+                        fontSize: '0.95rem', 
+                        outline: 'none', 
+                        resize: 'none', 
+                        lineHeight: '1.5', 
+                        fontFamily: 'Prompt, sans-serif' 
+                      }} 
+                    />
+                    
+                    <button 
+                      type="submit" 
+                      style={{ 
+                        alignSelf: 'flex-end', 
+                        background: '#00c853', 
+                        color: '#fff', 
+                        padding: '10px 24px', 
+                        border: 'none', 
+                        borderRadius: '50px', 
+                        fontFamily: 'Mitr, sans-serif', 
+                        fontSize: '0.95rem', 
+                        cursor: 'pointer', 
+                        fontWeight: 'bold',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      ส่งความเห็น
+                    </button>
+                  </form>
 
-                  {/* รายการแสดงคอมเมนต์แบบก้อนเดี่ยวไหลต่อกันดึงค่าสดจาก Firebase */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* รายการกล่องข้อความรีวิวที่ดึงสดลงมาจาก Firebase Cloud */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {!(reviewsData[detailModal.placeData.id]) || reviewsData[detailModal.placeData.id].length === 0 ? (
-                      <p style={{ color: '#777', textAlign: 'center', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                        ยังไม่มีคอมเมนต์ เขียนรีวิวเป็นคนแรกเลย!
+                      <p style={{ color: '#777', textAlign: 'center', fontSize: '0.9rem', fontStyle: 'italic', padding: '10px 0' }}>
+                        ยังไม่มีคอมเมนต์ มาร่วมแชร์ความเห็นเป็นคนแรกกันครับ!
                       </p>
                     ) : (
                       reviewsData[detailModal.placeData.id].map((review) => (
-                        <div key={review.id} style={{
-                          padding: '12px 16px',
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid rgba(255, 255, 255, 0.05)',
-                          borderRadius: '8px'
+                        <div key={review.id} style={{ 
+                          padding: '14px 18px', 
+                          background: 'rgba(255, 255, 255, 0.03)', 
+                          border: '1px solid rgba(255, 255, 255, 0.05)', 
+                          borderRadius: '10px' 
                         }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              {review.userPhoto && (
-                                <img src={review.userPhoto} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />
-                              )}
-                              <strong style={{ color: '#fff', fontSize: '0.9rem', fontFamily: 'Prompt, sans-serif' }}>{review.name}</strong>
-                            </div>
-                            <span style={{ color: '#666', fontSize: '0.75rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <strong style={{ color: '#fff', fontSize: '1rem', fontFamily: 'Prompt, sans-serif' }}>
+                              {review.name}
+                            </strong>
+                            <span style={{ color: '#666', fontSize: '0.8rem' }}>
                               {review.createdAt ? new Date(review.createdAt.seconds * 1000).toLocaleDateString('th-TH') : 'กำลังส่ง...'}
                             </span>
                           </div>
-                          <p style={{ margin: 0, color: '#ccc', fontSize: '0.85rem', whiteSpace: 'pre-line', lineHeight: '1.5', paddingLeft: review.userPhoto ? '32px' : '0' }}>
+                          <p style={{ margin: 0, color: '#ccc', fontSize: '0.9rem', whiteSpace: 'pre-line', lineHeight: '1.6', textAlign: 'center', padding: '10px 0' }}>
                             {review.text}
                           </p>
                         </div>
@@ -442,7 +342,6 @@ export default function App() {
           )}
         </div>
       </div>
-
     </Router>
   );
 }
