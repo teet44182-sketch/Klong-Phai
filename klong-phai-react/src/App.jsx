@@ -31,10 +31,10 @@ export default function App() {
   // 🎯 State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
 
-  // 🎯 ☁️ ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase (ลบโค้ด localStorage เดิมออก)
+  // 🎯 ☁️ ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase
   const [likes, setLikes] = useState({});
 
-  // ☁️ ดึงยอดไลก์สะสมจาก Firebase Firestore แบบ Realtime เมื่อเปิดเว็บ
+  // ☁️ ดึงยอดไลก์สะสมจาก Firebase Firestore แบบ Realtime เมื่อเปิดเว็บ[cite: 3]
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -46,14 +46,26 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🎯 ☁️ ฟังก์ชันเพิ่มแต้มไลก์ ยิงอัปเดตค่าสะสมขึ้นเซิร์ฟเวอร์ Firebase ตรงๆ (กดรัวได้เหมือนเดิม)
+  // 🎯 ☁️ ฟังก์ชันไลก์แบบสลับสถานะ (Toggle) ไม่ต้อง Login แต่กันสแปมเบื้องต้นด้วย localStorage[cite: 3]
   const handleLike = async (placeId) => {
+    // ตรวจสอบสถานะในเครื่องผู้ใช้ว่าเคยกดไลก์สถานที่นี้ไปแล้วหรือยัง[cite: 3]
+    const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
+    const likeDocRef = doc(db, "likes", String(placeId));
+
     try {
-      const likeDocRef = doc(db, "likes", String(placeId));
-      // ใช้ increment(1) ฝั่ง Firebase เพื่อป้องกันปัญหาตบแต่งตัวเลขหน้าเครื่อง หรือเน็ตดีเลย์แย่งกันกด
-      await setDoc(likeDocRef, {
-        count: increment(1)
-      }, { merge: true });
+      if (isLiked) {
+        // 👎 ถ้าเคยไลก์แล้ว -> กดซ้ำจะทำการลดแต้มไลก์ (Unlike) และบันทึกสถานะใหม่ลงเครื่อง[cite: 3]
+        await setDoc(likeDocRef, {
+          count: increment(-1)
+        }, { merge: true });
+        localStorage.setItem(`like_${placeId}`, 'false');
+      } else {
+        // 👍 ถ้ายังไม่เคยไลก์ -> จะทำการเพิ่มแต้มไลก์ (Like) และบันทึกสถานะลงเครื่อง[cite: 3]
+        await setDoc(likeDocRef, {
+          count: increment(1)
+        }, { merge: true });
+        localStorage.setItem(`like_${placeId}`, 'true');
+      }
     } catch (error) {
       console.error("Error updating like on Firebase:", error);
     }
