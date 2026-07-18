@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-export default function Accommodation({ onOpenMap }) {
+export default function Accommodation({ onOpenMap, likes = {}, onLike }) {
   // กรองเอาเฉพาะข้อมูลที่เป็นที่พักจากฐานข้อมูลกลาง
   const accommodations = placesDatabase.filter(place => place.type === 'accommodation');
 
@@ -15,21 +15,21 @@ export default function Accommodation({ onOpenMap }) {
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
       
-      {/* 🎯 ส่วนหัวภาพพื้นหลังแบบเบลอ (Hero BG Blur) */}
+      {/* ส่วนหัวภาพพื้นหลังแบบเบลอ (Hero BG Blur) */}
       <div style={{
         position: 'relative',
         width: '100%',
-        height: '35vh', /* ความสูงของแผงรูปภาพด้านบน */
-        marginTop: '70px', /* หลบแนว Navbar 70px */
+        height: '35vh', 
+        marginTop: '70px', 
         overflow: 'hidden',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10
       }}>
-        {/* 1. รูปภาพพื้นหลังฝั่งที่พักที่สั่งเบลอ */}
+        {/* รูปภาพพื้นหลังฝั่งที่พักที่สั่งเบลอ */}
         <img 
-          src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" /* สามารถเปลี่ยน URL รูปโรงแรม/ที่พักที่ต้องการได้ตรงนี้ */
+          src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" 
           alt="Accommodation Background"
           style={{
             position: 'absolute',
@@ -39,13 +39,13 @@ export default function Accommodation({ onOpenMap }) {
             height: '100%',
             objectFit: 'cover',
             objectPosition: 'center',
-            filter: 'blur(8px)', /* ระดับความเบลอ */
-            transform: 'scale(1.1)', /* ขยายเล็กน้อยเพื่อเก็บขอบขาวจากการเบลอ */
+            filter: 'blur(8px)', 
+            transform: 'scale(1.1)', 
             zIndex: 1
           }}
         />
         
-        {/* 2. แผ่น Layer สีดำไล่เฉด เพื่อดันให้ตัวหนังสือหัวข้อเด่นขึ้นมา */}
+        {/* แผ่น Layer สีดำไล่เฉด เพื่อดันให้ตัวหนังสือหัวข้อเด่นขึ้นมา */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -56,7 +56,7 @@ export default function Accommodation({ onOpenMap }) {
           zIndex: 2
         }} />
 
-        {/* 3. ข้อความหัวข้อ */}
+        {/* ข้อความหัวข้อ */}
         <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
           <h2 className="page-title" style={{ 
             fontSize: '2.5rem', 
@@ -69,20 +69,26 @@ export default function Accommodation({ onOpenMap }) {
         </div>
       </div>
 
-      {/* 🎯 ส่วนแสดงผลเนื้อหาการ์ดผลลัพธ์ด้านล่าง */}
+      {/* ส่วนแสดงผลเนื้อหาการ์ดผลลัพธ์ด้านล่าง */}
       <div className="page-container" style={{ 
         width: '100%',
         maxWidth: '1126px',
         margin: '0 auto',
-        padding: '30px 20px 60px 20px', /* ปรับระยะให้กระชับพอดีกับส่วนหัว */
+        padding: '30px 20px 60px 20px', 
         minHeight: '50vh',
-        height: 'auto' /* ปล่อยอิสระเพื่อให้สกรอลล์เลื่อนหน้าจอหลักลงไปดูได้ปกติ */
+        height: 'auto' 
       }}>
         {/* แสดงผลการ์ดที่พักในรูปแบบ Grid ตามที่กำหนดไว้ใน CSS */}
         <div className="results-grid">
           {accommodations.length > 0 ? (
             accommodations.map(place => (
-              <Card key={place.id} place={place} onOpenMap={onOpenMap} />
+              <Card 
+                key={place.id} 
+                place={place} 
+                onOpenMap={onOpenMap} 
+                likesCount={likes[place.id] || 0}
+                onLike={onLike}
+              />
             ))
           ) : (
             <div className="no-result">ยังไม่มีข้อมูลที่พักในขณะนี้</div>
