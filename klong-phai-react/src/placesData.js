@@ -293,7 +293,7 @@ export const placesDatabase = [
     title: "ชาบูหม้อไฟ",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     gallery: [],
-    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3856.1502013091877!2d101.56883611112394!3d14.872877270291818!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x311e99474507d81b%3A0xb8de4517791be882!2z4LiK4Liy4Lia4Li54Lir4Lih4LmJ4Lit4LmE4Lif!5e0!3m2!1sth!2sth!4v1784447523070!5m2!1sth!2sth",
     type: "restaurant",
     phone: "-",
     workingHours: "-"
@@ -304,7 +304,7 @@ export const placesDatabase = [
     title: "ครัวฉันเอง",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     gallery: [],
-    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3856.134302184989!2d101.57074211112398!3d14.873766770269654!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x311e9b589074fc5b%3A0xa9977c06fcc62709!2z4LiE4Lij4Lix4Lin4LiJ4Lix4LiZ4LmA4Lit4LiH!5e0!3m2!1sth!2sth!4v1784447560613!5m2!1sth!2sth",
     type: "restaurant",
     phone: "-",
     workingHours: "-"
@@ -315,7 +315,7 @@ export const placesDatabase = [
     title: "ป้ามัทอาหารตามสั่ง แกงใต้",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     gallery: [],
-    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3856.060267415801!2d101.55723011112393!3d14.877908070166473!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x311e9bc648aaab39%3A0x2909678d414af633!2z4Lib4LmJ4Liy4Lih4Lix4LiX4Lit4Liy4Lir4Liy4Lij4LiV4Liy4Lih4Liq4Lix4LmI4LiHIOC5geC4geC4h-C5g-C4leC5iQ!5e0!3m2!1sth!2sth!4v1784447590293!5m2!1sth!2sth",
     type: "restaurant",
     phone: "-",
     workingHours: "-"
@@ -326,7 +326,7 @@ export const placesDatabase = [
     title: "สมพรเนื้อย่างเกาหลีคลองไผ่",
     img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=500",
     gallery: [],
-    mapUrl: "https://maps.google.com/maps?q=Cook+and+Coff+คลองไผ่&output=embed",
+    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1974291.3482198995!2d100.008025652552!3d14.879165200000005!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x311e9b433321d2a5%3A0x2e8d43cb994295ea!2z4Liq4Lih4Lie4Lij4LmA4LiZ4Li34LmJ4Lit4Lii4LmI4Liy4LiH4LmA4LiB4Liy4Lir4Lil4Li14LiE4Lil4Lit4LiH4LmE4Lic4LmI!5e0!3m2!1sth!2sth!4v1784447625890!5m2!1sth!2sth",
     type: "restaurant",
     phone: "-",
     workingHours: "-"
