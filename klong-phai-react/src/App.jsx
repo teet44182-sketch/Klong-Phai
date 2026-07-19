@@ -13,7 +13,8 @@ import Home from './pages/Home';
 import Restaurant from './pages/Restaurant';
 import Accommodation from './pages/Accommodation';
 import CommunityMap from './pages/CommunityMap';
-import CheckInPoints from './pages/CheckInPoints'; 
+import CheckInPoints from './pages/CheckInPoints';
+import Detail from './pages/Detail';
 
 // นำเข้า Pop-up แผนที่กลาง
 import MapModal from './components/MapModal';
@@ -256,9 +257,10 @@ export default function App() {
         <Route path="/restaurant" element={<Restaurant onOpenMap={openDetail} likes={likes} onLike={handleLike} />} />
         <Route path="/accommodation" element={<Accommodation onOpenMap={openDetail} likes={likes} onLike={handleLike} />} />
         <Route path="/map" element={<CommunityMap />} />
+        <Route path="/detail/:id" element={<Detail onOpenMap={openMap} />} />
       </Routes>
 
-      <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} />
+      <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} zIndex={9999} />
 
       {/*  Pop-up รายละเอียดสถานที่ */}
       <div 
