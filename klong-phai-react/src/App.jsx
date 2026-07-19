@@ -35,6 +35,10 @@ export default function App() {
   //  State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
 
+  //  State คุมเมนูมือถือ (hamburger) บน mobile
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
   //   ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase
   const [likes, setLikes] = useState({});
 
@@ -217,7 +221,10 @@ export default function App() {
  };
 
   useEffect(() => {
-    const handleOutsideClick = () => setIsFilterDropdownActive(false);
+    const handleOutsideClick = () => {
+      setIsFilterDropdownActive(false);
+      setIsMobileMenuOpen(false);
+    };
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
@@ -225,22 +232,32 @@ export default function App() {
   return (
     <Router>
       <nav className="navbar">
-        <Link to="/" className="nav-logo"><span>#</span> คลองไผ่</Link>
-        <div className="nav-links">
-          <Link to="/">หน้าแรก</Link>
+        <Link to="/" className="nav-logo" onClick={closeMobileMenu}><span>#</span> คลองไผ่</Link>
+
+        {/* ปุ่ม Hamburger (mobile only) */}
+        <button
+          className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}
+          onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(prev => !prev); }}
+          aria-label="เปิด/ปิดเมนู"
+        >
+          <span /><span /><span />
+        </button>
+
+        <div className={`nav-links ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+          <Link to="/" onClick={closeMobileMenu}>หน้าแรก</Link>
           <div className={`dropdown ${isFilterDropdownActive ? 'active' : ''}`}>
             <button className="dropdown-btn" onClick={(e) => { e.stopPropagation(); setIsFilterDropdownActive(!isFilterDropdownActive); }}>
               ร้านอาหาร / ที่พัก
             </button>
             <div className="dropdown-content">
-              <Link to="/restaurant" onClick={() => setIsFilterDropdownActive(false)}> ร้านอาหาร</Link>
-              <Link to="/accommodation" onClick={() => setIsFilterDropdownActive(false)}> ที่พัก</Link>
+              <Link to="/restaurant" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}> ร้านอาหาร</Link>
+              <Link to="/accommodation" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}> ที่พัก</Link>
             </div>
           </div>
-          <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }}>10 จุดเช็คอิน</Link>
-          <Link to="/map">แผนที่ชุมชน</Link>
-          <a href="#contact" onClick={(e) => { e.preventDefault(); alert('หน้าติดต่อมาเร็วๆนี้!'); }}>ติดต่อเรา</a>
-          <a href="#plan" className="btn-green" onClick={(e) => { e.preventDefault(); alert('ฟังก์ชันนี้กำลังพัฒนา'); }}>วางแผนการเดินทาง</a>
+          <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }} onClick={closeMobileMenu}>10 จุดเช็คอิน</Link>
+          <Link to="/map" onClick={closeMobileMenu}>แผนที่ชุมชน</Link>
+          <a href="#contact" onClick={(e) => { e.preventDefault(); closeMobileMenu(); alert('หน้าติดต่อมาเร็วๆนี้!'); }}>ติดต่อเรา</a>
+          <a href="#plan" className="btn-green" onClick={(e) => { e.preventDefault(); closeMobileMenu(); alert('ฟังก์ชันนี้กำลังพัฒนา'); }}>วางแผนการเดินทาง</a>
         </div>
       </nav>
 

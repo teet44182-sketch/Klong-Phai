@@ -100,7 +100,10 @@ export default function Home({ onOpenMap, likes = {}, onLike }) {
           </div>
         </div>
 
-        <div className="info-row">
+        <div className="info-row reverse">
+          <div className="info-img">
+            <div className="placeholder-img"></div>
+          </div>
           <div className="info-text">
             <h2>สถานที่น่าสนใจ</h2>
             <p>
@@ -108,9 +111,6 @@ export default function Home({ onOpenMap, likes = {}, onLike }) {
               ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) 
               นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ
             </p>
-          </div>
-          <div className="info-img">
-            <div className="placeholder-img"></div>
           </div>
         </div>
 

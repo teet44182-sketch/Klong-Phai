@@ -105,6 +105,155 @@ body {
 }
 
 /* ==========================================
+   HAMBURGER BUTTON (mobile only)
+   ========================================== */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 1001;
+  flex-shrink: 0;
+}
+
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 2px;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+  transform-origin: center;
+}
+
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ==========================================
+   MOBILE NAV & GENERAL RESPONSIVE (≤768px)
+   ========================================== */
+@media (max-width: 768px) {
+  /* Navbar compact */
+  .navbar {
+    padding: 15px 20px;
+  }
+
+  /* Show hamburger button */
+  .hamburger {
+    display: flex;
+  }
+
+  /* Nav links become full-width slide-down overlay */
+  .nav-links {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    width: 100%;
+    background: rgba(28, 28, 28, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+    z-index: 999;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .nav-links.mobile-open {
+    max-height: 520px;
+  }
+
+  /* Each link row */
+  .nav-links > a,
+  .nav-links > .dropdown {
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .nav-links a {
+    display: block;
+    padding: 14px 24px;
+    font-size: 15px;
+    color: #ddd;
+  }
+
+  /* Dropdown inside mobile nav becomes static */
+  .nav-links .dropdown {
+    display: block;
+    width: 100%;
+  }
+
+  .nav-links .dropdown-btn {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+    text-align: center;
+    justify-content: center;
+    color: #ddd;
+  }
+
+  .nav-links .dropdown-content {
+    position: static !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    min-width: unset !important;
+    display: none;
+  }
+
+  .nav-links .dropdown.active .dropdown-content {
+    display: block;
+    transform: none !important;
+  }
+
+  .nav-links .dropdown-content a {
+    padding: 12px 24px !important;
+    font-size: 14px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    text-align: center;
+    color: #aaa !important;
+    background: rgba(0,0,0,0.18) !important;
+  }
+
+  /* CTA button inside mobile nav */
+  .nav-links .btn-green {
+    display: block;
+    margin: 12px 20px 16px 20px;
+    padding: 12px 20px;
+    text-align: center;
+    border-radius: 50px;
+    font-size: 14px;
+  }
+
+  /* Hero title smaller on tablet */
+  .search-container-inside h1 {
+    font-size: 2.4rem;
+  }
+
+  /* Info sections already stack at 768px - keep border tidy */
+  .info-text {
+    border-left: none !important;
+    border-right: none !important;
+  }
+}
+
+/* ==========================================
    3. DROPDOWN STYLE (ระบบเมนูคลิกแบบใส 25%)
    ========================================== */
 .dropdown {
