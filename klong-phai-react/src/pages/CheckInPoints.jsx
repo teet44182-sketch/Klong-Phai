@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
+import watKaoprickImg from '../assets/watkaoprick.jpg';
 
 //  นำเข้า Firebase CRUD Methods
 import { db } from '../firebase';
@@ -117,15 +118,59 @@ export default function CheckInPoints({
  };
 
   return (
-    <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b', paddingTop: '100px' }}>
-      <div style={{ width: '100%', maxWidth: '1126px', margin: '0 auto', padding: '0 20px 60px 20px' }}>
-        
-        <h1 style={{ fontFamily: 'Mitr, sans-serif', fontSize: '2.2rem', color: '#fff', marginBottom: '10px' }}>
-           จัดอันดับ 10 จุดเช็คอิน คลองไผ่
-        </h1>
-        <p style={{ color: '#aaa', marginBottom: '40px', fontFamily: 'Prompt, sans-serif' }}>
-          อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ  บนกล่องการ์ดสถานที่
-        </p>
+    <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
+
+      {/* Hero Banner — blurred background with title */}
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        height: '35vh',
+        marginTop: '70px',
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10
+      }}>
+        <img
+          src={watKaoprickImg}
+          alt="Check-in Background"
+          style={{
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: '100%',
+            objectFit: 'cover', objectPosition: 'center',
+            filter: 'blur(8px)', transform: 'scale(1.1)',
+            zIndex: 1
+          }}
+        />
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: '100%',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(43,43,43,0.9))',
+          zIndex: 2
+        }} />
+        <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
+          <h2 className="page-title" style={{
+            fontSize: '2.5rem',
+            color: '#ffffff',
+            marginBottom: '10px',
+            textShadow: '2px 2px 10px rgba(0,0,0,0.6)'
+          }}>
+            จัดอันดับ 10 จุดเช็คอิน คลองไผ่
+          </h2>
+          <p style={{
+            color: 'rgba(255,255,255,0.75)',
+            fontSize: '0.95rem',
+            fontFamily: 'Prompt, sans-serif',
+            margin: 0,
+            textShadow: '1px 1px 6px rgba(0,0,0,0.6)'
+          }}>
+            อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ บนกล่องการ์ดสถานที่
+          </p>
+        </div>
+      </div>
+
+      <div style={{ width: '100%', maxWidth: '1126px', margin: '0 auto', padding: '30px 20px 60px 20px' }}>
 
         <div className="results-grid" style={{ marginBottom: '60px' }}>
           {sortedPlaces.slice(0, 10).map((place, index) => (
