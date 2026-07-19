@@ -85,17 +85,17 @@ export default function App() {
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
     const likeDocRef = doc(db, "likes", String(placeId));
+    const delta = isLiked ? -1 : 1;
 
     try {
-      if (isLiked) {
-        await setDoc(likeDocRef, { count: increment(-1) }, { merge: true });
-        localStorage.setItem(`like_${placeId}`, 'false');
-      } else {
-        await setDoc(likeDocRef, { count: increment(1) }, { merge: true });
-        localStorage.setItem(`like_${placeId}`, 'true');
-      }
+      await setDoc(likeDocRef, { count: increment(delta) }, { merge: true });
+      // บันทึก localStorage หลังจาก Firebase สำเร็จเท่านั้น
+      localStorage.setItem(`like_${placeId}`, isLiked ? 'false' : 'true');
     } catch (error) {
-      console.error("Error updating like on Firebase:", error);
+      console.error("Like failed:", error.code, error.message);
+      if (error.code === 'permission-denied') {
+        alert(' ไม่สามารถบันทึกได้: Firebase Security Rules ปฏิเสธสิทธิ์ กรุณาอัปเดต Rules ใน Firebase Console');
+      }
     }
   };
 
