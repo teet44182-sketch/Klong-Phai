@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-// 🔒 นำเข้า Firebase CRUD Methods
+//  นำเข้า Firebase CRUD Methods
 import { db } from '../firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -27,17 +27,17 @@ export default function CheckInPoints({
   const validateReviewText = (text) => {
     const cleanText = text.trim();
     if (cleanText.length < 2) {
-      alert("⚠️ ข้อความรีวิวสั้นเกินไปครับ");
+      alert(" ข้อความรีวิวสั้นเกินไปครับ");
       return false;
     }
     if (cleanText.length > 200) {
-      alert("⚠️ ข้อความรีวิวต้องไม่เกิน 200 ตัวอักษรครับ");
+      alert(" ข้อความรีวิวต้องไม่เกิน 200 ตัวอักษรครับ");
       return false;
     }
     const textLower = cleanText.toLowerCase();
     const hasBannedWord = bannedWords.some(word => textLower.includes(word));
     if (hasBannedWord) {
-      alert("⚠️ ข้อความของคุณมีคำไม่เหมาะสม (คำหยาบ) กรุณาแก้ไขก่อนส่งครับ");
+      alert(" ข้อความของคุณมีคำไม่เหมาะสม (คำหยาบ) กรุณาแก้ไขก่อนส่งครับ");
       return false;
     }
     return cleanText;
@@ -74,7 +74,7 @@ export default function CheckInPoints({
   const handleUpdateReview = async (review) => {
     const targetId = review.id || review.docId;
     if (!targetId) {
-      alert("❌ ไม่สามารถอัปเดตได้เนื่องจากไม่พบ ID ของเอกสารรีวิว");
+      alert(" ไม่สามารถอัปเดตได้เนื่องจากไม่พบ ID ของเอกสารรีวิว");
       return;
     }
     if (!editText.trim()) return;
@@ -91,7 +91,7 @@ export default function CheckInPoints({
       setEditText('');
     } catch (error) {
       console.error("Error updating review:", error);
-      alert("❌ ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+      alert(" ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
     }
   };
 
@@ -100,7 +100,7 @@ export default function CheckInPoints({
   const targetId = review.id || review.docId || review._id;
   
   if (!targetId) {
-    alert("❌ ระบบหา ID บน Firebase ของคอมเมนต์นี้ไม่เจอ");
+    alert(" ระบบหา ID บน Firebase ของคอมเมนต์นี้ไม่เจอ");
     console.log("คอมเมนต์ที่กดลบ:", review); 
     return;
   }
@@ -112,7 +112,7 @@ export default function CheckInPoints({
     await deleteDoc(doc(db, "reviews", targetId));
   } catch (error) {
     console.error(error);
-    alert("❌ เกิดข้อผิดพลาดขณะลบข้อมูลจาก Database");
+    alert(" เกิดข้อผิดพลาดขณะลบข้อมูลจาก Database");
   }
  };
 
@@ -121,10 +121,10 @@ export default function CheckInPoints({
       <div style={{ width: '100%', maxWidth: '1126px', margin: '0 auto', padding: '0 20px 60px 20px' }}>
         
         <h1 style={{ fontFamily: 'Mitr, sans-serif', fontSize: '2.2rem', color: '#fff', marginBottom: '10px' }}>
-          🏆 จัดอันดับ 10 จุดเช็คอิน คลองไผ่
+           จัดอันดับ 10 จุดเช็คอิน คลองไผ่
         </h1>
         <p style={{ color: '#aaa', marginBottom: '40px', fontFamily: 'Prompt, sans-serif' }}>
-          อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ ❤️ บนกล่องการ์ดสถานที่
+          อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ  บนกล่องการ์ดสถานที่
         </p>
 
         <div className="results-grid" style={{ marginBottom: '60px' }}>
@@ -135,7 +135,7 @@ export default function CheckInPoints({
                 background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#00a854',
                 color: index <= 2 ? '#000' : '#fff', fontWeight: 'bold', padding: '4px 12px', borderRadius: '6px', zIndex: 20, fontSize: '0.85rem', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', fontFamily: 'Mitr, sans-serif'
               }}>
-                {index === 0 ? '🥇 อันดับ 1' : index === 1 ? '🥈 อันดับ 2' : index === 2 ? '🥉 อันดับ 3' : `อันดับ ${index + 1}`}
+                {index === 0 ? ' อันดับ 1' : index === 1 ? ' อันดับ 2' : index === 2 ? ' อันดับ 3' : `อันดับ ${index + 1}`}
               </div>
               <Card place={place} onOpenMap={onOpenMap} likesCount={likes[place.id] || 0} onLike={onLike} />
             </div>
@@ -144,7 +144,7 @@ export default function CheckInPoints({
 
         <div style={{ background: 'rgba(255, 255, 255, 0.04)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '30px', borderRadius: '16px', color: '#eee', maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.3rem' }}>💬 พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้</h3>
+            <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.3rem' }}> พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้</h3>
             {googleUser && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#aaa' }}>
@@ -166,7 +166,7 @@ export default function CheckInPoints({
             </form>
           ) : (
             <div style={{ textAlign: 'center', padding: '30px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', marginBottom: '30px' }}>
-              <p style={{ color: '#aaa', fontSize: '0.9rem', margin: '0 0 16px 0', fontFamily: 'Prompt, sans-serif' }}>🔒 กรุณาเข้าสู่ระบบด้วย Google เพื่อยืนยันตัวตนก่อนร่วมแสดงความคิดเห็น</p>
+              <p style={{ color: '#aaa', fontSize: '0.9rem', margin: '0 0 16px 0', fontFamily: 'Prompt, sans-serif' }}> กรุณาเข้าสู่ระบบด้วย Google เพื่อยืนยันตัวตนก่อนร่วมแสดงความคิดเห็น</p>
               <button type="button" onClick={handleGoogleLogin} style={{ background: '#fff', color: '#222', padding: '10px 20px', border: 'none', borderRadius: '6px', fontFamily: 'Mitr, sans-serif', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.5-1.14 2.76-2.4 3.61v3h3.86c2.26-2.08 3.67-5.14 3.67-8.46z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.21v3.11C3.18 21.88 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.6H1.21A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.21 5.39l4.06-3.1z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.18 2.12 1.21 5.39l4.06 3.11c.95-2.85 3.6-4.96 6.73-4.96z"/>

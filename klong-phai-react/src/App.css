@@ -1,5 +1,5 @@
 /* ==========================================
-   1. GLOBAL STYLES & FONTS
+   1. GLOBAL STYLES & FONTS (สไตล์เริ่มต้น & ฟอนต์)
    ========================================== */
 * { 
   box-sizing: border-box;
@@ -15,12 +15,21 @@
 }
 
 body { 
-  background-color: #1f1f1f; /* ปรับพื้นหลังหลักให้มืดสนิทดูพรีเมียมขึ้น */
+  background-color: #2b2b2b; 
   color: #fff; 
   min-height: 100vh;      
   position: relative; 
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.home-page-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #2b2b2b;
+  position: relative;
 }
 
 #root {
@@ -29,24 +38,12 @@ body {
   height: 100%;
 }
 
-/* แรปเปอร์คุมเนื้อหาของแต่ละหน้าย่อย เพื่อดันเนื้อหาหลบ Navbar สูง 70px เสมอ */
-.page-container {
-  padding-top: 100px; 
-  padding-bottom: 40px;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  padding-left: 20px;
-  padding-right: 20px;
-  box-sizing: border-box;
-}
-
 /* ==========================================
    2. NAVBAR STYLES (แถบเมนูด้านบน)
    ========================================== */
 .navbar {
   width: 100%;
-  background-color: rgba(31, 31, 31, 0.75); /* ปรับพื้นหลังให้ทึบขึ้นเล็กน้อยเวลาเลื่อน */
+  background-color: rgba(51, 51, 51, 0.1);
   backdrop-filter: blur(12px); 
   -webkit-backdrop-filter: blur(12px);
   
@@ -57,9 +54,9 @@ body {
   position: fixed;
   top: 0;
   left: 0; 
-  z-index: 2000; /* ดันให้อยู่ชั้นบนสุดเสมอ */
+  z-index: 1000; 
   
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+  box-shadow: none; 
   height: 70px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -69,6 +66,7 @@ body {
   font-size: 22px; 
   font-weight: bold;
   text-decoration: none; 
+  font-family: 'Mitr', sans-serif;
 }
 
 .nav-logo span { 
@@ -107,7 +105,7 @@ body {
 }
 
 /* ==========================================
-   3. DROPDOWN STYLE
+   3. DROPDOWN STYLE (ระบบเมนูคลิกแบบใส 25%)
    ========================================== */
 .dropdown {
   position: relative;
@@ -122,6 +120,7 @@ body {
   background: none; 
   border: none; 
   cursor: pointer;
+  font-family: 'Prompt', sans-serif; 
   display: flex; 
   align-items: center; 
   gap: 4px; 
@@ -133,7 +132,7 @@ body {
 }
 
 .dropdown-btn::after {
-  content: '▾'; 
+  content: ''; 
   font-size: 12px; 
   transition: transform 0.2s; 
 }
@@ -152,17 +151,17 @@ body {
   top: 100%;
   left: 50%;
   transform: translateX(-50%) translateY(0);
-  background-color: rgba(43, 43, 43, 0.85); /* เพิ่มความทึบให้อ่านง่าย */
+  background-color: rgba(43, 43, 43, 0.25); 
   backdrop-filter: blur(10px);
   min-width: 160px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 8px 0;
   opacity: 0;
   pointer-events: none;
   transition: all 0.2s ease-in-out;
-  z-index: 2100;
+  z-index: 1100;
 }
 
 .dropdown-content a {
@@ -187,17 +186,8 @@ body {
 }
 
 /* ==========================================
-   4. HERO & SEARCH SECTION (สำหรับหน้าแรก)
+   4. HERO & SEARCH SECTION (ส่วนหัวภาพปกและกล่องค้นหา)
    ========================================== */
-.home-page-wrapper {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #2b2b2b;
-  position: relative;
-}
-
 .hero-section {
   width: 100%;
   height: calc(100vh - 70px);
@@ -211,6 +201,7 @@ body {
   transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+/* เมื่อเริ่มพิมพ์ค้นหาหรือเลือกฟิลเตอร์ รูปภาพจะหดสัดส่วนขึ้นไปหลบแผงผลลัพธ์ */
 .home-page-wrapper:has(.lift-up) .hero-section {
   height: 40vh;
 }
@@ -252,6 +243,7 @@ body {
 }
 
 .search-container-inside h1 { 
+  font-family: 'Mitr', sans-serif !important;
   font-size: 3rem;
   margin-bottom: 20px;
   color: #ffffff;
@@ -259,6 +251,7 @@ body {
   transition: font-size 0.7s cubic-bezier(0.25, 1, 0.5, 1), margin-bottom 0.7s ease;
 }
 
+/* เมื่อพิมพ์ค้นหา ตัวอักษรหัวข้อใหญ่หดเล็กลง */
 .home-page-wrapper:has(.lift-up) .search-container-inside h1 {
   font-size: 2.2rem;
   margin-bottom: 12px;
@@ -282,8 +275,17 @@ body {
   box-shadow: 0 6px 30px rgba(0, 168, 84, 0.4);
 }
 
+.search-box input::placeholder {
+  color: #aaaaaa;
+}
+
+@media (max-width: 600px) {
+  .search-container-inside h1 { font-size: 2.2rem; }
+  .home-page-wrapper:has(.lift-up) .search-container-inside h1 { font-size: 1.7rem; }
+}
+
 /* ==========================================
-   5. PANEL & RESULTS GRID
+   5. PANEL & RESULTS GRID (แก้ไขจุดบกพร่องเรื่องการ Scroll และโดนบดบัง)
    ========================================== */
 .search-panel-bottom {
   position: relative;
@@ -291,20 +293,44 @@ body {
   max-width: 1126px;
   margin: 0 auto;
   background-color: #2b2b2b;
-  padding: 40px 20px;
+  padding: 90px 20px 40px 20px;
   z-index: 20; 
-  height: auto;
-  overflow-y: visible;
+  height: calc(100vh - 70px); 
+  max-height: 80vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
   transform: translateY(100vh);
   opacity: 0;
   visibility: hidden;
   transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, visibility 0.5s;
 }
 
+/* แสดงแผงข้อมูลเมื่อติดคลาส .lift-up */
 .search-panel-bottom.lift-up {
   transform: translateY(0);
+  margin-top: 0; 
   opacity: 1;
   visibility: visible;
+}
+
+.search-panel-bottom.hidden-panel {
+  transform: translateY(100vh);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.hidden-panel {
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.panel-title {
+  font-family: 'Mitr', sans-serif;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: #ffffff;
+  padding-top: 0; 
 }
 
 .results-grid {
@@ -314,75 +340,118 @@ body {
   padding-bottom: 50px; 
 }
 
+/* ปรับให้รองรับหน้าจอเล็ก */
+@media (max-width: 768px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .search-panel-bottom { 
+    padding: 80px 15px 40px 15px;
+    height: calc(100vh - 70px);
+    max-height: 60vh; 
+  }
+  .search-panel-bottom.lift-up {
+    margin-top: 0;
+  }
+  .results-grid { 
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ==========================================
-   6. CARD SYSTEM (ปรับพื้นหลังแยกชัดเจน มืด-สว่าง)
+   6. CARD SYSTEM
    ========================================== */
 .card {
-  background: #2b2b2b; /* ล็อกพื้นหลังของการ์ดโชว์หน้ารวมให้เป็นเทาเข้มรับกับเว็บ */
-  border: 1px solid rgba(255,255,255,0.08);
+  background: #fff;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   display: flex;
   flex-direction: column;
   animation: slideIn 0.4s ease forwards;
 }
 
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .card-img {
   width: 100%; 
-  height: 180px; 
+  height: 160px; 
   object-fit: cover;
   object-position: center;
 }
 
 .card-content { 
-  padding: 20px; 
-  color: #fff; /* เปลี่ยนตัวหนังสือบนการ์ดเป็นสีขาว */
+  padding: 12px; 
+  color: #333;
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
 }
 
 .card-title { 
-  font-size: 1.15rem;
-  color: #00a854; /* หัวข้อสีเขียวสว่างตัดกับพื้นหลังเข้มชัดเจน */
-  margin-bottom: 8px;
-}
-
-.card-description {
-  font-size: 0.9rem;
-  color: #ccc;
-  line-height: 1.5;
-  margin-bottom: 15px;
+  font-family: 'Mitr', sans-serif;
+  font-weight: bold;
+  font-size: 0.95rem;
+  color: #1e5f38;
+  line-height: 1.4;
 }
 
 .card-meta { 
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding-top: 12px;
-  font-size: 0.85rem;
+  border-top: 1px solid #eee;
+  padding-top: 8px;
+  font-size: 0.8rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
+.map-btn { 
+  cursor: pointer;
+  color: #1e5f38;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+}
+
+.map-btn:hover { 
+  color: #00a854;
+  text-decoration: underline;
+}
+
+.no-result { 
+  text-align: center;
+  grid-column: 1 / -1;
+  padding-top: 30px;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* ==========================================
+   CARD INTERACTIVE ANIMATION (เอฟเฟกต์ตอนชี้และตอนกดการ์ด)
+   ========================================== */
 .card-interactive {
   cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease !important;
 }
 
+/* 1. เมื่อนำเมาส์ไปวาง (Hover): การ์ดจะขยายใหญ่ขึ้นเล็กน้อยและเงาเข้มขึ้นดูมีมิติ */
 .card-interactive:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5) !important;
-  border-color: rgba(0, 168, 84, 0.3);
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3) !important;
 }
 
+/* 2. เมื่อทำการคลิกกดเมาส์ลงไป (Active): การ์ดจะยุบตัวลงไปเหมือนสปริงปุ่มกด */
 .card-interactive:active {
-  transform: translateY(-1px) scale(0.99);
+  transform: translateY(-1px) scale(0.97);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: transform 0.05s ease !important; 
 }
 
 /* ==========================================
-   7. MODAL & OVERLAY SYSTEM
+   7. MAP MODAL SYSTEM (หน้าต่างป๊อปอัปแผนที่)
    ========================================== */
 .map-modal-overlay { 
   position: fixed;
@@ -390,11 +459,11 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.75);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 3000; /* สูงกว่าสัดส่วน Navbar */
+  z-index: 2000;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -406,16 +475,14 @@ body {
 }
 
 .map-modal-content { 
-  background-color: #2b2b2b;
-  padding: 0;
+  background-color: white;
+  padding: 20px;
   border-radius: 15px;
   width: 90%;
-  max-width: 550px;
+  max-width: 600px;
   position: relative;
-  transform: scale(0.8);
+  transform: scale(0.7);
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  border: 1px solid rgba(255,255,255,0.1);
-  overflow: hidden;
 }
 
 .map-modal-overlay.active .map-modal-content { 
@@ -426,36 +493,137 @@ body {
   position: absolute;
   top: 10px;
   right: 15px;
-  font-size: 32px;
-  color: rgba(255,255,255,0.7);
+  font-size: 28px;
+  color: #aaa;
   cursor: pointer;
-  z-index: 10;
 }
 
-.map-modal-close:hover {
-  color: #fff;
+.map-iframe-container { 
+  width: 100%;
+  height: 400px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #eee;
 }
 
 /* ==========================================
-   8. RESPONSIVE UTILITIES
+   8. PAGE UTILITIES (หน้าเพจย่อยเพิ่มเติม)
    ========================================== */
-@media (max-width: 768px) {
-  .navbar {
-    padding: 15px 20px;
-  }
-  .nav-links {
-    gap: 15px;
-  }
-  .btn-green {
-    padding: 8px 16px;
-  }
-  .page-container {
-    padding-top: 90px;
-  }
+.page-title {
+  font-family: 'Mitr', sans-serif;
+  font-size: 1.8rem;
+  margin-bottom: 30px;
+  color: #00a854;
 }
 
-@media (max-width: 600px) {
-  .search-container-inside h1 { font-size: 2.2rem; }
-  .home-page-wrapper:has(.lift-up) .search-container-inside h1 { font-size: 1.7rem; }
-  .nav-links { display: none; } /* ซ่อนเมนูบนมือถือเพื่อทำแฮมเบอร์เกอร์ในอนาคต */
+/* ==========================================
+   9. INFO SECTIONS (สลับซ้ายขวา image + text)
+   ========================================== */
+.info-sections {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 0;
+  padding: 50px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  /* fade-up initial state */
+  opacity: 0;
+  transform: translateY(48px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.info-row.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+/* สลับฝั่ง: text ซ้าย image ขวา */
+.info-row.reverse {
+  direction: rtl;
+}
+.info-row.reverse > * {
+  direction: ltr;
+}
+
+.info-img {
+  padding: 0 30px;
+}
+
+.info-img .placeholder-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: #3a3a3a;
+  border-radius: 12px;
+}
+
+.info-text {
+  padding: 0 30px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-row.reverse .info-text {
+  border-left: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-text h2 {
+  font-family: 'Mitr', sans-serif;
+  font-size: 1.6rem;
+  color: #ffffff;
+  margin-bottom: 16px;
+}
+
+.info-text p {
+  font-size: 0.95rem;
+  color: #bbb;
+  line-height: 1.8;
+  text-indent: 1.5em;
+}
+
+@media (max-width: 768px) {
+  .info-sections {
+    padding: 40px 20px;
+  }
+
+  .info-row,
+  .info-row.reverse {
+    grid-template-columns: 1fr;
+    direction: ltr;
+    gap: 24px;
+    padding: 36px 0;
+  }
+
+  .info-row.reverse > * {
+    direction: ltr;
+  }
+
+  .info-img {
+    padding: 0;
+  }
+
+  .info-text {
+    padding: 0;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 24px;
+  }
+
+  .info-row.reverse .info-text {
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }

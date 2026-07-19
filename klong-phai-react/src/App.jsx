@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 
-// 🔒 นำเข้าอุปกรณ์สำหรับ Authentication และ Database จาก Firebase
+//  นำเข้าอุปกรณ์สำหรับ Authentication และ Database จาก Firebase
 import { auth, googleProvider, db } from './firebase'; 
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, increment, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -19,7 +19,7 @@ import CheckInPoints from './pages/CheckInPoints';
 import MapModal from './components/MapModal';
 
 export default function App() {
-  // 🔒 State คุมข้อมูลผู้ใช้งานที่ผ่านการยืนยันตัวตน Google Auth
+  //  State คุมข้อมูลผู้ใช้งานที่ผ่านการยืนยันตัวตน Google Auth
   const [user, setUser] = useState(null);
 
   // State คุมการเปิด/ปิด Pop-up แผนที่
@@ -28,40 +28,40 @@ export default function App() {
   // State คุมการเปิด/ปิด และเก็บข้อมูลของสถานที่ที่จะเอามาโชว์ในกล่องรายละเอียด
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
 
-  // 🎯 State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
+  //  State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
 
-  // 🎯 ☁️ ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase
+  //   ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase
   const [likes, setLikes] = useState({});
 
-  // 🔒 State คุมการแก้ไขรีวิวภายในกล่องรายละเอียดสถานที่
+  //  State คุมการแก้ไขรีวิวภายในกล่องรายละเอียดสถานที่
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editText, setEditText] = useState('');
 
-  // 🚫 รายการคำหยาบที่ระบบต้องการแบน (Banwords)
+  //  รายการคำหยาบที่ระบบต้องการแบน (Banwords)
   const bannedWords = ["ควย", "เย็ด", "มึง", "กู", "สัส", "เหี้ย", "ค_ย", "เ_ยด", "ดกทอง"];
 
-  // 🔍 ฟังก์ชันตรวจสอบคำหยาบและความยาวข้อความ (Validation) สำหรับกล่องรายละเอียด
+  //  ฟังก์ชันตรวจสอบคำหยาบและความยาวข้อความ (Validation) สำหรับกล่องรายละเอียด
   const validateReviewText = (text) => {
     const cleanText = text.trim();
     if (cleanText.length < 2) {
-      alert("⚠️ ข้อความรีวิวสั้นเกินไปครับ");
+      alert(" ข้อความรีวิวสั้นเกินไปครับ");
       return false;
     }
     if (cleanText.length > 200) {
-      alert("⚠️ ข้อความรีวิวต้องไม่เกิน 200 ตัวอักษรครับ");
+      alert(" ข้อความรีวิวต้องไม่เกิน 200 ตัวอักษรครับ");
       return false;
     }
     const textLower = cleanText.toLowerCase();
     const hasBannedWord = bannedWords.some(word => textLower.includes(word));
     if (hasBannedWord) {
-      alert("⚠️ ข้อความของคุณมีคำไม่เหมาะสม (คำหยาบ) กรุณาแก้ไขก่อนส่งครับ");
+      alert(" ข้อความของคุณมีคำไม่เหมาะสม (คำหยาบ) กรุณาแก้ไขก่อนส่งครับ");
       return false;
     }
     return cleanText;
   };
 
-  // ☁️ ดึงยอดไลก์สะสมจาก Firebase Firestore แบบ Realtime
+  //  ดึงยอดไลก์สะสมจาก Firebase Firestore แบบ Realtime
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -73,7 +73,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🎯 ☁️ ฟังก์ชันไลก์แบบสลับสถานะ (Toggle)
+  //   ฟังก์ชันไลก์แบบสลับสถานะ (Toggle)
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
     const likeDocRef = doc(db, "likes", String(placeId));
@@ -91,11 +91,11 @@ export default function App() {
     }
   };
 
-  // 🔒 ข้อมูลรีวิวแบบแบ่งแยกหมวดหมู่ตาม ID สถานที่จากระบบ Firebase
+  //  ข้อมูลรีวิวแบบแบ่งแยกหมวดหมู่ตาม ID สถานที่จากระบบ Firebase
   const [reviewsData, setReviewsData] = useState({});
   const [inputText, setInputText] = useState('');
 
-  // 🔒 ฟังก์ชันเฝ้าตรวจสถานะล็อกอิน Google
+  //  ฟังก์ชันเฝ้าตรวจสถานะล็อกอิน Google
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -103,7 +103,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🔒 ฟังก์ชันดึงชุดคอมเมนต์รีวิวจาก Firebase แบบ Realtime (มี id: doc.id แน่นอน)
+  //  ฟังก์ชันดึงชุดคอมเมนต์รีวิวจาก Firebase แบบ Realtime (มี id: doc.id แน่นอน)
   useEffect(() => {
     const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -121,7 +121,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🔒 ฟังก์ชันเข้าสู่ระบบด้วย Google
+  //  ฟังก์ชันเข้าสู่ระบบด้วย Google
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
@@ -130,7 +130,7 @@ export default function App() {
     }
   };
 
-  // 🔒 ฟังก์ชันออกจากระบบล็อกอิน Google
+  //  ฟังก์ชันออกจากระบบล็อกอิน Google
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -143,7 +143,7 @@ export default function App() {
   const closeMap = () => { setModalInfo({ isOpen: false, url: '' }); };
   const openDetail = (place) => { setDetailModal({ isOpen: true, placeData: place }); };
 
-  // 🔒 ฟังก์ชันบันทึกรีวิวเขียนลงคลาวด์ Firebase ของกล่องป๊อปอัป
+  //  ฟังก์ชันบันทึกรีวิวเขียนลงคลาวด์ Firebase ของกล่องป๊อปอัป
   const handleReviewSubmit = async (e, placeId) => {
     e.preventDefault();
     if (!inputText.trim() || !user) return;
@@ -166,11 +166,11 @@ export default function App() {
     }
   };
 
-  // 🔒 ฟังก์ชันอัปเดตแก้ไขคอมเมนต์ในป๊อปอัป (ปรับปรุงตัวดักจับ ID ป้องกันกล่อง Error)
+  //  ฟังก์ชันอัปเดตแก้ไขคอมเมนต์ในป๊อปอัป (ปรับปรุงตัวดักจับ ID ป้องกันกล่อง Error)
   const handleUpdateReview = async (review) => {
     const targetId = review.id || review.docId;
     if (!targetId) {
-      alert("❌ ไม่สามารถแก้ไขได้เนื่องจากไม่พบ ID ของเอกสาร");
+      alert(" ไม่สามารถแก้ไขได้เนื่องจากไม่พบ ID ของเอกสาร");
       return;
     }
     if (!editText.trim()) return;
@@ -187,7 +187,7 @@ export default function App() {
       setEditText('');
     } catch (error) {
       console.error(error);
-      alert("❌ ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+      alert(" ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
     }
   };
 
@@ -196,7 +196,7 @@ export default function App() {
   const targetId = review.id || review.docId || review._id;
   
   if (!targetId) {
-    alert("❌ ระบบหา ID บน Firebase ของคอมเมนต์นี้ไม่เจอ");
+    alert(" ระบบหา ID บน Firebase ของคอมเมนต์นี้ไม่เจอ");
     console.log("คอมเมนต์ที่กดลบ:", review); 
     return;
   }
@@ -208,7 +208,7 @@ export default function App() {
     await deleteDoc(doc(db, "reviews", targetId));
   } catch (error) {
     console.error(error);
-    alert("❌ เกิดข้อผิดพลาดขณะลบข้อมูลจาก Database");
+    alert(" เกิดข้อผิดพลาดขณะลบข้อมูลจาก Database");
   }
  };
 
@@ -229,8 +229,8 @@ export default function App() {
               ร้านอาหาร / ที่พัก
             </button>
             <div className="dropdown-content">
-              <Link to="/restaurant" onClick={() => setIsFilterDropdownActive(false)}>🍴 ร้านอาหาร</Link>
-              <Link to="/accommodation" onClick={() => setIsFilterDropdownActive(false)}>🏨 ที่พัก</Link>
+              <Link to="/restaurant" onClick={() => setIsFilterDropdownActive(false)}> ร้านอาหาร</Link>
+              <Link to="/accommodation" onClick={() => setIsFilterDropdownActive(false)}> ที่พัก</Link>
             </div>
           </div>
           <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }}>10 จุดเช็คอิน</Link>
@@ -260,7 +260,7 @@ export default function App() {
 
       <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} />
 
-      {/* 🎯 Pop-up รายละเอียดสถานที่ */}
+      {/*  Pop-up รายละเอียดสถานที่ */}
       <div 
         className={`map-modal-overlay ${detailModal.isOpen ? 'active' : ''}`}
         style={{ zIndex: 2100 }} 
@@ -276,7 +276,7 @@ export default function App() {
               <div style={{ width: '100%', height: '220px', position: 'relative' }}>
                 <img src={detailModal.placeData.img} alt={detailModal.placeData.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div style={{ position: 'absolute', bottom: '10px', right: '15px', background: 'rgba(0,0,0,0.7)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', color: '#fff' }}>
-                  ❤️ {likes[detailModal.placeData.id] || 0} ถูกใจ
+                   {likes[detailModal.placeData.id] || 0} ถูกใจ
                 </div>
                 <span className="map-modal-close" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', top: '10px', right: '15px' }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>&times;</span>
               </div>
@@ -286,17 +286,17 @@ export default function App() {
                 <p style={{ fontSize: '0.95rem', color: '#ddd', lineHeight: '1.6', marginBottom: '20px', whiteSpace: 'pre-line' }}>{detailModal.placeData.detailDescription || "ไม่มีข้อมูลรายละเอียดเพิ่มเติมในขณะนี้"}</p>
 
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', fontSize: '0.85rem', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {detailModal.placeData.workingHours && <div>⏰ <b>เวลาทำการ:</b> {detailModal.placeData.workingHours}</div>}
-                  {detailModal.placeData.phone && <div>📞 <b>เบอร์โทรศัพท์:</b> {detailModal.placeData.phone}</div>}
+                  {detailModal.placeData.workingHours && <div> <b>เวลาทำการ:</b> {detailModal.placeData.workingHours}</div>}
+                  {detailModal.placeData.phone && <div> <b>เบอร์โทรศัพท์:</b> {detailModal.placeData.phone}</div>}
                 </div>
 
                 <div style={{ marginTop: '25px', textAlign: 'center', marginBottom: '25px' }}>
-                  <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl)}>🗺️ ดูแผนที่นำทาง</button>
+                  <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl)}> ดูแผนที่นำทาง</button>
                 </div>
 
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '25px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.1rem' }}>💬 รีวิวจากผู้เข้าชม</h3>
+                    <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.1rem' }}> รีวิวจากผู้เข้าชม</h3>
                     {user && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#aaa' }}>
@@ -318,7 +318,7 @@ export default function App() {
                     </form>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)', marginBottom: '20px' }}>
-                      <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 12px 0' }}>🔒 กรุณาเข้าสู่ระบบกูเกิลเพื่อยืนยันตัวตนก่อนส่งคอมเมนต์รีวิว</p>
+                      <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 12px 0' }}> กรุณาเข้าสู่ระบบกูเกิลเพื่อยืนยันตัวตนก่อนส่งคอมเมนต์รีวิว</p>
                       <button type="button" onClick={handleLogin} style={{ background: '#fff', color: '#222', padding: '8px 16px', border: 'none', borderRadius: '4px', fontFamily: 'Mitr, sans-serif', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>Google Sign-In</button>
                     </div>
                   )}

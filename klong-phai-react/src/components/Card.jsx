@@ -10,7 +10,7 @@ export default function Card({ place, onOpenMap, likesCount = 0, onLike }) {
       {/* ส่วนแสดงรูปภาพสถานที่ */}
       <img className="card-img" src={place.img} alt={place.title} />
       
-      {/* 🎯 ปุ่มกดไลก์หัวใจ (มุมขวาบนของการ์ด) */}
+      {/*  ปุ่มกดไลก์หัวใจ (มุมขวาบนของการ์ด) */}
       {onLike && (
         <button 
           className="card-like-btn"
@@ -41,7 +41,7 @@ export default function Card({ place, onOpenMap, likesCount = 0, onLike }) {
           onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
           onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          ❤️ {likesCount}
+           ❤️ {likesCount}
         </button>
       )}
       
@@ -54,7 +54,7 @@ export default function Card({ place, onOpenMap, likesCount = 0, onLike }) {
         {/* บล็อกข้อมูลเพิ่มเติมสั้นๆ ด้านล่างการ์ด */}
         <div className="card-meta" style={{ marginTop: '10px' }}>
           <span className="map-btn" style={{ fontSize: '0.85rem', color: '#00a854' }}>
-            🔍 ดูรายละเอียดและแผนที่
+             ดูรายละเอียดและแผนที่
           </span>
         </div>
       </div>

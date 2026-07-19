@@ -30,9 +30,9 @@ const createPinIcon = (color) =>
   });
 
 const TYPE_CONFIG = {
-  travel:        { color: '#00a854', label: '🌿 สถานที่ท่องเที่ยว' },
-  accommodation: { color: '#2196F3', label: '🏨 ที่พัก' },
-  restaurant:    { color: '#FF6B35', label: '🍴 ร้านอาหาร' },
+  travel:        { color: '#00a854', label: ' สถานที่ท่องเที่ยว' },
+  accommodation: { color: '#2196F3', label: ' ที่พัก' },
+  restaurant:    { color: '#FF6B35', label: ' ร้านอาหาร' },
 };
 
 const icons = {
@@ -42,10 +42,10 @@ const icons = {
 };
 
 const FILTERS = [
-  { key: 'all',           label: '🗺️ ทั้งหมด' },
-  { key: 'travel',        label: '🌿 ท่องเที่ยว' },
-  { key: 'accommodation', label: '🏨 ที่พัก' },
-  { key: 'restaurant',    label: '🍴 ร้านอาหาร' },
+  { key: 'all',           label: ' ทั้งหมด' },
+  { key: 'travel',        label: ' ท่องเที่ยว' },
+  { key: 'accommodation', label: ' ที่พัก' },
+  { key: 'restaurant',    label: ' ร้านอาหาร' },
 ];
 
 // Component to track zoom level
@@ -73,7 +73,7 @@ export default function CommunityMap() {
 
   return (
     <div style={{ paddingTop: '80px', minHeight: '100vh', background: '#1a1a1a' }}>
-      {/* ─── Header ─── */}
+      {/*  Header  */}
       <div style={{ textAlign: 'center', padding: '32px 20px 16px' }}>
         <h2
           style={{
@@ -167,7 +167,7 @@ export default function CommunityMap() {
         </div>
       </div>
 
-      {/* ─── Map ─── */}
+      {/*  Map  */}
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px 60px' }}>
         <div
           style={{
@@ -204,7 +204,27 @@ export default function CommunityMap() {
                     className="leaflet-place-label"
                   >
                     <div>
-                      <span style={{ display: 'block', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '0.8rem',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {/* Small point */}
+                        <span
+                          style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: TYPE_CONFIG[place.type]?.color ?? '#00a854',
+                            display: 'inline-block',
+                            flexShrink: 0,
+                          }}
+                        />
+
                         {TYPE_CONFIG[place.type]?.label}
                       </span>
 
@@ -264,8 +284,8 @@ export default function CommunityMap() {
                     )}
 
                     <div style={{ fontSize: '0.75rem', color: '#777', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      {place.workingHours && <span>⏰ {place.workingHours}</span>}
-                      {place.phone && <span>📞 {place.phone}</span>}
+                      {place.workingHours && <span><strong>เวลาทำการ :</strong> {place.workingHours}</span>}
+                      {place.phone && <span><strong>เบอร์โทรศัพท์ :</strong> {place.phone}</span>}
                     </div>
                   </div>
                 </Popup>
