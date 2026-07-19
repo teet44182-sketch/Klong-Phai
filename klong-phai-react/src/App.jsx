@@ -29,6 +29,9 @@ export default function App() {
   // State คุมการเปิด/ปิด และเก็บข้อมูลของสถานที่ที่จะเอามาโชว์ในกล่องรายละเอียด
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
 
+  // State คุม index รูปภาพใน gallery ของ detail popup
+  const [galleryIndex, setGalleryIndex] = useState(0);
+
   //  State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
 
@@ -142,7 +145,7 @@ export default function App() {
 
   const openMap = (url) => { setModalInfo({ isOpen: true, url: url }); };
   const closeMap = () => { setModalInfo({ isOpen: false, url: '' }); };
-  const openDetail = (place) => { setDetailModal({ isOpen: true, placeData: place }); };
+  const openDetail = (place) => { setDetailModal({ isOpen: true, placeData: place }); setGalleryIndex(0); };
 
   //  ฟังก์ชันบันทึกรีวิวเขียนลงคลาวด์ Firebase ของกล่องป๊อปอัป
   const handleReviewSubmit = async (e, placeId) => {
@@ -275,13 +278,60 @@ export default function App() {
         >
           {detailModal.placeData && (
             <div>
-              <div style={{ width: '100%', height: '220px', position: 'relative' }}>
-                <img src={detailModal.placeData.img} alt={detailModal.placeData.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{ position: 'absolute', bottom: '10px', right: '15px', background: 'rgba(0,0,0,0.7)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', color: '#fff' }}>
-                   {likes[detailModal.placeData.id] || 0} ถูกใจ
-                </div>
-                <span className="map-modal-close" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', top: '10px', right: '15px' }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>&times;</span>
-              </div>
+              {/* Gallery Section */}
+              {(() => {
+                const images = [detailModal.placeData.img, ...(detailModal.placeData.gallery || [])];
+                const total = images.length;
+                return (
+                  <div style={{ width: '100%', height: '220px', position: 'relative', overflow: 'hidden', background: '#111' }}>
+                    {/* รูปภาพปัจจุบัน */}
+                    <img
+                      key={galleryIndex}
+                      src={images[galleryIndex]}
+                      alt={`${detailModal.placeData.title} ${galleryIndex + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', animation: 'fadeIn 0.3s ease' }}
+                    />
+
+                    {/* ปุ่มลูกศรซ้าย-ขวา (แสดงเมื่อมีมากกว่า 1 รูป) */}
+                    {total > 1 && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setGalleryIndex(i => (i - 1 + total) % total); }}
+                          style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '20px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                        >‹</button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setGalleryIndex(i => (i + 1) % total); }}
+                          style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '20px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                        >›</button>
+
+                        {/* Dot indicators */}
+                        <div style={{ position: 'absolute', bottom: '38px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 2 }}>
+                          {images.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={(e) => { e.stopPropagation(); setGalleryIndex(i); }}
+                              style={{ width: '7px', height: '7px', borderRadius: '50%', border: 'none', background: i === galleryIndex ? '#ffffff' : 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: 0, transition: 'background 0.2s' }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* ตัวนับรูป เช่น 1/3 */}
+                        <div style={{ position: 'absolute', top: '10px', left: '12px', background: 'rgba(0,0,0,0.55)', padding: '2px 9px', borderRadius: '10px', fontSize: '0.72rem', color: '#fff', zIndex: 2 }}>
+                          {galleryIndex + 1} / {total}
+                        </div>
+                      </>
+                    )}
+
+                    {/* ยอดไลก์ */}
+                    <div style={{ position: 'absolute', bottom: '10px', right: '15px', background: 'rgba(0,0,0,0.7)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', color: '#fff', zIndex: 2 }}>
+                       {likes[detailModal.placeData.id] || 0} ถูกใจ
+                    </div>
+
+                    {/* ปุ่มปิด */}
+                    <span className="map-modal-close" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', top: '10px', right: '15px', zIndex: 3 }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>&times;</span>
+                  </div>
+                );
+              })()}
 
               <div style={{ padding: '25px' }}>
                 <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '15px' }}>{detailModal.placeData.title}</h2>
