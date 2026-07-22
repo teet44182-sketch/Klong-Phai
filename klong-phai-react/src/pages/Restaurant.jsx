@@ -1,9 +1,16 @@
 // src/pages/Restaurant.jsx
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-export default function Restaurant({ onOpenMap, likes = {}, onLike }) {
+export default function Restaurant({ onOpenMap, likes = {}, onLike, lang }) {
+  const { t, i18n } = useTranslation();
+
+  // กำหนดภาษาปัจจุบัน (ถ้าไม่ส่ง lang ผ่าน prop ให้ถอยไปใช้ i18n.language)
+  const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
+  const isEn = currentLang === 'en';
+
   // กรองเอาเฉพาะข้อมูลที่เป็นร้านอาหารจากฐานข้อมูลกลาง
   const restaurants = placesDatabase.filter(place => place.type === 'restaurant');
 
@@ -30,7 +37,7 @@ export default function Restaurant({ onOpenMap, likes = {}, onLike }) {
         {/* ตัวรูปภาพพื้นหลังที่สั่งเบลอ */}
         <img 
           src="src/assets/cf.jpg" 
-          alt="Restaurant Background"
+          alt={t('nav_restaurant', isEn ? 'Restaurants' : 'ร้านอาหาร')}
           style={{
             position: 'absolute',
             top: 0,
@@ -62,9 +69,10 @@ export default function Restaurant({ onOpenMap, likes = {}, onLike }) {
             fontSize: '2.5rem', 
             color: '#ffffff', 
             marginBottom: 0,
-            textShadow: '2px 2px 10px rgba(0,0,0,0.6)' 
+            textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
+            fontFamily: 'Mitr, sans-serif'
           }}>
-            ร้านอาหาร
+            {t('nav_restaurant', isEn ? 'Restaurants' : 'ร้านอาหาร')}
           </h2>
         </div>
       </div>
@@ -88,10 +96,13 @@ export default function Restaurant({ onOpenMap, likes = {}, onLike }) {
                 onOpenMap={onOpenMap} 
                 likesCount={likes[place.id] || 0}
                 onLike={onLike}
+                lang={currentLang}
               />
             ))
           ) : (
-            <div className="no-result">ยังไม่มีข้อมูลร้านอาหารในขณะนี้</div>
+            <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
+              {t('no_restaurants', isEn ? 'No restaurants available at the moment.' : 'ยังไม่มีข้อมูลร้านอาหารในขณะนี้')}
+            </div>
           )}
         </div>
       </div>

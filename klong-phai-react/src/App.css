@@ -781,3 +781,30 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
+
+/* Animation สำหรับแบบที่ 2 (Switch Toggle) */
+@keyframes fadeInText {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* เอฟเฟกต์ Hover & Click Interactive */
+.lang-switch-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.lang-switch-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.lang-switch-btn:hover svg {
+  transform: rotate(25deg);
+}

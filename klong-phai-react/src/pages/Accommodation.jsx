@@ -1,9 +1,16 @@
 // src/pages/Accommodation.jsx
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-export default function Accommodation({ onOpenMap, likes = {}, onLike }) {
+export default function Accommodation({ onOpenMap, likes = {}, onLike, lang }) {
+  const { t, i18n } = useTranslation();
+
+  // กำหนดภาษาปัจจุบัน (ถ้าไม่ส่ง lang ผ่าน prop ให้ถอยไปใช้ i18n.language)
+  const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
+  const isEn = currentLang === 'en';
+
   // กรองเอาเฉพาะข้อมูลที่เป็นที่พักจากฐานข้อมูลกลาง
   const accommodations = placesDatabase.filter(place => place.type === 'accommodation');
 
@@ -30,7 +37,7 @@ export default function Accommodation({ onOpenMap, likes = {}, onLike }) {
         {/* รูปภาพพื้นหลังฝั่งที่พักที่สั่งเบลอ */}
         <img 
           src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" 
-          alt="Accommodation Background"
+          alt={t('nav_accommodation', isEn ? 'Accommodation' : 'ที่พัก')}
           style={{
             position: 'absolute',
             top: 0,
@@ -62,9 +69,10 @@ export default function Accommodation({ onOpenMap, likes = {}, onLike }) {
             fontSize: '2.5rem', 
             color: '#ffffff', 
             marginBottom: 0,
-            textShadow: '2px 2px 10px rgba(0,0,0,0.6)' 
+            textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
+            fontFamily: 'Mitr, sans-serif'
           }}>
-            ที่พัก
+            {t('nav_accommodation', isEn ? 'Accommodation' : 'ที่พัก')}
           </h2>
         </div>
       </div>
@@ -88,10 +96,13 @@ export default function Accommodation({ onOpenMap, likes = {}, onLike }) {
                 onOpenMap={onOpenMap} 
                 likesCount={likes[place.id] || 0}
                 onLike={onLike}
+                lang={currentLang}
               />
             ))
           ) : (
-            <div className="no-result">ยังไม่มีข้อมูลที่พักในขณะนี้</div>
+            <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
+              {t('no_accommodation', isEn ? 'No accommodations available at the moment.' : 'ยังไม่มีข้อมูลที่พักในขณะนี้')}
+            </div>
           )}
         </div>
       </div>

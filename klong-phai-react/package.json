@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "firebase": "^12.16.0",
+    "i18next": "^26.3.6",
     "leaflet": "^1.9.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.10",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.18.1"
   },
