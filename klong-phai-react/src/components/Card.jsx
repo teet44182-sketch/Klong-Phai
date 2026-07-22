@@ -20,7 +20,7 @@ export default function Card({ place, onOpenMap, likesCount = 0, onLike, lang })
 
   return (
     <div 
-      className="card card-interactive" 
+      className="card card-interactive"
       onClick={() => onOpenMap(place)}
     >
       {/* ส่วนแสดงรูปภาพสถานที่ */}
