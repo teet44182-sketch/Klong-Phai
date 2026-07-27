@@ -4,8 +4,9 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import './App.css';
 
-// Component สลับภาษา
+// Component สลับภาษา & Floating Basket Dropzone
 import LangSwitcherText from './components/LangSwitcherText'; 
+import FloatingTripBasket from './components/FloatingTripBasket';
 
 // Firebase Modules
 import { auth, db, loginWithGoogle, logout } from './firebase'; 
@@ -32,6 +33,7 @@ import Accommodation from './pages/Accommodation';
 import CommunityMap from './pages/CommunityMap';
 import CheckInPoints from './pages/CheckInPoints';
 import Detail from './pages/Detail';
+import TripPlanner from './pages/TripPlanner';
 
 // Modals
 import MapModal from './components/MapModal';
@@ -50,6 +52,29 @@ export default function App() {
   // State สำหรับเก็บข้อมูลสถานที่จาก Firestore
   const [places, setPlaces] = useState([]);
   const [loadingPlaces, setLoadingPlaces] = useState(true);
+
+  // 🟢 State สำหรับ Trip Planner (จัดเก็บทริป + จำลง LocalStorage)
+  const [selectedPlaces, setSelectedPlaces] = useState(() => {
+    try {
+      const saved = localStorage.getItem('my_trip_plan');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
+  }, [selectedPlaces]);
+
+  // ฟังก์ชันสเปเชียลสำหรับเพิ่มสถานที่ลงทริป (เช็คซ้ำให้อัตโนมัติ)
+  const handleAddPlaceToTrip = (place) => {
+    const targetId = place.id || place.docId;
+    const exists = selectedPlaces.some(p => (p.id || p.docId) === targetId);
+    if (!exists) {
+      setSelectedPlaces(prev => [...prev, place]);
+    }
+  };
 
   // State UI & Modals
   const [modalInfo, setModalInfo] = useState({ isOpen: false, url: '' });
@@ -328,11 +353,15 @@ export default function App() {
           <Link to="/" onClick={closeMobileMenu}>{t('nav_home', 'หน้าแรก')}</Link>
           <div className={`dropdown ${isFilterDropdownActive ? 'active' : ''}`}>
             <button className="dropdown-btn" onClick={(e) => { e.stopPropagation(); setIsFilterDropdownActive(!isFilterDropdownActive); }}>
-              {t('nav_restaurant_acc', 'ร้านอาหาร / ที่พัก')}
+              {t('nav_restaurant_acc', 'Dining & Stay')}
             </button>
             <div className="dropdown-content">
-              <Link to="/restaurant" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}> {t('nav_restaurant', 'ร้านอาหาร')}</Link>
-              <Link to="/accommodation" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}> {t('nav_accommodation', 'ที่พัก')}</Link>
+              <Link to="/restaurant" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}>
+                {currentLang === 'en' ? 'Street Food' : 'สตรีทฟู้ด'}
+              </Link>
+              <Link to="/accommodation" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}>
+                {t('nav_accommodation', 'ที่พัก')}
+              </Link>
             </div>
           </div>
           <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }} onClick={closeMobileMenu}>{t('nav_top10', '10 จุดเช็คอิน')}</Link>
@@ -350,7 +379,7 @@ export default function App() {
 
           {/* 🟢 ปุ่มวางแผนการเดินทาง */}
           <Link 
-            to="/map" 
+            to="/planner" 
             className="plan-btn"
             onClick={closeMobileMenu}
             style={{
@@ -367,7 +396,7 @@ export default function App() {
               boxShadow: '0 2px 8px rgba(0, 168, 84, 0.4)'
             }}
           >
-            {t('nav_plan', 'วางแผนการเดินทาง')}
+            🗺️ {t('nav_plan', 'วางแผนการเดินทาง')}
           </Link>
 
           <div onClick={(e) => e.stopPropagation()}>
@@ -376,7 +405,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* 🌟 ส่ง places และ loadingPlaces ไปยังทุก Router Page */}
+      {/* 🌟 ส่ง places, selectedPlaces และ setSelectedPlaces ไปยัง Router Pages */}
       <Routes>
         <Route path="/" element={<Home places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
         <Route path="/checkin" element={
@@ -399,8 +428,26 @@ export default function App() {
         <Route path="/restaurant" element={<Restaurant places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
         <Route path="/accommodation" element={<Accommodation places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
         <Route path="/map" element={<CommunityMap places={places} loading={loadingPlaces} lang={currentLang} />} />
+        
+        {/* 🟢 TripPlanner พร้อมสิง state selectedPlaces */}
+        <Route path="/planner" element={
+          <TripPlanner 
+            places={places} 
+            loading={loadingPlaces} 
+            lang={currentLang} 
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+          />
+        } />
+
         <Route path="/detail/:id" element={<Detail places={places} loading={loadingPlaces} onOpenMap={openMap} lang={currentLang} />} />
       </Routes>
+
+      {/* 🛍️ Drop Zone ตะกร้าลอยมุมขวาล่าง แสดงอยู่ทุกหน้าในเว็บ */}
+      <FloatingTripBasket
+        selectedPlaces={selectedPlaces}
+        onAddPlace={handleAddPlaceToTrip}
+      />
 
       <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} zIndex={9999} />
 
@@ -415,7 +462,7 @@ export default function App() {
               
               <select value={newPlace.category} onChange={(e) => setNewPlace({...newPlace, category: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
                 <option value="checkin">10 จุดเช็คอิน</option>
-                <option value="restaurant">ร้านอาหาร</option>
+                <option value="restaurant">ร้านอาหาร (Street Food)</option>
                 <option value="accommodation">ที่พัก</option>
               </select>
 

@@ -59,7 +59,7 @@ const resources = {
       brand_title: "Khlong Phai",
       nav_home: "Home",
       nav_restaurant_acc: "Dining & Stay",
-      nav_restaurant: "Restaurants",
+      nav_restaurant: "Street Food",
       nav_accommodation: "Accommodations",
       nav_top10: "Top 10 Check-ins",
       nav_map: "Community Map",

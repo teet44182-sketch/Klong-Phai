@@ -10,31 +10,45 @@ export default function Card({
   lang,
   isAdmin = false,
   onEdit,
-  onDelete
+  onDelete,
+  onAddToPlan,
+  isAddedToPlan = false
 }) {
   const { t, i18n } = useTranslation();
 
-  // Fix: แก้ไขการวงเล็บ Logic เช็คภาษาให้ถูกต้อง
+  // เช็คภาษาปัจจุบัน
   const activeLang = lang || i18n.language || 'th';
-  const isEn = activeLang.startsWith('en');
+  const isEn = String(activeLang).startsWith('en');
 
-  // ดึงชื่อสถานที่ รองรับทั้ง title, title_en, name, nameEn
+  // ดึงชื่อสถานที่
   const titleTh = place.title || place.name || '';
   const titleEn = place.title_en || place.nameEn || titleTh;
   const displayTitle = isEn ? titleEn : titleTh;
 
-  // ดึงคำอธิบายสถานที่ รองรับทั้ง description, description_en, descriptionEn
+  // ดึงคำอธิบายสถานที่
   const descTh = place.description || place.detailDescription || place.detail || '';
   const descEn = place.description_en || place.descriptionEn || place.detailDescription_en || place.detailEn || descTh;
   const displayDesc = isEn ? descEn : descTh;
+
+  // รูปภาพสำรองกรณีไม่มี URL
+  const imageSrc = place.img || 'https://via.placeholder.com/400x250?text=No+Image';
+
+  // Handler สำหรับเหตุการณ์ Drag & Drop
+  const handleDragStart = (e) => {
+    // ส่งข้อมูลวัตถุ place ในรูปแบบ JSON string เมื่อเริ่มลาก
+    e.dataTransfer.setData('application/json', JSON.stringify(place));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
 
   return (
     <div 
       className="card card-interactive" 
       onClick={() => onOpenMap && onOpenMap(place)}
-      style={{ position: 'relative' }}
+      draggable={true}
+      onDragStart={handleDragStart}
+      style={{ position: 'relative', cursor: 'grab' }}
     >
-      {/* ปุ่ม Action เฉพาะ Admin */}
+      {/* ปุ่ม Action สำหรับ Admin */}
       {isAdmin && (
         <div 
           className="admin-actions"
@@ -45,10 +59,10 @@ export default function Card({
             zIndex: 20,
             display: 'flex',
             gap: '6px',
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'rgba(0, 0, 0, 0.8)',
             backdropFilter: 'blur(4px)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
-            padding: '4px 8px',
+            padding: '4px 10px',
             borderRadius: '20px'
           }}
         >
@@ -68,7 +82,7 @@ export default function Card({
                 padding: '2px 4px'
               }}
             >
-              ✏️ แก้ไข
+              แก้ไข
             </button>
           )}
           {onDelete && (
@@ -87,16 +101,24 @@ export default function Card({
                 padding: '2px 4px'
               }}
             >
-              🗑️ ลบ
+              ลบ
             </button>
           )}
         </div>
       )}
 
-      {/* ส่วนแสดงรูปภาพสถานที่ */}
-      <img className="card-img" src={place.img} alt={displayTitle} />
+      {/* แสดงรูปภาพสถานที่ */}
+      <img 
+        className="card-img" 
+        src={imageSrc} 
+        alt={displayTitle} 
+        onError={(e) => {
+          e.target.onerror = null; 
+          e.target.src = 'https://via.placeholder.com/400x250?text=Image+Not+Found';
+        }}
+      />
       
-      {/* ปุ่มกดไลก์หัวใจ */}
+      {/* ปุ่มกดไลก์ */}
       {onLike && (
         <button 
           className="card-like-btn"
@@ -108,7 +130,7 @@ export default function Card({
             position: 'absolute',
             top: '12px',
             right: '12px',
-            background: 'rgba(0, 0, 0, 0.6)',
+            background: 'rgba(0, 0, 0, 0.65)',
             backdropFilter: 'blur(4px)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             color: '#ff4b4b',
@@ -124,31 +146,65 @@ export default function Card({
             transition: 'transform 0.1s ease',
             outline: 'none'
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.92)'}
           onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
            ❤️ {likesCount}
         </button>
       )}
       
+      {/* รายละเอียดของการ์ด */}
       <div className="card-content">
-        {/* ส่วนแสดงชื่อสถานที่ */}
         <div className="card-title" style={{ fontFamily: 'Mitr, sans-serif' }}>
           {displayTitle}
         </div>
 
-        {/* ส่วนแสดงคำอธิบายสั้นๆ */}
         {displayDesc && (
-          <p className="card-desc" style={{ fontSize: '0.85rem', color: '#bbb', marginTop: '6px', marginBottom: '8px', lineHeight: '1.4' }}>
+          <p 
+            className="card-desc" 
+            style={{ 
+              fontSize: '0.85rem', 
+              color: '#bbb', 
+              marginTop: '6px', 
+              marginBottom: '8px', 
+              lineHeight: '1.4',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}
+          >
             {displayDesc}
           </p>
         )}
         
-        {/* บล็อกข้อมูลเพิ่มเติมสั้นๆ ด้านล่างการ์ด */}
-        <div className="card-meta" style={{ marginTop: '10px' }}>
-          <span className="map-btn" style={{ fontSize: '0.85rem', color: '#00a854' }}>
+        <div className="card-meta" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="map-btn" style={{ fontSize: '0.85rem', color: '#00a854', fontWeight: 'bold' }}>
              {t('btn_map_view', 'ดูรายละเอียดและแผนที่')}
           </span>
+
+          {/* ปุ่มกดเพิ่มลงทริปจาก Card โดยตรง */}
+          {onAddToPlan && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToPlan(place);
+              }}
+              style={{
+                background: isAddedToPlan ? '#333' : '#00a854',
+                color: isAddedToPlan ? '#aaa' : '#fff',
+                border: isAddedToPlan ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                padding: '5px 12px',
+                borderRadius: '16px',
+                fontSize: '0.78rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? '+ Add to Trip' : '+ เพิ่มลงทริป')}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -13,7 +13,10 @@ export default function Home({
   lang,
   isAdmin = false,
   onEditPlace,
-  onDeletePlace
+  onDeletePlace,
+  selectedPlaces = [],          // เพิ่ม Props สำหรับ Trip Planner
+  setSelectedPlaces,            // ฟังก์ชันอัปเดตรายการในทริป
+  onAddToPlan                   // หรือรับ handler มาโดยตรง
 }) {
   const { t, i18n } = useTranslation();
   const [keyword, setKeyword] = useState('');
@@ -41,9 +44,29 @@ export default function Home({
     return () => observer.disconnect();
   }, []);
 
+  // ฟังก์ชันเพิ่ม / ลบสถานที่เข้าแผนการเดินทาง
+  const handleToggleAddToPlan = (place) => {
+    if (onAddToPlan) {
+      onAddToPlan(place);
+      return;
+    }
+
+    if (!setSelectedPlaces) return;
+
+    const placeId = place.id || place.docId;
+    const exists = selectedPlaces.some(p => (p.id || p.docId) === placeId);
+
+    if (exists) {
+      setSelectedPlaces(selectedPlaces.filter(p => (p.id || p.docId) !== placeId));
+    } else {
+      setSelectedPlaces([...selectedPlaces, place]);
+    }
+  };
+
   // แปลงโครงสร้างสถานที่จาก Firestore/Props ให้พร้อมสำหรับการค้นหาและการ์ดแสดงผล
   const formattedPlaces = (places || []).map(p => ({
-    id: p.id,
+    id: p.id || p.docId,
+    docId: p.docId || p.id,
     name: p.title || p.name,
     nameEn: p.title_en || p.nameEn,
     description: p.description,
@@ -54,7 +77,10 @@ export default function Home({
     mapUrl: p.mapUrl,
     workingHours: p.workingHours,
     phone: p.phone,
-    category: p.category
+    category: p.category,
+    coords: p.coords,
+    lat: p.lat,
+    lng: p.lng
   }));
 
   // ระบบค้นหา: ค้นหาได้ทั้งภาษาไทยและอังกฤษ
@@ -110,19 +136,27 @@ export default function Home({
         ) : (
           <div className="results-grid">
             {filteredPlaces.length > 0 ? (
-              filteredPlaces.map(place => (
-                <Card 
-                  key={place.id} 
-                  place={place} 
-                  onOpenMap={onOpenMap} 
-                  likesCount={likes[place.id] || 0}
-                  onLike={onLike}
-                  lang={currentLang}
-                  isAdmin={isAdmin}
-                  onEdit={onEditPlace}
-                  onDelete={onDeletePlace}
-                />
-              ))
+              filteredPlaces.map(place => {
+                const placeId = place.id || place.docId;
+                // เช็คสถานะว่าสถานที่นี้ถูกเลือกไว้ในทริปหรือยัง
+                const isAdded = selectedPlaces.some(p => (p.id || p.docId) === placeId);
+
+                return (
+                  <Card 
+                    key={placeId} 
+                    place={place} 
+                    onOpenMap={onOpenMap} 
+                    likesCount={likes[placeId] || 0}
+                    onLike={onLike}
+                    lang={currentLang}
+                    isAdmin={isAdmin}
+                    onEdit={onEditPlace}
+                    onDelete={onDeletePlace}
+                    onAddToPlan={handleToggleAddToPlan}
+                    isAddedToPlan={isAdded}
+                  />
+                );
+              })
             ) : (
               <div className="no-result">
                 <h3>{t('no_search_title', 'ไม่พบชื่อสถานที่ที่คุณค้นหา')}</h3>
