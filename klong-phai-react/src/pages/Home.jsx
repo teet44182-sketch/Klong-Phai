@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
+import SwipeCard from '../components/SwipeCard'; // 👈 นำเข้าคอมโพเนนต์ SwipeCard
 import watKaoprickImg from '../assets/watkaoprick.jpg'; 
 
 export default function Home({ 
@@ -44,25 +45,46 @@ export default function Home({
     return () => observer.disconnect();
   }, []);
 
-  // ฟังก์ชันเพิ่ม / ลบสถานที่เข้าแผนการเดินทาง
-  const handleToggleAddToPlan = (place) => {
-    if (onAddToPlan) {
-      onAddToPlan(place);
-      return;
-    }
-
-    if (!setSelectedPlaces) return;
-
-    const placeId = place.id || place.docId;
-    const exists = selectedPlaces.some(p => (p.id || p.docId) === placeId);
-
-    if (exists) {
-      setSelectedPlaces(selectedPlaces.filter(p => (p.id || p.docId) !== placeId));
-    } else {
-      setSelectedPlaces([...selectedPlaces, place]);
+ // 🟢 ปัดขวา = เพิ่มเข้าแผนทริป (เช็ค ID ให้ครอบคลุมทั้ง id และ docId)
+  const handleSwipeRightAdd = (place) => {
+    if (setSelectedPlaces) {
+      const placeId = place.id || place.docId;
+      const exists = selectedPlaces.some(p => {
+        const pId = p.id || p.docId;
+        return pId === placeId;
+      });
+      
+      if (!exists) {
+        setSelectedPlaces([...selectedPlaces, place]);
+      }
     }
   };
 
+  // 🔴 ปัดซ้าย = ลบออกจากแผนทริป
+  const handleSwipeLeftRemove = (place) => {
+    if (setSelectedPlaces) {
+      const placeId = place.id || place.docId;
+      setSelectedPlaces(selectedPlaces.filter(p => {
+        const pId = p.id || p.docId;
+        return pId !== placeId;
+      }));
+    }
+  };
+
+  const handleToggleAddToPlan = (place) => {
+    const placeId = place.id || place.docId;
+    const exists = selectedPlaces.some(p => {
+      const pId = p.id || p.docId;
+      return pId === placeId;
+    });
+
+    if (exists) {
+      handleSwipeLeftRemove(place);
+    } else {
+      handleSwipeRightAdd(place);
+    }
+  };
+  
   // แปลงโครงสร้างสถานที่จาก Firestore/Props ให้พร้อมสำหรับการค้นหาและการ์ดแสดงผล
   const formattedPlaces = (places || []).map(p => ({
     id: p.id || p.docId,
@@ -142,19 +164,26 @@ export default function Home({
                 const isAdded = selectedPlaces.some(p => (p.id || p.docId) === placeId);
 
                 return (
-                  <Card 
-                    key={placeId} 
-                    place={place} 
-                    onOpenMap={onOpenMap} 
-                    likesCount={likes[placeId] || 0}
-                    onLike={onLike}
-                    lang={currentLang}
-                    isAdmin={isAdmin}
-                    onEdit={onEditPlace}
-                    onDelete={onDeletePlace}
-                    onAddToPlan={handleToggleAddToPlan}
-                    isAddedToPlan={isAdded}
-                  />
+                  // 🎴 ครอบด้วย SwipeCard เพื่อให้ปัดซ้าย-ขวาได้ทั้งคอมและมือถือ
+                  <SwipeCard
+                    key={placeId}
+                    isAdded={isAdded}
+                    onSwipeRight={() => handleSwipeRightAdd(place)}
+                    onSwipeLeft={() => handleSwipeLeftRemove(place)}
+                  >
+                    <Card 
+                      place={place} 
+                      onOpenMap={onOpenMap} 
+                      likesCount={likes[placeId] || 0}
+                      onLike={onLike}
+                      lang={currentLang}
+                      isAdmin={isAdmin}
+                      onEdit={onEditPlace}
+                      onDelete={onDeletePlace}
+                      onAddToPlan={handleToggleAddToPlan}
+                      isAddedToPlan={isAdded}
+                    />
+                  </SwipeCard>
                 );
               })
             ) : (
