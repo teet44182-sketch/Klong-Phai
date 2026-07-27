@@ -1,18 +1,37 @@
 // src/pages/Restaurant.jsx
 import React, { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-export default function Restaurant({ onOpenMap, likes = {}, onLike, lang }) {
-  const { t, i18n } = useTranslation();
+export default function Restaurant({ 
+  places = [],        // รับ places จาก Props
+  loading = false,    // รับ loading จาก Props
+  onOpenMap, 
+  likes = {}, 
+  onLike, 
+  lang = 'th',
+  isAdmin = false,
+  onEditPlace,
+  onDeletePlace
+}) {
+  const isEn = lang === 'en';
 
-  // กำหนดภาษาปัจจุบัน (ถ้าไม่ส่ง lang ผ่าน prop ให้ถอยไปใช้ i18n.language)
-  const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
-  const isEn = currentLang === 'en';
-
-  // กรองเอาเฉพาะข้อมูลที่เป็นร้านอาหารจากฐานข้อมูลกลาง
-  const restaurants = placesDatabase.filter(place => place.type === 'restaurant');
+  // กรองเอาเฉพาะข้อมูลที่เป็นร้านอาหารจาก Props places (รองรับทั้ง field category และ type)
+  const restaurants = (places || [])
+    .filter(place => place.category === 'restaurant' || place.type === 'restaurant')
+    .map(p => ({
+      id: p.id,
+      name: p.title || p.name,
+      nameEn: p.title_en || p.nameEn,
+      description: p.description,
+      descriptionEn: p.description_en || p.descriptionEn,
+      detail: p.detailDescription || p.detail || p.description,
+      detailEn: p.detailDescription_en || p.detailEn || p.description_en,
+      img: p.img,
+      mapUrl: p.mapUrl,
+      workingHours: p.workingHours,
+      phone: p.phone,
+      category: p.category || p.type
+    }));
 
   // สั่งให้หน้าเว็บเลื่อนกลับไปบนสุดโดยอัตโนมัติเมื่อเปิดหน้าร้านอาหาร
   useEffect(() => {
@@ -37,7 +56,7 @@ export default function Restaurant({ onOpenMap, likes = {}, onLike, lang }) {
         {/* ตัวรูปภาพพื้นหลังที่สั่งเบลอ */}
         <img 
           src="src/assets/cf.jpg" 
-          alt={t('nav_restaurant', isEn ? 'Restaurants' : 'ร้านอาหาร')}
+          alt="Restaurant Background"
           style={{
             position: 'absolute',
             top: 0,
@@ -72,7 +91,7 @@ export default function Restaurant({ onOpenMap, likes = {}, onLike, lang }) {
             textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
             fontFamily: 'Mitr, sans-serif'
           }}>
-            {t('nav_restaurant', isEn ? 'Restaurants' : 'ร้านอาหาร')}
+            {isEn ? 'Restaurants' : 'ร้านอาหาร'}
           </h2>
         </div>
       </div>
@@ -86,25 +105,34 @@ export default function Restaurant({ onOpenMap, likes = {}, onLike, lang }) {
         minHeight: '50vh',
         height: 'auto' 
       }}>
-        {/* ระบบ Grid จัดเรียงการ์ดแสดงผลร้านอาหาร */}
-        <div className="results-grid">
-          {restaurants.length > 0 ? (
-            restaurants.map(place => (
-              <Card 
-                key={place.id} 
-                place={place} 
-                onOpenMap={onOpenMap} 
-                likesCount={likes[place.id] || 0}
-                onLike={onLike}
-                lang={currentLang}
-              />
-            ))
-          ) : (
-            <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
-              {t('no_restaurants', isEn ? 'No restaurants available at the moment.' : 'ยังไม่มีข้อมูลร้านอาหารในขณะนี้')}
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
+            {isEn ? 'Loading restaurants...' : 'กำลังโหลดข้อมูลร้านอาหาร...'}
+          </div>
+        ) : (
+          /* ระบบ Grid จัดเรียงการ์ดแสดงผลร้านอาหาร */
+          <div className="results-grid">
+            {restaurants.length > 0 ? (
+              restaurants.map(place => (
+                <Card 
+                  key={place.id} 
+                  place={place} 
+                  onOpenMap={onOpenMap} 
+                  likesCount={likes[place.id] || 0}
+                  onLike={onLike}
+                  lang={lang}
+                  isAdmin={isAdmin}
+                  onEdit={onEditPlace}
+                  onDelete={onDeletePlace}
+                />
+              ))
+            ) : (
+              <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
+                {isEn ? 'No restaurants available at the moment.' : 'ยังไม่มีข้อมูลร้านอาหารในขณะนี้'}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

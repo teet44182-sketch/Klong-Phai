@@ -1,14 +1,22 @@
 // src/pages/CheckInPoints.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-// นำเข้า Firebase CRUD Methods
+// นำเข้า Firebase Firestore เฉพาะส่วนการจัดการ Review
 import { db } from '../firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  doc, 
+  updateDoc, 
+  deleteDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
 
 export default function CheckInPoints({ 
+  places = [],        // รับ places จาก Props
+  loading = false,    // รับ loading จาก Props
   onOpenMap, 
   likes = {}, 
   onLike,
@@ -16,11 +24,14 @@ export default function CheckInPoints({
   handleGoogleLogin,   
   handleGoogleLogout,  
   reviewsData = {},
-  lang
+  lang,
+  isAdmin = false,     
+  onEditPlace,         
+  onDeletePlace        
 }) {
   const { t, i18n } = useTranslation();
   
-  // กำหนดภาษาปัจจุบัน (ถ้าไม่ส่ง lang ผ่าน prop ให้ถอยไปใช้ i18n.language)
+  // กำหนดภาษาปัจจุบัน
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
@@ -31,6 +42,42 @@ export default function CheckInPoints({
   const pageId = 'checkin_page'; 
   const pageReviews = reviewsData[pageId] || [];
   const bannedWords = ["ควย", "เย็ด", "มึง", "กู", "สัส", "เหี้ย", "ค_ย", "เ_ยด", "ดกทอง"];
+
+  // เลื่อนกลับไปบนสุดเมื่อเปิดหน้านี้
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // ฟังก์ชันช่วยแปลงและจัด Format ข้อมูลสถานที่ให้พร้อมใช้งาน
+  const mapPlaceData = (p) => ({
+    id: p.id || p.docId,
+    name: p.title || p.name || p.placeName || 'ไม่มีชื่อสถานที่',
+    nameEn: p.title_en || p.nameEn || p.title || p.name,
+    description: p.description || p.detail || '',
+    descriptionEn: p.description_en || p.descriptionEn || p.description || '',
+    detail: p.detailDescription || p.detail || p.description || '',
+    detailEn: p.detailDescription_en || p.detailEn || p.description_en || '',
+    img: p.img || p.imageUrl || p.image,
+    mapUrl: p.mapUrl || p.googleMap,
+    workingHours: p.workingHours || p.time,
+    phone: p.phone,
+    category: p.category || p.type || 'checkin'
+  });
+
+  // 1. กรองเฉพาะสถานที่หมวดหมู่เกี่ยวกับจุดเช็คอิน/ท่องเที่ยว
+  const filteredPlaces = (places || [])
+    .filter(p => {
+      if (!p) return false;
+      const cat = (p.category || p.type || '').toLowerCase().trim();
+      // ยินยอมให้ผ่านถ้าตรงกับหมวดเช็คอิน หรือไม่มีการระบุหมวดหมู่ไว้
+      return ['checkin', 'check_in', 'check-in', 'attraction', 'tourist', 'travel', ''].includes(cat) || !p.category;
+    })
+    .map(mapPlaceData);
+
+  // 2. Fallback: ถ้ากรองแล้วไม่พบข้อมูลเลย ให้ใช้สถานที่ทั้งหมดจาก props เพื่อป้องกันหน้าว่าง
+  const finalPlaces = filteredPlaces.length > 0 
+    ? filteredPlaces 
+    : (places || []).map(mapPlaceData);
 
   const validateReviewText = (text) => {
     const cleanText = text.trim();
@@ -51,41 +98,22 @@ export default function CheckInPoints({
     return cleanText;
   };
 
-  const sortedPlaces = [...placesDatabase].sort((a, b) => {
+  // จัดอันดับสถานที่ตามจำนวน Likes
+  const sortedPlaces = [...finalPlaces].sort((a, b) => {
     const scoreA = likes[a.id] || 0;
     const scoreB = likes[b.id] || 0;
     return scoreB - scoreA;
   });
 
-  // พจนานุกรมแปลภาษาสำหรับสถานที่ในกรณีที่ placesData.js ยังไม่มีข้อมูลภาษาอังกฤษ
-  const translationMap = {
-    "ศูนย์อนุรักษ์พันธุกรรมพืช อพ.สธ.คลองไผ่": {
-      nameEn: "RSPG Plant Conservation Center Khlong Phai",
-      descEn: "A center dedicated to gathering and preserving plant genetics for study and research amidst lush nature.",
-      detailEn: "A center dedicated to gathering and preserving plant genetics for study and research amidst lush nature."
-    },
-    "Cook & Coff @ คลองไผ่ จิบกาแฟ..แลวิว (จุดชมวิวเขาเขื่อนลั่น)": {
-      nameEn: "Cook & Coff @ Khlong Phai",
-      descEn: "Million-dollar view cafe by the reservoir.",
-      detailEn: "Enjoy coffee with scenic views of Khao Khuen Lan at this cozy reservoir-side cafe."
-    },
-    "ทัณฑสถานหญิงนครราชสีมา": {
-      nameEn: "Nakhon Ratchasima Women's Correctional Institution",
-      descEn: "Good atmosphere by the water, delicious food.",
-      detailEn: "Featuring local products, fresh coffee, and delicious meals in a relaxed waterfront atmosphere."
-    }
-  };
-
   // ฟังก์ชันแปลงข้อมูล place ให้แสดงผลตามภาษาที่เลือก
   const getTranslatedPlace = (place) => {
     if (!isEn) return place;
 
-    const mapped = translationMap[place.name] || {};
     return {
       ...place,
-      name: place.nameEn || mapped.nameEn || place.name,
-      description: place.descriptionEn || mapped.descEn || place.description,
-      detail: place.detailEn || mapped.detailEn || place.detail
+      name: place.nameEn || place.name,
+      description: place.descriptionEn || place.description,
+      detail: place.detailEn || place.detail
     };
   };
 
@@ -99,8 +127,8 @@ export default function CheckInPoints({
     try {
       await addDoc(collection(db, "reviews"), {
         placeId: pageId,
-        name: googleUser.displayName,   
-        userPhoto: googleUser.photoURL, 
+        name: googleUser.displayName || 'Anonymous',   
+        userPhoto: googleUser.photoURL || '', 
         text: validatedText,
         userId: String(googleUser.uid).trim(), 
         createdAt: serverTimestamp()
@@ -148,7 +176,7 @@ export default function CheckInPoints({
     try {
       await deleteDoc(doc(db, "reviews", targetId));
     } catch (error) {
-      console.error(error);
+      console.error("Error deleting review:", error);
       alert(isEn ? "An error occurred while deleting data from the database." : "เกิดข้อผิดพลาดขณะลบข้อมูลจาก Database");
     }
   };
@@ -166,30 +194,44 @@ export default function CheckInPoints({
             : 'อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ บนกล่องการ์ดสถานที่')}
         </p>
 
-        <div className="results-grid" style={{ marginBottom: '60px' }}>
-          {sortedPlaces.slice(0, 10).map((place, index) => {
-            const translatedPlace = getTranslatedPlace(place);
-            return (
-              <div key={place.id} style={{ position: 'relative' }}>
-                <div style={{
-                  position: 'absolute', top: '-8px', left: '-8px',
-                  background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#00a854',
-                  color: index <= 2 ? '#000' : '#fff', fontWeight: 'bold', padding: '4px 12px', borderRadius: '6px', zIndex: 20, fontSize: '0.85rem', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', fontFamily: 'Mitr, sans-serif'
-                }}>
-                  {isEn ? `Rank ${index + 1}` : `อันดับ ${index + 1}`}
+        {loading ? (
+          <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
+            {isEn ? 'Loading places...' : 'กำลังโหลดข้อมูลสถานที่...'}
+          </div>
+        ) : sortedPlaces.length === 0 ? (
+          <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
+            {isEn ? 'No check-in places found.' : 'ยังไม่มีข้อมูลจุดเช็คอินในขณะนี้'}
+          </div>
+        ) : (
+          <div className="results-grid" style={{ marginBottom: '60px' }}>
+            {sortedPlaces.slice(0, 10).map((place, index) => {
+              const translatedPlace = getTranslatedPlace(place);
+              return (
+                <div key={place.id || index} style={{ position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute', top: '-8px', left: '-8px',
+                    background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#00a854',
+                    color: index <= 2 ? '#000' : '#fff', fontWeight: 'bold', padding: '4px 12px', borderRadius: '6px', zIndex: 20, fontSize: '0.85rem', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', fontFamily: 'Mitr, sans-serif'
+                  }}>
+                    {isEn ? `Rank ${index + 1}` : `อันดับ ${index + 1}`}
+                  </div>
+                  <Card 
+                    place={translatedPlace} 
+                    onOpenMap={onOpenMap} 
+                    likesCount={likes[place.id] || 0} 
+                    onLike={onLike} 
+                    lang={currentLang}
+                    isAdmin={isAdmin}
+                    onEdit={onEditPlace}
+                    onDelete={onDeletePlace}
+                  />
                 </div>
-                <Card 
-                  place={translatedPlace} 
-                  onOpenMap={onOpenMap} 
-                  likesCount={likes[place.id] || 0} 
-                  onLike={onLike} 
-                  lang={currentLang} 
-                />
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
+        {/* Section Review / Discussion */}
         <div style={{ background: 'rgba(255, 255, 255, 0.04)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '30px', borderRadius: '16px', color: '#eee', maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.3rem' }}>
@@ -198,7 +240,7 @@ export default function CheckInPoints({
             {googleUser && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#aaa' }}>
-                  <img src={googleUser.photoURL} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                  {googleUser.photoURL && <img src={googleUser.photoURL} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />}
                   <span>{googleUser.displayName}</span>
                 </div>
                 <button type="button" onClick={handleGoogleLogout} style={{ background: 'none', border: 'none', color: '#ff4d4d', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'Prompt, sans-serif' }}>
@@ -254,6 +296,10 @@ export default function CheckInPoints({
                 const isOwner = currentUserId && reviewOwnerId && currentUserId === reviewOwnerId;
                 const reviewId = review.id || review.docId;
 
+                const reviewDate = review.createdAt && review.createdAt.seconds 
+                  ? new Date(review.createdAt.seconds * 1000).toLocaleDateString(isEn ? 'en-US' : 'th-TH')
+                  : t('sending', isEn ? 'Sending...' : 'กำลังส่ง...');
+
                 return (
                   <div key={reviewId || Math.random()} style={{ padding: '15px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -274,7 +320,7 @@ export default function CheckInPoints({
                           </div>
                         )}
                         <span style={{ color: '#666', fontSize: '0.8rem' }}>
-                          {review.createdAt ? new Date(review.createdAt.seconds * 1000).toLocaleDateString(isEn ? 'en-US' : 'th-TH') : t('sending', isEn ? 'Sending...' : 'กำลังส่ง...')}
+                          {reviewDate}
                         </span>
                       </div>
                     </div>

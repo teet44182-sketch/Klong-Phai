@@ -1,18 +1,42 @@
 // src/pages/Accommodation.jsx
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 
-export default function Accommodation({ onOpenMap, likes = {}, onLike, lang }) {
+export default function Accommodation({ 
+  places = [],        // รับ places จาก Props
+  loading = false,    // รับ loading จาก Props
+  onOpenMap, 
+  likes = {}, 
+  onLike, 
+  lang,
+  isAdmin = false,
+  onEditPlace,
+  onDeletePlace
+}) {
   const { t, i18n } = useTranslation();
 
   // กำหนดภาษาปัจจุบัน (ถ้าไม่ส่ง lang ผ่าน prop ให้ถอยไปใช้ i18n.language)
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // กรองเอาเฉพาะข้อมูลที่เป็นที่พักจากฐานข้อมูลกลาง
-  const accommodations = placesDatabase.filter(place => place.type === 'accommodation');
+  // กรองเอาเฉพาะข้อมูลที่เป็นที่พักจาก Props places (รองรับทั้ง field category และ type)
+  const accommodations = (places || [])
+    .filter(place => place.category === 'accommodation' || place.type === 'accommodation')
+    .map(p => ({
+      id: p.id,
+      name: p.title || p.name,
+      nameEn: p.title_en || p.nameEn,
+      description: p.description,
+      descriptionEn: p.description_en || p.descriptionEn,
+      detail: p.detailDescription || p.detail || p.description,
+      detailEn: p.detailDescription_en || p.detailEn || p.description_en,
+      img: p.img,
+      mapUrl: p.mapUrl,
+      workingHours: p.workingHours,
+      phone: p.phone,
+      category: p.category || p.type
+    }));
 
   // สั่งให้หน้าเว็บเลื่อนกลับไปบนสุดโดยอัตโนมัติเมื่อเปลี่ยนมาหน้านี้
   useEffect(() => {
@@ -86,25 +110,34 @@ export default function Accommodation({ onOpenMap, likes = {}, onLike, lang }) {
         minHeight: '50vh',
         height: 'auto' 
       }}>
-        {/* แสดงผลการ์ดที่พักในรูปแบบ Grid ตามที่กำหนดไว้ใน CSS */}
-        <div className="results-grid">
-          {accommodations.length > 0 ? (
-            accommodations.map(place => (
-              <Card 
-                key={place.id} 
-                place={place} 
-                onOpenMap={onOpenMap} 
-                likesCount={likes[place.id] || 0}
-                onLike={onLike}
-                lang={currentLang}
-              />
-            ))
-          ) : (
-            <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
-              {t('no_accommodation', isEn ? 'No accommodations available at the moment.' : 'ยังไม่มีข้อมูลที่พักในขณะนี้')}
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
+            {isEn ? 'Loading accommodations...' : 'กำลังโหลดข้อมูลที่พัก...'}
+          </div>
+        ) : (
+          /* แสดงผลการ์ดที่พักในรูปแบบ Grid ตามที่กำหนดไว้ใน CSS */
+          <div className="results-grid">
+            {accommodations.length > 0 ? (
+              accommodations.map(place => (
+                <Card 
+                  key={place.id} 
+                  place={place} 
+                  onOpenMap={onOpenMap} 
+                  likesCount={likes[place.id] || 0}
+                  onLike={onLike}
+                  lang={currentLang}
+                  isAdmin={isAdmin}
+                  onEdit={onEditPlace}
+                  onDelete={onDeletePlace}
+                />
+              ))
+            ) : (
+              <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
+                {t('no_accommodation', isEn ? 'No accommodations available at the moment.' : 'ยังไม่มีข้อมูลที่พักในขณะนี้')}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

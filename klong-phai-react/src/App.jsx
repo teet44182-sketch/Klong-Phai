@@ -4,17 +4,28 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import './App.css';
 
-// นำเข้า Language Switcher Component
+// Component สลับภาษา
 import LangSwitcherText from './components/LangSwitcherText'; 
-// หากต้องการเปลี่ยนไปใช้แบบ Switch ลูกโลก ให้เปลี่ยนสลับ Comment 2 บรรทัดนี้ได้เลยครับ
-// import LangSwitcherSwitch from './LangSwitcherSwitch';
 
-// นำเข้าอุปกรณ์สำหรับ Authentication และ Database จาก Firebase
-import { auth, googleProvider, db } from './firebase'; 
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, increment, deleteDoc, updateDoc } from 'firebase/firestore';
+// Firebase Modules
+import { auth, db, loginWithGoogle, logout } from './firebase'; 
+import { onAuthStateChanged } from 'firebase/auth';
+import { 
+  collection, 
+  addDoc, 
+  getDocs,
+  query, 
+  orderBy, 
+  onSnapshot, 
+  serverTimestamp, 
+  doc, 
+  setDoc, 
+  increment, 
+  deleteDoc, 
+  updateDoc 
+} from 'firebase/firestore';
 
-// นำเข้าหน้าเพจต่าง ๆ
+// Pages
 import Home from './pages/Home';
 import Restaurant from './pages/Restaurant';
 import Accommodation from './pages/Accommodation';
@@ -22,65 +33,89 @@ import CommunityMap from './pages/CommunityMap';
 import CheckInPoints from './pages/CheckInPoints';
 import Detail from './pages/Detail';
 
-// นำเข้า Pop-up แผนที่กลาง
+// Modals
 import MapModal from './components/MapModal';
+
+// รายชื่อ Admin Emails
+const ADMIN_EMAILS = ['Teet44182@gmail.com'];
 
 export default function App() {
   const { t, i18n } = useTranslation();
-
-  // ภาษาปัจจุบัน ('th' หรือ 'en')
   const currentLang = (i18n.language || 'th').startsWith('th') ? 'th' : 'en';
 
-  // State คุมข้อมูลผู้ใช้งานที่ผ่านการยืนยันตัวตน Google Auth
+  // State Auth & Admin
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // State คุมการเปิด/ปิด Pop-up แผนที่
+  // State สำหรับเก็บข้อมูลสถานที่จาก Firestore
+  const [places, setPlaces] = useState([]);
+  const [loadingPlaces, setLoadingPlaces] = useState(true);
+
+  // State UI & Modals
   const [modalInfo, setModalInfo] = useState({ isOpen: false, url: '' });
-  
-  // State คุมการเปิด/ปิด และเก็บข้อมูลของสถานที่ที่จะเอามาโชว์ในกล่องรายละเอียด
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
-
-  // State คุม index รูปภาพใน gallery ของ detail popup
+  const [isAddPlaceModalOpen, setIsAddPlaceModalOpen] = useState(false); // Modal สำหรับ Admin เพิ่มสถานที่
   const [galleryIndex, setGalleryIndex] = useState(0);
-
-  // State สำหรับควบคุมการเปิด/ปิด Dropdown ของ "ร้านอาหาร / ที่พัก" บน Navbar
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
-
-  // State คุมเมนูมือถือ (hamburger) บน mobile
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // ย้ายระบบ Like State มารับส่งค่าสดๆ จาก Firebase
+  // State ฟอร์มเพิ่มสถานที่ (Admin)
+  const [newPlace, setNewPlace] = useState({
+    title: '',
+    title_en: '',
+    description: '',
+    detailDescription: '',
+    img: '',
+    category: 'checkin', // checkin, restaurant, accommodation
+    mapUrl: '',
+    workingHours: '',
+    phone: ''
+  });
+
+  // State Likes & Reviews
   const [likes, setLikes] = useState({});
-
-  // State คุมการแก้ไขรีวิวภายในกล่องรายละเอียดสถานที่
+  const [reviewsData, setReviewsData] = useState({});
+  const [inputText, setInputText] = useState('');
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editText, setEditText] = useState('');
 
-  // รายการคำหยาบที่ระบบต้องการแบน (Banwords)
   const bannedWords = ["ควย", "เย็ด", "มึง", "กู", "สัส", "เหี้ย", "ค_ย", "เ_ยด", "ดกทอง"];
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // ฟังก์ชันตรวจสอบคำหยาบและความยาวข้อความ (Validation) สำหรับกล่องรายละเอียด
-  const validateReviewText = (text) => {
-    const cleanText = text.trim();
-    if (cleanText.length < 2) {
-      alert(t('alert_short', 'ข้อความรีวิวสั้นเกินไปครับ'));
-      return false;
-    }
-    if (cleanText.length > 200) {
-      alert(t('alert_long', 'ข้อความรีวิวต้องไม่เกิน 200 ตัวอักษรครับ'));
-      return false;
-    }
-    const textLower = cleanText.toLowerCase();
-    const hasBannedWord = bannedWords.some(word => textLower.includes(word));
-    if (hasBannedWord) {
-      alert(t('alert_banned', 'ข้อความของคุณมีคำไม่เหมาะสม (คำหยาบ) กรุณาแก้ไขก่อนส่งครับ'));
-      return false;
-    }
-    return cleanText;
-  };
+  // 1. ตรวจสอบสถานะ Auth
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser && currentUser.email) {
+        const isUserAdmin = ADMIN_EMAILS.some(
+          email => email.toLowerCase() === currentUser.email.toLowerCase()
+        );
+        setIsAdmin(isUserAdmin);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // ดึงยอดไลก์สะสมจาก Firebase Firestore แบบ Realtime
+  // 2. ดึงข้อมูลสถานที่ (places) จาก Firebase Firestore แบบ Real-time
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "places"), (snapshot) => {
+      const placesList = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+      setPlaces(placesList);
+      setLoadingPlaces(false);
+    }, (error) => {
+      console.error("Error fetching places real-time:", error);
+      setLoadingPlaces(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 3. ดึง Likes
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -92,7 +127,72 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // ฟังก์ชันไลก์แบบสลับสถานะ (Toggle)
+  // 4. ดึง Reviews
+  useEffect(() => {
+    const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allReviews = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      const grouped = {};
+      allReviews.forEach(review => {
+        if (!grouped[review.placeId]) grouped[review.placeId] = [];
+        grouped[review.placeId].push(review);
+      });
+      setReviewsData(grouped);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Handlers Login / Logout
+  const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error("Login Handle Error:", error);
+      alert(`ไม่สามารถเข้าสู่ระบบได้ (${error.code || error.message})`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
+  };
+
+  // Admin Add Place Handler
+  const handleAddPlaceSubmit = async (e) => {
+    e.preventDefault();
+    if (!newPlace.title || !newPlace.img) {
+      alert("กรุณากรอกชื่อสถานที่และใส่ URL รูปภาพหลักครับ");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "places"), {
+        ...newPlace,
+        createdAt: serverTimestamp()
+      });
+      alert("เพิ่มสถานที่เรียบร้อยแล้ว!");
+      setIsAddPlaceModalOpen(false);
+      setNewPlace({
+        title: '',
+        title_en: '',
+        description: '',
+        detailDescription: '',
+        img: '',
+        category: 'checkin',
+        mapUrl: '',
+        workingHours: '',
+        phone: ''
+      });
+    } catch (error) {
+      console.error("Error adding place:", error);
+      alert("เกิดข้อผิดพลาดในการบันทึกสถานที่");
+    }
+  };
+
+  // Like Toggle
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
     const likeDocRef = doc(db, "likes", String(placeId));
@@ -102,66 +202,47 @@ export default function App() {
       await setDoc(likeDocRef, { count: increment(delta) }, { merge: true });
       localStorage.setItem(`like_${placeId}`, isLiked ? 'false' : 'true');
     } catch (error) {
-      console.error("Like failed:", error.code, error.message);
-      if (error.code === 'permission-denied') {
-        alert('ไม่สามารถบันทึกได้: Firebase Security Rules ปฏิเสธสิทธิ์ กรุณาอัปเดต Rules ใน Firebase Console');
+      console.error("Like failed:", error);
+    }
+  };
+
+  // Admin Place Handlers
+  const handleEditPlace = (place) => {
+    alert(`[Admin Action] แก้ไขสถานที่: ${place.nameEn || place.name || place.title}`);
+  };
+
+  const handleDeletePlace = async (place) => {
+    const placeTitle = place.nameEn || place.name || place.title;
+    if (window.confirm(`[Admin Confirm] คุณต้องการลบสถานที่ "${placeTitle}" ใช่หรือไม่?`)) {
+      try {
+        await deleteDoc(doc(db, "places", String(place.id)));
+        alert("ลบสถานที่เรียบร้อยแล้ว");
+      } catch (error) {
+        console.error("Error deleting place:", error);
+        alert("เกิดข้อผิดพลาดในการลบสถานที่");
       }
     }
   };
 
-  // ข้อมูลรีวิวแบบแบ่งแยกหมวดหมู่ตาม ID สถานที่จากระบบ Firebase
-  const [reviewsData, setReviewsData] = useState({});
-  const [inputText, setInputText] = useState('');
-
-  // ฟังก์ชันเฝ้าตรวจสถานะล็อกอิน Google
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // ฟังก์ชันดึงชุดคอมเมนต์รีวิวจาก Firebase แบบ Realtime
-  useEffect(() => {
-    const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allReviews = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      
-      const groupedReviews = {};
-      allReviews.forEach(review => {
-        if (!groupedReviews[review.placeId]) {
-          groupedReviews[review.placeId] = [];
-        }
-        groupedReviews[review.placeId].push(review);
-      });
-      setReviewsData(groupedReviews);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // ฟังก์ชันเข้าสู่ระบบด้วย Google
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Login Error:", error);
+  // Review Validation
+  const validateReviewText = (text) => {
+    const cleanText = text.trim();
+    if (cleanText.length < 2) {
+      alert(t('alert_short', 'ข้อความรีวิวสั้นเกินไปครับ'));
+      return false;
     }
+    if (cleanText.length > 200) {
+      alert(t('alert_long', 'ข้อความรีวิวต้องไม่เกิน 200 ตัวอักษรครับ'));
+      return false;
+    }
+    const textLower = cleanText.toLowerCase();
+    if (bannedWords.some(word => textLower.includes(word))) {
+      alert(t('alert_banned', 'ข้อความของคุณมีคำไม่เหมาะสม กรุณาแก้ไขก่อนส่งครับ'));
+      return false;
+    }
+    return cleanText;
   };
 
-  // ฟังก์ชันออกจากระบบล็อกอิน Google
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout Error:", error);
-    }
-  };
-
-  const openMap = (url) => { setModalInfo({ isOpen: true, url: url }); };
-  const closeMap = () => { setModalInfo({ isOpen: false, url: '' }); };
-  const openDetail = (place) => { setDetailModal({ isOpen: true, placeData: place }); setGalleryIndex(0); };
-
-  // ฟังก์ชันบันทึกรีวิวเขียนลงคลาวด์ Firebase ของกล่องป๊อปอัป
   const handleReviewSubmit = async (e, placeId) => {
     e.preventDefault();
     if (!inputText.trim() || !user) return;
@@ -171,7 +252,7 @@ export default function App() {
 
     try {
       await addDoc(collection(db, "reviews"), {
-        placeId: placeId,
+        placeId: String(placeId),
         name: user.displayName,
         userPhoto: user.photoURL,
         text: validatedText,
@@ -180,18 +261,13 @@ export default function App() {
       });
       setInputText('');
     } catch (error) {
-      console.error("Error saving review into Firebase:", error);
+      console.error("Error saving review:", error);
     }
   };
 
-  // ฟังก์ชันอัปเดตแก้ไขคอมเมนต์ในป๊อปอัป
   const handleUpdateReview = async (review) => {
     const targetId = review.id || review.docId;
-    if (!targetId) {
-      alert("ไม่สามารถแก้ไขได้เนื่องจากไม่พบ ID ของเอกสาร");
-      return;
-    }
-    if (!editText.trim()) return;
+    if (!targetId || !editText.trim()) return;
 
     const validatedText = validateReviewText(editText);
     if (!validatedText) return;
@@ -204,34 +280,27 @@ export default function App() {
       setEditingReviewId(null);
       setEditText('');
     } catch (error) {
-      console.error(error);
-      alert("ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+      console.error("Error updating review:", error);
     }
   };
 
   const handleDeleteReview = async (review) => {
     const targetId = review.id || review.docId || review._id;
-    
-    if (!targetId) {
-      alert("ระบบหา ID บน Firebase ของคอมเมนต์นี้ไม่เจอ");
-      console.log("คอมเมนต์ที่กดลบ:", review); 
-      return;
-    }
-    
+    if (!targetId) return;
+
     if (!window.confirm(t('confirm_delete', 'คุณต้องการลบคอมเมนต์รีวิวนี้ใช่หรือไม่?'))) return;
-    
+
     try {
       await deleteDoc(doc(db, "reviews", targetId));
     } catch (error) {
-      console.error(error);
-      alert("เกิดข้อผิดพลาดขณะลบข้อมูลจาก Database");
+      console.error("Error deleting review:", error);
     }
   };
 
-  // ฟังก์ชันเปลี่ยนภาษาสำหรับ Component
-  const handleLanguageChange = (nextLang) => {
-    i18n.changeLanguage(nextLang);
-  };
+  const openMap = (url) => setModalInfo({ isOpen: true, url });
+  const closeMap = () => setModalInfo({ isOpen: false, url: '' });
+  const openDetail = (place) => { setDetailModal({ isOpen: true, placeData: place }); setGalleryIndex(0); };
+  const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -247,7 +316,6 @@ export default function App() {
       <nav className="navbar">
         <Link to="/" className="nav-logo" onClick={closeMobileMenu}><span>#</span> {t('brand_title', 'คลองไผ่')}</Link>
 
-        {/* ปุ่ม Hamburger (mobile only) */}
         <button
           className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}
           onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(prev => !prev); }}
@@ -269,21 +337,52 @@ export default function App() {
           </div>
           <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }} onClick={closeMobileMenu}>{t('nav_top10', '10 จุดเช็คอิน')}</Link>
           <Link to="/map" onClick={closeMobileMenu}>{t('nav_map', 'แผนที่ชุมชน')}</Link>
-          <a href="#contact" onClick={(e) => { e.preventDefault(); closeMobileMenu(); alert('หน้าติดต่อมาเร็วๆนี้!'); }}>{t('nav_contact', 'ติดต่อเรา')}</a>
-          <a href="#plan" className="btn-green" onClick={(e) => { e.preventDefault(); closeMobileMenu(); alert('ฟังก์ชันนี้กำลังพัฒนา'); }}>{t('nav_plan', 'วางแผนการเดินทาง')}</a>
 
-          {/* 📌 วาง Language Switcher Component ที่นี่ */}
+          {/* 🌟 ปุ่ม Admin: แสดงเฉพาะเมื่อเป็น Admin */}
+          {isAdmin && (
+            <button 
+              onClick={() => setIsAddPlaceModalOpen(true)}
+              style={{ background: '#ff9800', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+            >
+              ➕ เพิ่มสถานที่
+            </button>
+          )}
+
+          {/* 🟢 ปุ่มวางแผนการเดินทาง */}
+          <Link 
+            to="/map" 
+            className="plan-btn"
+            onClick={closeMobileMenu}
+            style={{
+              background: '#00a854',
+              color: '#fff',
+              padding: '8px 18px',
+              borderRadius: '25px',
+              textDecoration: 'none',
+              fontWeight: 'bold',
+              fontSize: '0.9rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(0, 168, 84, 0.4)'
+            }}
+          >
+            {t('nav_plan', 'วางแผนการเดินทาง')}
+          </Link>
+
           <div onClick={(e) => e.stopPropagation()}>
             <LangSwitcherText lang={currentLang} onLangChange={handleLanguageChange} />
-            {/* หากต้องการใช้แบบ Switch ลูกโลก ให้ใช้ <LangSwitcherSwitch lang={currentLang} onLangChange={handleLanguageChange} /> */}
           </div>
         </div>
       </nav>
 
+      {/* 🌟 ส่ง places และ loadingPlaces ไปยังทุก Router Page */}
       <Routes>
-        <Route path="/" element={<Home onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
+        <Route path="/" element={<Home places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
         <Route path="/checkin" element={
           <CheckInPoints 
+            places={places}
+            loading={loadingPlaces}
             onOpenMap={openDetail} 
             likes={likes} 
             onLike={handleLike} 
@@ -292,17 +391,51 @@ export default function App() {
             handleGoogleLogout={handleLogout} 
             reviewsData={reviewsData} 
             lang={currentLang}
+            isAdmin={isAdmin}              
+            onEditPlace={handleEditPlace}  
+            onDeletePlace={handleDeletePlace}
           />
         } />
-        <Route path="/restaurant" element={<Restaurant onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
-        <Route path="/accommodation" element={<Accommodation onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
-        <Route path="/map" element={<CommunityMap lang={currentLang} />} />
-        <Route path="/detail/:id" element={<Detail onOpenMap={openMap} lang={currentLang} />} />
+        <Route path="/restaurant" element={<Restaurant places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
+        <Route path="/accommodation" element={<Accommodation places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
+        <Route path="/map" element={<CommunityMap places={places} loading={loadingPlaces} lang={currentLang} />} />
+        <Route path="/detail/:id" element={<Detail places={places} loading={loadingPlaces} onOpenMap={openMap} lang={currentLang} />} />
       </Routes>
 
       <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} zIndex={9999} />
 
-      {/* Pop-up รายละเอียดสถานที่ */}
+      {/* 🌟 Modal สำหรับ Admin เพิ่มสถานที่ใหม่ */}
+      {isAddPlaceModalOpen && (
+        <div className="map-modal-overlay active" style={{ zIndex: 3000 }} onClick={() => setIsAddPlaceModalOpen(false)}>
+          <div className="map-modal-content" style={{ background: '#222', color: '#fff', padding: '25px', maxWidth: '500px', borderRadius: '12px' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ color: '#ff9800', marginTop: 0 }}>➕ เพิ่มสถานที่ใหม่ (Admin)</h3>
+            <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
+              <input type="text" placeholder="ชื่อสถานที่ (ภาษาไทย) *" value={newPlace.title} onChange={(e) => setNewPlace({...newPlace, title: e.target.value})} required style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+              <input type="text" placeholder="ชื่อสถานที่ (English)" value={newPlace.title_en} onChange={(e) => setNewPlace({...newPlace, title_en: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+              
+              <select value={newPlace.category} onChange={(e) => setNewPlace({...newPlace, category: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
+                <option value="checkin">10 จุดเช็คอิน</option>
+                <option value="restaurant">ร้านอาหาร</option>
+                <option value="accommodation">ที่พัก</option>
+              </select>
+
+              <input type="url" placeholder="URL รูปภาพหลัก *" value={newPlace.img} onChange={(e) => setNewPlace({...newPlace, img: e.target.value})} required style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+              <textarea placeholder="คำอธิบายสั้นๆ" value={newPlace.description} onChange={(e) => setNewPlace({...newPlace, description: e.target.value})} rows="2" style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px', resize: 'none' }} />
+              <textarea placeholder="รายละเอียดเชิงลึก" value={newPlace.detailDescription} onChange={(e) => setNewPlace({...newPlace, detailDescription: e.target.value})} rows="3" style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px', resize: 'none' }} />
+              <input type="text" placeholder="เวลาทำการ (เช่น 08:00 - 17:00)" value={newPlace.workingHours} onChange={(e) => setNewPlace({...newPlace, workingHours: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+              <input type="text" placeholder="เบอร์โทรศัพท์" value={newPlace.phone} onChange={(e) => setNewPlace({...newPlace, phone: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+              <input type="url" placeholder="Google Maps URL" value={newPlace.mapUrl} onChange={(e) => setNewPlace({...newPlace, mapUrl: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setIsAddPlaceModalOpen(false)} style={{ background: '#666', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>ยกเลิก</button>
+                <button type="submit" style={{ background: '#ff9800', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>บันทึกสถานที่</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
       <div 
         className={`map-modal-overlay ${detailModal.isOpen ? 'active' : ''}`}
         style={{ zIndex: 2100 }} 
@@ -315,22 +448,18 @@ export default function App() {
         >
           {detailModal.placeData && (
             <div>
-              {/* Gallery Section */}
               {(() => {
                 const images = [detailModal.placeData.img, ...(detailModal.placeData.gallery || [])];
                 const total = images.length;
                 
-                // ดึงชื่อสถานที่ตามภาษา
                 const placeTitle = currentLang === 'en' && detailModal.placeData.title_en 
                   ? detailModal.placeData.title_en 
-                  : detailModal.placeData.title;
+                  : (detailModal.placeData.name || detailModal.placeData.title);
 
-                // ดึงคำอธิบายตามภาษา
                 const placeDetailDesc = currentLang === 'en' && detailModal.placeData.detailDescription_en
                   ? detailModal.placeData.detailDescription_en
-                  : (detailModal.placeData.detailDescription || t('no_detail_info', 'ไม่มีข้อมูลรายละเอียดเพิ่มเติมในขณะนี้'));
+                  : (detailModal.placeData.detailDescription || detailModal.placeData.detail || t('no_detail_info', 'ไม่มีข้อมูลรายละเอียดเพิ่มเติมในขณะนี้'));
 
-                // ดึงเวลาทำการตามภาษา
                 const placeWorkingHours = currentLang === 'en' && detailModal.placeData.workingHours_en
                   ? detailModal.placeData.workingHours_en
                   : detailModal.placeData.workingHours;
@@ -338,7 +467,6 @@ export default function App() {
                 return (
                   <div>
                     <div style={{ width: '100%', height: '220px', position: 'relative', overflow: 'hidden', background: '#111' }}>
-                      {/* รูปภาพปัจจุบัน */}
                       <img
                         key={galleryIndex}
                         src={images[galleryIndex]}
@@ -346,7 +474,6 @@ export default function App() {
                         style={{ width: '100%', height: '100%', objectFit: 'cover', animation: 'fadeIn 0.3s ease' }}
                       />
 
-                      {/* ปุ่มลูกศรซ้าย-ขวา (แสดงเมื่อมีมากกว่า 1 รูป) */}
                       {total > 1 && (
                         <>
                           <button
@@ -358,30 +485,26 @@ export default function App() {
                             style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '20px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
                           >›</button>
 
-                          {/* Dot indicators */}
                           <div style={{ position: 'absolute', bottom: '38px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 2 }}>
                             {images.map((_, i) => (
                               <button
                                 key={i}
                                 onClick={(e) => { e.stopPropagation(); setGalleryIndex(i); }}
-                                style={{ width: '7px', height: '7px', borderRadius: '50%', border: 'none', background: i === galleryIndex ? '#ffffff' : 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: 0, transition: 'background 0.2s' }}
+                                style={{ width: '7px', height: '7px', borderRadius: '50%', border: 'none', background: i === galleryIndex ? '#ffffff' : 'rgba(255,255,255,0.35)', cursor: 'pointer', padding: 0 }}
                               />
                             ))}
                           </div>
 
-                          {/* ตัวนับรูป เช่น 1/3 */}
                           <div style={{ position: 'absolute', top: '10px', left: '12px', background: 'rgba(0,0,0,0.55)', padding: '2px 9px', borderRadius: '10px', fontSize: '0.72rem', color: '#fff', zIndex: 2 }}>
                             {galleryIndex + 1} / {total}
                           </div>
                         </>
                       )}
 
-                      {/* ยอดไลก์ */}
                       <div style={{ position: 'absolute', bottom: '10px', right: '15px', background: 'rgba(0,0,0,0.7)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', color: '#fff', zIndex: 2 }}>
                         {likes[detailModal.placeData.id] || 0} {t('like_label', 'ถูกใจ')}
                       </div>
 
-                      {/* ปุ่มปิด */}
                       <span className="map-modal-close" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', top: '10px', right: '15px', zIndex: 3 }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>&times;</span>
                     </div>
 
@@ -390,24 +513,28 @@ export default function App() {
                       <p style={{ fontSize: '0.95rem', color: '#ddd', lineHeight: '1.6', marginBottom: '20px', whiteSpace: 'pre-line' }}>{placeDetailDesc}</p>
 
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', fontSize: '0.85rem', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {placeWorkingHours && <div> <b>{t('label_hours', 'เวลาทำการ:')}</b> {placeWorkingHours}</div>}
-                        {detailModal.placeData.phone && <div> <b>{t('label_phone', 'เบอร์โทรศัพท์:')}</b> {detailModal.placeData.phone}</div>}
+                        {placeWorkingHours && <div><b>{t('label_hours', 'เวลาทำการ:')}</b> {placeWorkingHours}</div>}
+                        {detailModal.placeData.phone && <div><b>{t('label_phone', 'เบอร์โทรศัพท์:')}</b> {detailModal.placeData.phone}</div>}
                       </div>
 
                       <div style={{ marginTop: '25px', textAlign: 'center', marginBottom: '25px' }}>
-                        <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl)}> {t('btn_nav_map', 'ดูแผนที่นำทาง')}</button>
+                        <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl)}>
+                          {t('btn_nav_map', 'ดูแผนที่นำทาง')}
+                        </button>
                       </div>
 
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '25px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                          <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.1rem' }}> {t('reviews_title', 'รีวิวจากผู้เข้าชม')}</h3>
+                          <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.1rem' }}>{t('reviews_title', 'รีวิวจากผู้เข้าชม')}</h3>
                           {user && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#aaa' }}>
                                 <img src={user.photoURL} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
                                 <span>{user.displayName}</span>
                               </div>
-                              <button type="button" onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ff4d4d', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'Prompt, sans-serif' }}>{t('logout', 'ออกจากระบบ')}</button>
+                              <button type="button" onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ff4d4d', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'Prompt, sans-serif' }}>
+                                {t('logout', 'ออกจากระบบ')}
+                              </button>
                             </div>
                           )}
                         </div>
@@ -444,9 +571,11 @@ export default function App() {
                                     </div>
                                     
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                      {isOwner && editingReviewId !== reviewId && (
+                                      {(isOwner || isAdmin) && editingReviewId !== reviewId && (
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                          <button onClick={() => { setEditingReviewId(reviewId); setEditText(review.text); }} style={{ background: 'none', border: 'none', color: '#ffb300', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Prompt, sans-serif', padding: 0 }}>{t('edit', 'แก้ไข')}</button>
+                                          {isOwner && (
+                                            <button onClick={() => { setEditingReviewId(reviewId); setEditText(review.text); }} style={{ background: 'none', border: 'none', color: '#ffb300', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Prompt, sans-serif', padding: 0 }}>{t('edit', 'แก้ไข')}</button>
+                                          )}
                                           <button onClick={() => handleDeleteReview(review)} style={{ background: 'none', border: 'none', color: '#ff4d4d', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Prompt, sans-serif', padding: 0 }}>{t('delete', 'ลบ')}</button>
                                         </div>
                                       )}

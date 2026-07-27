@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { placesDatabase } from '../placesData';
 
 // Fix Leaflet default icon path issue with Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -47,7 +46,7 @@ function ZoomTracker({ onZoomChange }) {
   return null;
 }
 
-export default function CommunityMap({ lang }) {
+export default function CommunityMap({ places = [], lang }) {
   const { t, i18n } = useTranslation();
 
   // กำหนดภาษาปัจจุบัน (ถ้ารับ lang มาใช้ lang ถ้าไม่มีให้ถอยไป i18n.language)
@@ -70,7 +69,30 @@ export default function CommunityMap({ lang }) {
     { key: 'restaurant',    label: isEn ? ' Restaurant' : ' ร้านอาหาร' },
   ];
 
-  const placesWithCoords = placesDatabase.filter((p) => p.coords);
+  // Map ข้อมูลสถานที่และแปลงพิกัด
+  const formattedPlaces = (places || []).map((p) => {
+    let coords = p.coords;
+    if (!coords && p.lat && p.lng) {
+      coords = [parseFloat(p.lat), parseFloat(p.lng)];
+    }
+
+    return {
+      ...p,
+      id: p.id || p.docId,
+      title: p.title || p.name || p.placeName || 'ไม่มีชื่อสถานที่',
+      title_en: p.title_en || p.nameEn || p.title || p.name,
+      description: p.description || p.detail || '',
+      description_en: p.description_en || p.descriptionEn || p.description || '',
+      workingHours: p.workingHours || p.time,
+      workingHours_en: p.workingHours_en || p.workingHoursEn || p.workingHours,
+      img: p.img || p.imageUrl || p.image,
+      coords,
+      type: p.type || p.category || 'travel'
+    };
+  });
+
+  const placesWithCoords = formattedPlaces.filter((p) => p.coords && Array.isArray(p.coords) && p.coords.length === 2);
+  
   const filtered =
     filter === 'all'
       ? placesWithCoords

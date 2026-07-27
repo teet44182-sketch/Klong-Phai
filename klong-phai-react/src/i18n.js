@@ -14,7 +14,7 @@ const resources = {
       nav_map: "แผนที่ชุมชน",
       nav_contact: "ติดต่อเรา",
       nav_plan: "วางแผนการเดินทาง",
-      hero_title: "เที่ยวชุมชน คลองไผ่",
+      hero_title: "เทศบาลตำบลคลองไผ่",
       search_placeholder: "ค้นหาสถานที่ท่องเที่ยว...",
       search_result: 'ผลการค้นหา "{keyword}" ({count} รายการ)',
       no_result: "ไม่พบข้อมูลสถานที่ที่คุณค้นหา",

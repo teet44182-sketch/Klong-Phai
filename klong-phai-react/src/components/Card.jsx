@@ -2,36 +2,106 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-export default function Card({ place, onOpenMap, likesCount = 0, onLike, lang }) {
+export default function Card({ 
+  place = {}, 
+  onOpenMap, 
+  likesCount = 0, 
+  onLike, 
+  lang,
+  isAdmin = false,
+  onEdit,
+  onDelete
+}) {
   const { t, i18n } = useTranslation();
 
-  // 1. แก้การเช็กภาษาให้ถูกต้องตามลำดับวงเล็บ
-  const effectiveLang = lang ? lang : (i18n.language || 'th');
-  const isEn = effectiveLang.startsWith('en');
+  // Fix: แก้ไขการวงเล็บ Logic เช็คภาษาให้ถูกต้อง
+  const activeLang = lang || i18n.language || 'th';
+  const isEn = activeLang.startsWith('en');
 
-  // 2. ดึงค่าภาษาอังกฤษแบบ fallback รองรับชื่อ Key หลายรูปแบบ (nameEn, name_en, title_en ฯลฯ)
-  const displayTitle = isEn 
-    ? (place.nameEn || place.name_en || place.title_en || place.name || place.title) 
-    : (place.name || place.title);
+  // ดึงชื่อสถานที่ รองรับทั้ง title, title_en, name, nameEn
+  const titleTh = place.title || place.name || '';
+  const titleEn = place.title_en || place.nameEn || titleTh;
+  const displayTitle = isEn ? titleEn : titleTh;
 
-  const displayDesc = isEn 
-    ? (place.descriptionEn || place.description_en || place.descEn || place.description) 
-    : place.description;
+  // ดึงคำอธิบายสถานที่ รองรับทั้ง description, description_en, descriptionEn
+  const descTh = place.description || place.detailDescription || place.detail || '';
+  const descEn = place.description_en || place.descriptionEn || place.detailDescription_en || place.detailEn || descTh;
+  const displayDesc = isEn ? descEn : descTh;
 
   return (
     <div 
-      className="card card-interactive"
-      onClick={() => onOpenMap(place)}
+      className="card card-interactive" 
+      onClick={() => onOpenMap && onOpenMap(place)}
+      style={{ position: 'relative' }}
     >
+      {/* ปุ่ม Action เฉพาะ Admin */}
+      {isAdmin && (
+        <div 
+          className="admin-actions"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            left: '12px',
+            zIndex: 20,
+            display: 'flex',
+            gap: '6px',
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            padding: '4px 8px',
+            borderRadius: '20px'
+          }}
+        >
+          {onEdit && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(place);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ffca28',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                padding: '2px 4px'
+              }}
+            >
+              ✏️ แก้ไข
+            </button>
+          )}
+          {onDelete && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(place);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ff4b4b',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                padding: '2px 4px'
+              }}
+            >
+              🗑️ ลบ
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ส่วนแสดงรูปภาพสถานที่ */}
-      <img className="card-img" src={place.img || place.image} alt={displayTitle} />
+      <img className="card-img" src={place.img} alt={displayTitle} />
       
-      {/* ปุ่มกดไลก์หัวใจ (มุมขวาบนของการ์ด) */}
+      {/* ปุ่มกดไลก์หัวใจ */}
       {onLike && (
         <button 
           className="card-like-btn"
           onClick={(e) => {
-            e.stopPropagation(); // กันไม่ให้กดโดนเปิดหน้าต่างรายละเอียดสถานที่
+            e.stopPropagation();
             onLike(place.id);
           }}
           style={{
@@ -67,7 +137,7 @@ export default function Card({ place, onOpenMap, likesCount = 0, onLike, lang })
           {displayTitle}
         </div>
 
-        {/* ส่วนแสดงคำอธิบายสั้นๆ (ถ้ามี) */}
+        {/* ส่วนแสดงคำอธิบายสั้นๆ */}
         {displayDesc && (
           <p className="card-desc" style={{ fontSize: '0.85rem', color: '#bbb', marginTop: '6px', marginBottom: '8px', lineHeight: '1.4' }}>
             {displayDesc}
@@ -77,7 +147,7 @@ export default function Card({ place, onOpenMap, likesCount = 0, onLike, lang })
         {/* บล็อกข้อมูลเพิ่มเติมสั้นๆ ด้านล่างการ์ด */}
         <div className="card-meta" style={{ marginTop: '10px' }}>
           <span className="map-btn" style={{ fontSize: '0.85rem', color: '#00a854' }}>
-             {t('btn_map_view', isEn ? 'Details & Map' : 'ดูรายละเอียดและแผนที่')}
+             {t('btn_map_view', 'ดูรายละเอียดและแผนที่')}
           </span>
         </div>
       </div>

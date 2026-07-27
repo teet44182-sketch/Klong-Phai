@@ -1,11 +1,20 @@
 // src/pages/Home.jsx
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { placesDatabase } from '../placesData';
 import Card from '../components/Card';
 import watKaoprickImg from '../assets/watkaoprick.jpg'; 
 
-export default function Home({ onOpenMap, likes = {}, onLike, lang }) {
+export default function Home({ 
+  places = [],        // รับ places จาก Props
+  loading = false,    // รับ loading จาก Props
+  onOpenMap, 
+  likes = {}, 
+  onLike, 
+  lang,
+  isAdmin = false,
+  onEditPlace,
+  onDeletePlace
+}) {
   const { t, i18n } = useTranslation();
   const [keyword, setKeyword] = useState('');
 
@@ -32,11 +41,30 @@ export default function Home({ onOpenMap, likes = {}, onLike, lang }) {
     return () => observer.disconnect();
   }, []);
 
-  // ระบบค้นหา: สามารถค้นหาได้ทั้ง title (ไทย) และ title_en (อังกฤษ)
-  const filteredPlaces = placesDatabase.filter(place => {
-    const searchTarget = isEn && place.title_en ? place.title_en : place.title;
-    return searchTarget.toLowerCase().includes(keyword.toLowerCase()) ||
-           place.title.toLowerCase().includes(keyword.toLowerCase());
+  // แปลงโครงสร้างสถานที่จาก Firestore/Props ให้พร้อมสำหรับการค้นหาและการ์ดแสดงผล
+  const formattedPlaces = (places || []).map(p => ({
+    id: p.id,
+    name: p.title || p.name,
+    nameEn: p.title_en || p.nameEn,
+    description: p.description,
+    descriptionEn: p.description_en || p.descriptionEn,
+    detail: p.detailDescription || p.detail || p.description,
+    detailEn: p.detailDescription_en || p.detailEn || p.description_en,
+    img: p.img,
+    mapUrl: p.mapUrl,
+    workingHours: p.workingHours,
+    phone: p.phone,
+    category: p.category
+  }));
+
+  // ระบบค้นหา: ค้นหาได้ทั้งภาษาไทยและอังกฤษ
+  const filteredPlaces = formattedPlaces.filter(place => {
+    const thName = place.name || '';
+    const enName = place.nameEn || '';
+    const searchKey = keyword.toLowerCase();
+
+    return thName.toLowerCase().includes(searchKey) ||
+           enName.toLowerCase().includes(searchKey);
   });
 
   return (
@@ -49,7 +77,7 @@ export default function Home({ onOpenMap, likes = {}, onLike, lang }) {
         />
 
         <div className="search-container-inside">
-          <h1>{t('hero_title', 'เที่ยวชุมชน คลองไผ่')}</h1><br></br>
+          <h1>{t('hero_title', 'เที่ยวในเทศบาลตำบล คลองไผ่')}</h1><br />
           
           {/* ปรับกล่องเสิร์ชให้มีโครงสร้างสวยงามและจัดกึ่งกลาง */}
           <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
@@ -75,25 +103,34 @@ export default function Home({ onOpenMap, likes = {}, onLike, lang }) {
           )}
         </h2>
         
-        <div className="results-grid">
-          {filteredPlaces.length > 0 ? (
-            filteredPlaces.map(place => (
-              <Card 
-                key={place.id} 
-                place={place} 
-                onOpenMap={onOpenMap} 
-                likesCount={likes[place.id] || 0}
-                onLike={onLike}
-                lang={currentLang}
-              />
-            ))
-          ) : (
-            <div className="no-result">
-              <h3>{t('no_search_title', 'ไม่พบชื่อสถานที่ที่คุณค้นหา')}</h3>
-              <p style={{ marginTop: '5px' }}>{t('no_search_desc', 'ลองพิมพ์ค้นหาด้วยชื่ออื่น')}</p>
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <div style={{ color: '#aaa', textAlign: 'center', padding: '30px', fontFamily: 'Prompt, sans-serif' }}>
+            {isEn ? 'Searching...' : 'กำลังค้นหาข้อมูล...'}
+          </div>
+        ) : (
+          <div className="results-grid">
+            {filteredPlaces.length > 0 ? (
+              filteredPlaces.map(place => (
+                <Card 
+                  key={place.id} 
+                  place={place} 
+                  onOpenMap={onOpenMap} 
+                  likesCount={likes[place.id] || 0}
+                  onLike={onLike}
+                  lang={currentLang}
+                  isAdmin={isAdmin}
+                  onEdit={onEditPlace}
+                  onDelete={onDeletePlace}
+                />
+              ))
+            ) : (
+              <div className="no-result">
+                <h3>{t('no_search_title', 'ไม่พบชื่อสถานที่ที่คุณค้นหา')}</h3>
+                <p style={{ marginTop: '5px' }}>{t('no_search_desc', 'ลองพิมพ์ค้นหาด้วยชื่ออื่น')}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ส่วนเนื้อหาสลับซ้ายขวา */}
