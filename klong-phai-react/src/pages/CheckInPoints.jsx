@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
+import SwipeCard from '../components/SwipeCard';
 
 // นำเข้า Firebase Firestore เฉพาะส่วนการจัดการ Review
 import { db } from '../firebase';
@@ -27,7 +28,10 @@ export default function CheckInPoints({
   lang,
   isAdmin = false,     
   onEditPlace,         
-  onDeletePlace        
+  onDeletePlace,
+  selectedPlaces = [],          // รายการสถานที่ในทริป
+  setSelectedPlaces,            // ฟังก์ชันอัปเดตรายการในทริป
+  onAddToPlan                   // Handler เพิ่มเติม (ถ้ามี)
 }) {
   const { t, i18n } = useTranslation();
   
@@ -48,9 +52,50 @@ export default function CheckInPoints({
     window.scrollTo(0, 0);
   }, []);
 
+  // 🟢 ปัดขวา / กดเพิ่ม = เพิ่มเข้าแผนทริป (ตรวจสอบ ID ไม่ให้ซ้ำ)
+  const handleSwipeRightAdd = (place) => {
+    if (setSelectedPlaces) {
+      const placeId = place.id || place.docId;
+      setSelectedPlaces(prev => {
+        const safePrev = prev || [];
+        const exists = safePrev.some(p => (p.id || p.docId) === placeId);
+        if (!exists) {
+          return [...safePrev, place];
+        }
+        return safePrev;
+      });
+    }
+  };
+
+  // 🔴 ปัดซ้าย / กดลบ = ลบออกจากแผนทริป
+  const handleSwipeLeftRemove = (place) => {
+    if (setSelectedPlaces) {
+      const placeId = place.id || place.docId;
+      setSelectedPlaces(prev => (prev || []).filter(p => (p.id || p.docId) !== placeId));
+    }
+  };
+
+  // 🖱️ ฟังก์ชันสำหรับคลิกปุ่มบน Card (สลับเพิ่ม/ลบ)
+  const handleToggleAddToPlan = (place) => {
+    const placeId = place.id || place.docId;
+    const safeSelected = selectedPlaces || [];
+    const exists = safeSelected.some(p => (p.id || p.docId) === placeId);
+
+    if (exists) {
+      handleSwipeLeftRemove(place);
+    } else {
+      handleSwipeRightAdd(place);
+    }
+
+    if (onAddToPlan) {
+      onAddToPlan(place);
+    }
+  };
+
   // ฟังก์ชันช่วยแปลงและจัด Format ข้อมูลสถานที่ให้พร้อมใช้งาน
   const mapPlaceData = (p) => ({
     id: p.id || p.docId,
+    docId: p.docId || p.id,
     name: p.title || p.name || p.placeName || 'ไม่มีชื่อสถานที่',
     nameEn: p.title_en || p.nameEn || p.title || p.name,
     description: p.description || p.detail || '',
@@ -61,16 +106,18 @@ export default function CheckInPoints({
     mapUrl: p.mapUrl || p.googleMap,
     workingHours: p.workingHours || p.time,
     phone: p.phone,
-    category: p.category || p.type || 'checkin'
+    category: p.category || p.type || 'checkin',
+    coords: p.coords,
+    lat: p.lat,
+    lng: p.lng
   });
 
-  // 1. กรองเฉพาะสถานที่หมวดหมู่เกี่ยวกับจุดเช็คอิน/ท่องเที่ยว
+  // 1. กรองเฉพาะสถานที่หมวดหมู่เกี่ยวกับจุดเช็คอิน/ท่องเที่ยว (ยืดหยุ่นรองรับทุกรูปแบบ)
   const filteredPlaces = (places || [])
     .filter(p => {
       if (!p) return false;
-      const cat = (p.category || p.type || '').toLowerCase().trim();
-      // ยินยอมให้ผ่านถ้าตรงกับหมวดเช็คอิน หรือไม่มีการระบุหมวดหมู่ไว้
-      return ['checkin', 'check_in', 'check-in', 'attraction', 'tourist', 'travel', ''].includes(cat) || !p.category;
+      const cat = (p.category || p.type || '').toString().toLowerCase().trim();
+      return ['checkin', 'check_in', 'check-in', 'attraction', 'tourist', 'travel', 'top10', ''].includes(cat) || !p.category;
     })
     .map(mapPlaceData);
 
@@ -100,8 +147,8 @@ export default function CheckInPoints({
 
   // จัดอันดับสถานที่ตามจำนวน Likes
   const sortedPlaces = [...finalPlaces].sort((a, b) => {
-    const scoreA = likes[a.id] || 0;
-    const scoreB = likes[b.id] || 0;
+    const scoreA = likes[a.id || a.docId] || 0;
+    const scoreB = likes[b.id || b.docId] || 0;
     return scoreB - scoreA;
   });
 
@@ -182,18 +229,74 @@ export default function CheckInPoints({
   };
 
   return (
-    <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b', paddingTop: '100px' }}>
-      <div style={{ width: '100%', maxWidth: '1126px', margin: '0 auto', padding: '0 20px 60px 20px' }}>
+    <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
+      
+      {/* ส่วนหัวภาพพื้นหลังแบบเบลอ (Hero BG Blur) */}
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        height: '35vh', 
+        marginTop: '70px', 
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10
+      }}>
+        <img 
+          src="src/assets/cf.jpg" 
+          alt="Check-in Points Background"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            filter: 'blur(8px)', 
+            transform: 'scale(1.1)', 
+            zIndex: 1
+          }}
+        />
         
-        <h1 style={{ fontFamily: 'Mitr, sans-serif', fontSize: '2.2rem', color: '#fff', marginBottom: '10px' }}>
-          {t('checkin_title', isEn ? 'Top 10 Check-in Points in Khlong Phai' : 'จัดอันดับ 10 จุดเช็คอิน คลองไผ่')}
-        </h1>
-        <p style={{ color: '#aaa', marginBottom: '40px', fontFamily: 'Prompt, sans-serif' }}>
-          {t('checkin_subtitle', isEn 
-            ? 'Rankings update in real-time based on heart votes' 
-            : 'อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ บนกล่องการ์ดสถานที่')}
-        </p>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(43, 43, 43, 0.9))',
+          zIndex: 2
+        }} />
 
+        <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
+          <h1 className="page-title" style={{ 
+            fontSize: '2.2rem', 
+            color: '#ffffff', 
+            marginBottom: '8px',
+            textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
+            fontFamily: 'Mitr, sans-serif'
+          }}>
+            {t('checkin_title', isEn ? 'Top 10 Check-in Points in Khlong Phai' : 'จัดอันดับ 10 จุดเช็คอิน คลองไผ่')}
+          </h1>
+          <p style={{ color: '#ccc', margin: 0, fontFamily: 'Prompt, sans-serif', fontSize: '0.95rem' }}>
+            {t('checkin_subtitle', isEn 
+              ? 'Rankings update in real-time based on heart votes' 
+              : 'อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ บนกล่องการ์ดสถานที่')}
+          </p>
+        </div>
+      </div>
+
+      {/* ส่วนแสดงผลเนื้อหาการ์ดผลลัพธ์ด้านล่าง */}
+      <div className="page-container" style={{ 
+        width: '100%',
+        maxWidth: '1126px',
+        margin: '0 auto',
+        padding: '30px 20px 60px 20px', 
+        minHeight: '50vh',
+        height: 'auto' 
+      }}>
         {loading ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
             {isEn ? 'Loading places...' : 'กำลังโหลดข้อมูลสถานที่...'}
@@ -206,8 +309,12 @@ export default function CheckInPoints({
           <div className="results-grid" style={{ marginBottom: '60px' }}>
             {sortedPlaces.slice(0, 10).map((place, index) => {
               const translatedPlace = getTranslatedPlace(place);
+              const placeId = place.id || place.docId;
+              const safeSelected = selectedPlaces || [];
+              const isAdded = safeSelected.some(p => (p.id || p.docId) === placeId);
+
               return (
-                <div key={place.id || index} style={{ position: 'relative' }}>
+                <div key={placeId ? `checkin-${placeId}` : `checkin-idx-${index}`} style={{ position: 'relative' }}>
                   <div style={{
                     position: 'absolute', top: '-8px', left: '-8px',
                     background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#00a854',
@@ -215,16 +322,26 @@ export default function CheckInPoints({
                   }}>
                     {isEn ? `Rank ${index + 1}` : `อันดับ ${index + 1}`}
                   </div>
-                  <Card 
-                    place={translatedPlace} 
-                    onOpenMap={onOpenMap} 
-                    likesCount={likes[place.id] || 0} 
-                    onLike={onLike} 
-                    lang={currentLang}
-                    isAdmin={isAdmin}
-                    onEdit={onEditPlace}
-                    onDelete={onDeletePlace}
-                  />
+
+                  {/* 🎴 ครอบด้วย SwipeCard เพื่อรองรับ Touch Swipe ปัดเข้า/ออกคิว */}
+                  <SwipeCard
+                    isAdded={isAdded}
+                    onSwipeRight={() => handleSwipeRightAdd(place)}
+                    onSwipeLeft={() => handleSwipeLeftRemove(place)}
+                  >
+                    <Card 
+                      place={translatedPlace} 
+                      onOpenMap={onOpenMap} 
+                      likesCount={likes[placeId] || 0} 
+                      onLike={onLike} 
+                      lang={currentLang}
+                      isAdmin={isAdmin}
+                      onEdit={onEditPlace}
+                      onDelete={onDeletePlace}
+                      onAddToPlan={() => handleToggleAddToPlan(place)}
+                      isAddedToPlan={isAdded}
+                    />
+                  </SwipeCard>
                 </div>
               );
             })}
@@ -290,7 +407,7 @@ export default function CheckInPoints({
                 {t('no_reviews', isEn ? 'No comments yet. Be the first to comment!' : 'ยังไม่มีคอมเมนต์ มาร่วมแชร์ความเห็นเกี่ยวกับ 10 จุดเช็คอินเป็นคนแรกกันครับ!')}
               </p>
             ) : (
-              pageReviews.map((review) => {
+              pageReviews.map((review, rIdx) => {
                 const currentUserId = googleUser ? String(googleUser.uid).trim() : null;
                 const reviewOwnerId = review.userId ? String(review.userId).trim() : null;
                 const isOwner = currentUserId && reviewOwnerId && currentUserId === reviewOwnerId;
@@ -301,7 +418,7 @@ export default function CheckInPoints({
                   : t('sending', isEn ? 'Sending...' : 'กำลังส่ง...');
 
                 return (
-                  <div key={reviewId || Math.random()} style={{ padding: '15px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
+                  <div key={reviewId ? `rev-${reviewId}` : `rev-idx-${rIdx}`} style={{ padding: '15px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {review.userPhoto && <img src={review.userPhoto} alt="" style={{ width: 26, height: 26, borderRadius: '50%' }} />}

@@ -14,7 +14,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { 
   collection, 
   addDoc, 
-  getDocs,
   query, 
   orderBy, 
   onSnapshot, 
@@ -53,7 +52,7 @@ export default function App() {
   const [places, setPlaces] = useState([]);
   const [loadingPlaces, setLoadingPlaces] = useState(true);
 
-  // 🟢 State สำหรับ Trip Planner (จัดเก็บทริป + จำลง LocalStorage)
+  // State สำหรับ Trip Planner (จัดเก็บทริป + จำลง LocalStorage)
   const [selectedPlaces, setSelectedPlaces] = useState(() => {
     try {
       const saved = localStorage.getItem('my_trip_plan');
@@ -67,35 +66,87 @@ export default function App() {
     localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
   }, [selectedPlaces]);
 
-  // ฟังก์ชันสเปเชียลสำหรับเพิ่มสถานที่ลงทริป (เช็คซ้ำให้อัตโนมัติ)
+  // ฟังก์ชันสำหรับสลับเพิ่ม/ลบ สถานที่ลงทริป
+  const handleToggleAddToPlan = (place) => {
+    const targetId = place.id || place.docId;
+    setSelectedPlaces(prev => {
+      const exists = prev.some(p => (p.id || p.docId) === targetId);
+      if (exists) {
+        return prev.filter(p => (p.id || p.docId) !== targetId);
+      } else {
+        return [...prev, place];
+      }
+    });
+  };
+
+  // ฟังก์ชันเฉพาะสำหรับ Drag & Drop
   const handleAddPlaceToTrip = (place) => {
     const targetId = place.id || place.docId;
-    const exists = selectedPlaces.some(p => (p.id || p.docId) === targetId);
-    if (!exists) {
-      setSelectedPlaces(prev => [...prev, place]);
+    setSelectedPlaces(prev => {
+      const exists = prev.some(p => (p.id || p.docId) === targetId);
+      if (!exists) {
+        return [...prev, place];
+      }
+      return prev;
+    });
+  };
+
+  // 🗺️ ฟังก์ชันสร้าง Google Maps Multi-Stop Directions URL (แก้บักลิงก์แตกจากการใช้ URL ย่อ)
+  const generateMultiStopMapUrl = (placesList) => {
+    if (!placesList || placesList.length === 0) return '#';
+
+    // ดึงตำแหน่ง (พิกัด lat,lng หรือ ชื่อสถานที่)
+    const getLoc = (place) => {
+      if (place.lat && place.lng) {
+        return `${place.lat},${place.lng}`;
+      }
+      return encodeURIComponent(place.title || place.name || '');
+    };
+
+    // หมุดเดียว -> เปิด Search
+    if (placesList.length === 1) {
+      return `https://www.google.com/maps/search/?api=1&query=${getLoc(placesList[0])}`;
     }
+
+    // หลายหมุด -> จุดเริ่มต้น (Origin), จุดสุดท้าย (Destination), จุดแวะระหว่างทาง (Waypoints / Checkpoints)
+    const origin = getLoc(placesList[0]);
+    const destination = getLoc(placesList[placesList.length - 1]);
+    const waypoints = placesList
+      .slice(1, -1)
+      .map(getLoc)
+      .filter(Boolean)
+      .join('|');
+
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+    if (waypoints) {
+      url += `&waypoints=${waypoints}`;
+    }
+    return url;
   };
 
   // State UI & Modals
   const [modalInfo, setModalInfo] = useState({ isOpen: false, url: '' });
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
-  const [isAddPlaceModalOpen, setIsAddPlaceModalOpen] = useState(false); // Modal สำหรับ Admin เพิ่มสถานที่
+  const [isAddPlaceModalOpen, setIsAddPlaceModalOpen] = useState(false);
+  const [editingPlaceId, setEditingPlaceId] = useState(null);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // State ฟอร์มเพิ่มสถานที่ (Admin)
+  // State ฟอร์มเพิ่ม/แก้ไขสถานที่ (Admin)
   const [newPlace, setNewPlace] = useState({
     title: '',
     title_en: '',
     description: '',
     detailDescription: '',
-    img: '',
-    category: 'checkin', // checkin, restaurant, accommodation
+    img: '', 
+    category: 'checkin',
     mapUrl: '',
     workingHours: '',
     phone: ''
   });
+
+  const [imageFileName, setImageFileName] = useState('');
 
   // State Likes & Reviews
   const [likes, setLikes] = useState({});
@@ -185,34 +236,71 @@ export default function App() {
     }
   };
 
-  // Admin Add Place Handler
+  // Handler เลือกรูปภาพ
+  const handleImageBrowse = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFileName(file.name);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewPlace(prev => ({ ...prev, img: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleOpenGoogleMaps = () => {
+    window.open('https://www.google.com/maps', '_blank');
+  };
+
+  const resetForm = () => {
+    setEditingPlaceId(null);
+    setImageFileName('');
+    setNewPlace({
+      title: '',
+      title_en: '',
+      description: '',
+      detailDescription: '',
+      img: '',
+      category: 'checkin',
+      mapUrl: '',
+      workingHours: '',
+      phone: ''
+    });
+  };
+
+  // Admin Add / Edit Place Submit
   const handleAddPlaceSubmit = async (e) => {
     e.preventDefault();
     if (!newPlace.title || !newPlace.img) {
-      alert("กรุณากรอกชื่อสถานที่และใส่ URL รูปภาพหลักครับ");
+      alert("กรุณากรอกชื่อสถานที่และเลือกรูปภาพหลักครับ");
       return;
     }
 
     try {
-      await addDoc(collection(db, "places"), {
+      const payload = {
         ...newPlace,
-        createdAt: serverTimestamp()
-      });
-      alert("เพิ่มสถานที่เรียบร้อยแล้ว!");
+        category: (newPlace.category || 'checkin').toLowerCase().trim()
+      };
+
+      if (editingPlaceId) {
+        await updateDoc(doc(db, "places", String(editingPlaceId)), {
+          ...payload,
+          updatedAt: serverTimestamp()
+        });
+        alert("แก้ไขข้อมูลสถานที่เรียบร้อยแล้ว!");
+      } else {
+        await addDoc(collection(db, "places"), {
+          ...payload,
+          createdAt: serverTimestamp()
+        });
+        alert("เพิ่มสถานที่เรียบร้อยแล้ว!");
+      }
+
       setIsAddPlaceModalOpen(false);
-      setNewPlace({
-        title: '',
-        title_en: '',
-        description: '',
-        detailDescription: '',
-        img: '',
-        category: 'checkin',
-        mapUrl: '',
-        workingHours: '',
-        phone: ''
-      });
+      resetForm();
     } catch (error) {
-      console.error("Error adding place:", error);
+      console.error("Error saving place:", error);
       alert("เกิดข้อผิดพลาดในการบันทึกสถานที่");
     }
   };
@@ -231,16 +319,39 @@ export default function App() {
     }
   };
 
-  // Admin Place Handlers
+  // Admin Place Edit Handler
   const handleEditPlace = (place) => {
-    alert(`[Admin Action] แก้ไขสถานที่: ${place.nameEn || place.name || place.title}`);
+    setEditingPlaceId(place.id || place.docId);
+
+    let rawCategory = (place.category || place.type || 'checkin').toLowerCase().trim();
+    if (rawCategory.includes('hotel') || rawCategory.includes('stay') || rawCategory.includes('พัก')) {
+      rawCategory = 'accommodation';
+    } else if (rawCategory.includes('food') || rawCategory.includes('restaurant') || rawCategory.includes('อาหาร')) {
+      rawCategory = 'restaurant';
+    }
+
+    setNewPlace({
+      title: place.title || place.name || '',
+      title_en: place.title_en || place.nameEn || '',
+      description: place.description || '',
+      detailDescription: place.detailDescription || place.detail || '',
+      img: place.img || place.imageUrl || place.image || '',
+      category: rawCategory,
+      mapUrl: place.mapUrl || place.googleMap || place.map || '',
+      workingHours: place.workingHours || '',
+      phone: place.phone || ''
+    });
+    setImageFileName(place.img ? 'รูปเดิมในระบบ' : '');
+    setIsAddPlaceModalOpen(true);
   };
 
+  // Admin Delete Handler
   const handleDeletePlace = async (place) => {
-    const placeTitle = place.nameEn || place.name || place.title;
+    const targetId = place.id || place.docId;
+    const placeTitle = place.title_en || place.title || place.name;
     if (window.confirm(`[Admin Confirm] คุณต้องการลบสถานที่ "${placeTitle}" ใช่หรือไม่?`)) {
       try {
-        await deleteDoc(doc(db, "places", String(place.id)));
+        await deleteDoc(doc(db, "places", String(targetId)));
         alert("ลบสถานที่เรียบร้อยแล้ว");
       } catch (error) {
         console.error("Error deleting place:", error);
@@ -249,7 +360,7 @@ export default function App() {
     }
   };
 
-  // Review Validation
+  // Review Validation & Handlers
   const validateReviewText = (text) => {
     const cleanText = text.trim();
     if (cleanText.length < 2) {
@@ -322,7 +433,16 @@ export default function App() {
     }
   };
 
-  const openMap = (url) => setModalInfo({ isOpen: true, url });
+  const openMap = (url, fallbackTitle = '') => {
+    if (url && url.trim() !== '') {
+      window.open(url, '_blank');
+    } else if (fallbackTitle) {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallbackTitle)}`, '_blank');
+    } else {
+      alert('ไม่มีข้อมูลตำแหน่ง Google Maps');
+    }
+  };
+
   const closeMap = () => setModalInfo({ isOpen: false, url: '' });
   const openDetail = (place) => { setDetailModal({ isOpen: true, placeData: place }); setGalleryIndex(0); };
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
@@ -353,11 +473,11 @@ export default function App() {
           <Link to="/" onClick={closeMobileMenu}>{t('nav_home', 'หน้าแรก')}</Link>
           <div className={`dropdown ${isFilterDropdownActive ? 'active' : ''}`}>
             <button className="dropdown-btn" onClick={(e) => { e.stopPropagation(); setIsFilterDropdownActive(!isFilterDropdownActive); }}>
-              {t('nav_restaurant_acc', 'Dining & Stay')}
+              {t('nav_restaurant_acc', 'ร้านอาหาร / ที่พัก')}
             </button>
             <div className="dropdown-content">
               <Link to="/restaurant" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}>
-                {currentLang === 'en' ? 'Street Food' : 'สตรีทฟู้ด'}
+                {t('nav_restaurant', 'ร้านอาหาร')}
               </Link>
               <Link to="/accommodation" onClick={() => { setIsFilterDropdownActive(false); closeMobileMenu(); }}>
                 {t('nav_accommodation', 'ที่พัก')}
@@ -367,17 +487,17 @@ export default function App() {
           <Link to="/checkin" style={{ textDecoration: 'none', fontSize: '14px', color: '#ddd' }} onClick={closeMobileMenu}>{t('nav_top10', '10 จุดเช็คอิน')}</Link>
           <Link to="/map" onClick={closeMobileMenu}>{t('nav_map', 'แผนที่ชุมชน')}</Link>
 
-          {/* 🌟 ปุ่ม Admin: แสดงเฉพาะเมื่อเป็น Admin */}
+          {/* ปุ่ม Admin: เพิ่มสถานที่ใหม่ */}
           {isAdmin && (
             <button 
-              onClick={() => setIsAddPlaceModalOpen(true)}
+              onClick={() => { resetForm(); setIsAddPlaceModalOpen(true); }}
               style={{ background: '#ff9800', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
             >
               ➕ เพิ่มสถานที่
             </button>
           )}
 
-          {/* 🟢 ปุ่มวางแผนการเดินทาง */}
+          {/* ปุ่มวางแผนการเดินทาง */}
           <Link 
             to="/planner" 
             className="plan-btn"
@@ -405,9 +525,22 @@ export default function App() {
         </div>
       </nav>
 
-      {/* 🌟 ส่ง places, selectedPlaces และ setSelectedPlaces ไปยัง Router Pages */}
+      {/* Routes */}
       <Routes>
-        <Route path="/" element={<Home places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
+        <Route path="/" element={
+          <Home 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike} 
+            lang={currentLang} 
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+            onAddToPlan={handleToggleAddToPlan}
+          />
+        } />
+        
         <Route path="/checkin" element={
           <CheckInPoints 
             places={places}
@@ -423,13 +556,54 @@ export default function App() {
             isAdmin={isAdmin}              
             onEditPlace={handleEditPlace}  
             onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+            onAddToPlan={handleToggleAddToPlan}
           />
         } />
-        <Route path="/restaurant" element={<Restaurant places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
-        <Route path="/accommodation" element={<Accommodation places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike} lang={currentLang} />} />
-        <Route path="/map" element={<CommunityMap places={places} loading={loadingPlaces} lang={currentLang} />} />
+
+        <Route path="/restaurant" element={
+          <Restaurant 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike} 
+            lang={currentLang} 
+            isAdmin={isAdmin}              
+            onEditPlace={handleEditPlace}  
+            onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+            onAddToPlan={handleToggleAddToPlan}
+          />
+        } />
+
+        <Route path="/accommodation" element={
+          <Accommodation 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike} 
+            lang={currentLang} 
+            isAdmin={isAdmin}              
+            onEditPlace={handleEditPlace}  
+            onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+            onAddToPlan={handleToggleAddToPlan}
+          />
+        } />
+
+        <Route path="/map" element={
+          <CommunityMap 
+            places={places} 
+            loading={loadingPlaces} 
+            lang={currentLang} 
+          />
+        } />
         
-        {/* 🟢 TripPlanner พร้อมสิง state selectedPlaces */}
         <Route path="/planner" element={
           <TripPlanner 
             places={places} 
@@ -437,13 +611,21 @@ export default function App() {
             lang={currentLang} 
             selectedPlaces={selectedPlaces}
             setSelectedPlaces={setSelectedPlaces}
+            generateMultiStopMapUrl={generateMultiStopMapUrl}
           />
         } />
 
-        <Route path="/detail/:id" element={<Detail places={places} loading={loadingPlaces} onOpenMap={openMap} lang={currentLang} />} />
+        <Route path="/detail/:id" element={
+          <Detail 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openMap} 
+            lang={currentLang} 
+          />
+        } />
       </Routes>
 
-      {/* 🛍️ Drop Zone ตะกร้าลอยมุมขวาล่าง แสดงอยู่ทุกหน้าในเว็บ */}
+      {/* Floating Basket */}
       <FloatingTripBasket
         selectedPlaces={selectedPlaces}
         onAddPlace={handleAddPlaceToTrip}
@@ -451,31 +633,203 @@ export default function App() {
 
       <MapModal isOpen={modalInfo.isOpen} mapUrl={modalInfo.url} onClose={closeMap} zIndex={9999} />
 
-      {/* 🌟 Modal สำหรับ Admin เพิ่มสถานที่ใหม่ */}
+      {/* Modal เพิ่ม/แก้ไข สถานที่ */}
       {isAddPlaceModalOpen && (
-        <div className="map-modal-overlay active" style={{ zIndex: 3000 }} onClick={() => setIsAddPlaceModalOpen(false)}>
-          <div className="map-modal-content" style={{ background: '#222', color: '#fff', padding: '25px', maxWidth: '500px', borderRadius: '12px' }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ color: '#ff9800', marginTop: 0 }}>➕ เพิ่มสถานที่ใหม่ (Admin)</h3>
-            <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
-              <input type="text" placeholder="ชื่อสถานที่ (ภาษาไทย) *" value={newPlace.title} onChange={(e) => setNewPlace({...newPlace, title: e.target.value})} required style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-              <input type="text" placeholder="ชื่อสถานที่ (English)" value={newPlace.title_en} onChange={(e) => setNewPlace({...newPlace, title_en: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+        <div 
+          className="map-modal-overlay active" 
+          style={{ 
+            zIndex: 3000, 
+            backgroundColor: 'rgba(0, 0, 0, 0.75)', 
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }} 
+          onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }}
+        >
+          <div 
+            className="map-modal-content" 
+            style={{ 
+              background: '#1e1e1e', 
+              color: '#fff', 
+              padding: '28px', 
+              maxWidth: '480px', 
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+              borderRadius: '16px',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+              <span style={{ color: '#8c52ff', fontSize: '1.6rem', fontWeight: 'bold' }}>✦</span>
+              <h3 style={{ color: '#ff9800', margin: 0, fontSize: '1.45rem', fontWeight: 'bold', fontFamily: 'Prompt, sans-serif' }}>
+                {editingPlaceId ? 'แก้ไขสถานที่ (Admin)' : 'เพิ่มสถานที่ใหม่ (Admin)'}
+              </h3>
+            </div>
+
+            <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input 
+                type="text" 
+                placeholder="ชื่อสถานที่ (ภาษาไทย) *" 
+                value={newPlace.title} 
+                onChange={(e) => setNewPlace({...newPlace, title: e.target.value})} 
+                required 
+                style={inputStyle} 
+              />
+              <input 
+                type="text" 
+                placeholder="ชื่อสถานที่ (English)" 
+                value={newPlace.title_en} 
+                onChange={(e) => setNewPlace({...newPlace, title_en: e.target.value})} 
+                style={inputStyle} 
+              />
               
-              <select value={newPlace.category} onChange={(e) => setNewPlace({...newPlace, category: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
+              <select 
+                value={newPlace.category} 
+                onChange={(e) => setNewPlace({...newPlace, category: e.target.value})} 
+                style={{ ...inputStyle, cursor: 'pointer', appearance: 'none' }}
+              >
                 <option value="checkin">10 จุดเช็คอิน</option>
                 <option value="restaurant">ร้านอาหาร (Street Food)</option>
                 <option value="accommodation">ที่พัก</option>
               </select>
 
-              <input type="url" placeholder="URL รูปภาพหลัก *" value={newPlace.img} onChange={(e) => setNewPlace({...newPlace, img: e.target.value})} required style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-              <textarea placeholder="คำอธิบายสั้นๆ" value={newPlace.description} onChange={(e) => setNewPlace({...newPlace, description: e.target.value})} rows="2" style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px', resize: 'none' }} />
-              <textarea placeholder="รายละเอียดเชิงลึก" value={newPlace.detailDescription} onChange={(e) => setNewPlace({...newPlace, detailDescription: e.target.value})} rows="3" style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px', resize: 'none' }} />
-              <input type="text" placeholder="เวลาทำการ (เช่น 08:00 - 17:00)" value={newPlace.workingHours} onChange={(e) => setNewPlace({...newPlace, workingHours: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-              <input type="text" placeholder="เบอร์โทรศัพท์" value={newPlace.phone} onChange={(e) => setNewPlace({...newPlace, phone: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-              <input type="url" placeholder="Google Maps URL" value={newPlace.mapUrl} onChange={(e) => setNewPlace({...newPlace, mapUrl: e.target.value})} style={{ padding: '8px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <label 
+                    htmlFor="place-img-file" 
+                    style={{ 
+                      background: '#333', 
+                      color: '#ddd', 
+                      padding: '10px 16px', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      fontSize: '0.85rem', 
+                      border: '1px solid #444', 
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    📁 Browse รูปภาพ...
+                  </label>
+                  <input 
+                    id="place-img-file" 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageBrowse} 
+                    style={{ display: 'none' }} 
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {imageFileName || 'ยังไม่ได้เลือกไฟล์รูป'}
+                  </span>
+                </div>
+                {newPlace.img && (
+                  <div style={{ marginTop: '4px', textAlign: 'center' }}>
+                    <img src={newPlace.img} alt="Preview" style={{ width: '100%', maxHeight: '90px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #444' }} />
+                  </div>
+                )}
+              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setIsAddPlaceModalOpen(false)} style={{ background: '#666', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>ยกเลิก</button>
-                <button type="submit" style={{ background: '#ff9800', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>บันทึกสถานที่</button>
+              <textarea 
+                placeholder="คำอธิบายสั้นๆ" 
+                value={newPlace.description} 
+                onChange={(e) => setNewPlace({...newPlace, description: e.target.value})} 
+                rows="2" 
+                style={{ ...inputStyle, resize: 'none' }} 
+              />
+              <textarea 
+                placeholder="รายละเอียดเชิงลึก" 
+                value={newPlace.detailDescription} 
+                onChange={(e) => setNewPlace({...newPlace, detailDescription: e.target.value})} 
+                rows="3" 
+                style={{ ...inputStyle, resize: 'none' }} 
+              />
+              <input 
+                type="text" 
+                placeholder="เวลาทำการ (เช่น 08:00 - 17:00)" 
+                value={newPlace.workingHours} 
+                onChange={(e) => setNewPlace({...newPlace, workingHours: e.target.value})} 
+                style={inputStyle} 
+              />
+              <input 
+                type="text" 
+                placeholder="เบอร์โทรศัพท์" 
+                value={newPlace.phone} 
+                onChange={(e) => setNewPlace({...newPlace, phone: e.target.value})} 
+                style={inputStyle} 
+              />
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="url" 
+                  placeholder="Google Maps URL / ลิงก์ตำแหน่ง GPS" 
+                  value={newPlace.mapUrl} 
+                  onChange={(e) => setNewPlace({...newPlace, mapUrl: e.target.value})} 
+                  style={{ ...inputStyle, flex: 1 }} 
+                />
+                <button 
+                  type="button" 
+                  onClick={handleOpenGoogleMaps} 
+                  title="เปิด Google Maps เพื่อค้นหาพิกัด"
+                  style={{ 
+                    background: '#ea4335', 
+                    color: '#fff', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    padding: '0 14px', 
+                    cursor: 'pointer', 
+                    fontSize: '0.85rem', 
+                    fontWeight: 'bold', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '4px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  📍 Map
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} 
+                  style={{ 
+                    background: '#6c757d', 
+                    color: '#fff', 
+                    border: 'none', 
+                    padding: '10px 22px', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.95rem'
+                  }}
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  type="submit" 
+                  style={{ 
+                    background: '#ff9800', 
+                    color: '#fff', 
+                    border: 'none', 
+                    padding: '10px 22px', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer', 
+                    fontWeight: 'bold',
+                    fontSize: '0.95rem',
+                    boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)'
+                  }}
+                >
+                  {editingPlaceId ? 'บันทึกการแก้ไข' : 'บันทึกสถานที่'}
+                </button>
               </div>
             </form>
           </div>
@@ -496,12 +850,12 @@ export default function App() {
           {detailModal.placeData && (
             <div>
               {(() => {
-                const images = [detailModal.placeData.img, ...(detailModal.placeData.gallery || [])];
+                const images = [detailModal.placeData.img, ...(detailModal.placeData.gallery || [])].filter(Boolean);
                 const total = images.length;
                 
                 const placeTitle = currentLang === 'en' && detailModal.placeData.title_en 
                   ? detailModal.placeData.title_en 
-                  : (detailModal.placeData.name || detailModal.placeData.title);
+                  : (detailModal.placeData.title || detailModal.placeData.name);
 
                 const placeDetailDesc = currentLang === 'en' && detailModal.placeData.detailDescription_en
                   ? detailModal.placeData.detailDescription_en
@@ -516,7 +870,7 @@ export default function App() {
                     <div style={{ width: '100%', height: '220px', position: 'relative', overflow: 'hidden', background: '#111' }}>
                       <img
                         key={galleryIndex}
-                        src={images[galleryIndex]}
+                        src={images[galleryIndex] || 'https://via.placeholder.com/400x220?text=No+Image'}
                         alt={`${placeTitle} ${galleryIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', animation: 'fadeIn 0.3s ease' }}
                       />
@@ -565,7 +919,7 @@ export default function App() {
                       </div>
 
                       <div style={{ marginTop: '25px', textAlign: 'center', marginBottom: '25px' }}>
-                        <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl)}>
+                        <button style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '50px', fontFamily: 'Mitr, sans-serif', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => openMap(detailModal.placeData.mapUrl, detailModal.placeData.title)}>
                           {t('btn_nav_map', 'ดูแผนที่นำทาง')}
                         </button>
                       </div>
@@ -666,3 +1020,14 @@ export default function App() {
     </Router>
   );
 }
+
+const inputStyle = {
+  padding: '12px 14px',
+  background: '#2b2d31',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  color: '#fff',
+  borderRadius: '8px',
+  fontSize: '0.9rem',
+  outline: 'none',
+  fontFamily: 'Prompt, sans-serif'
+};

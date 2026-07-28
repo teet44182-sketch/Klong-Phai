@@ -1,8 +1,14 @@
 // src/components/FloatingTripBasket.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export default function FloatingTripBasket({ selectedPlaces = [], onAddPlace, onOpenTripPlanner }) {
+export default function FloatingTripBasket({ 
+  selectedPlaces = [], 
+  onAddPlace, 
+  onOpenTripPlanner 
+}) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const navigate = useNavigate();
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -36,13 +42,22 @@ export default function FloatingTripBasket({ selectedPlaces = [], onAddPlace, on
     }
   };
 
+  // 🟢 เมื่อคลิกปุ่มตะกร้า ให้ไปหน้า Plan
+  const handleClick = () => {
+    if (onOpenTripPlanner) {
+      onOpenTripPlanner();
+    } else {
+      navigate('/planner');
+    }
+  };
+
   return (
     <div
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={onOpenTripPlanner}
+      onClick={handleClick}
       style={{
         position: 'fixed',
         bottom: '25px',
@@ -70,7 +85,7 @@ export default function FloatingTripBasket({ selectedPlaces = [], onAddPlace, on
           {isDragOver ? 'ปล่อยเพื่อเพิ่ม!' : 'ทริปของคุณ'}
         </span>
         <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-          {selectedPlaces.length} สถานที่ (ลาก Card มาวางได้)
+          {selectedPlaces.length} สถานที่ (กดเพื่อดูแผนทริป)
         </span>
       </div>
     </div>

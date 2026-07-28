@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
-import SwipeCard from '../components/SwipeCard'; // 👈 นำเข้าคอมโพเนนต์ SwipeCard
+import SwipeCard from '../components/SwipeCard';
 import watKaoprickImg from '../assets/watkaoprick.jpg'; 
 
 export default function Home({ 
-  places = [],        // รับ places จาก Props
-  loading = false,    // รับ loading จาก Props
+  places = [],        
+  loading = false,    
   onOpenMap, 
   likes = {}, 
   onLike, 
@@ -15,9 +15,9 @@ export default function Home({
   isAdmin = false,
   onEditPlace,
   onDeletePlace,
-  selectedPlaces = [],          // เพิ่ม Props สำหรับ Trip Planner
-  setSelectedPlaces,            // ฟังก์ชันอัปเดตรายการในทริป
-  onAddToPlan                   // หรือรับ handler มาโดยตรง
+  selectedPlaces = [],          
+  setSelectedPlaces,            
+  onAddToPlan                   
 }) {
   const { t, i18n } = useTranslation();
   const [keyword, setKeyword] = useState('');
@@ -45,74 +45,76 @@ export default function Home({
     return () => observer.disconnect();
   }, []);
 
- // 🟢 ปัดขวา = เพิ่มเข้าแผนทริป (เช็ค ID ให้ครอบคลุมทั้ง id และ docId)
+  // 🟢 ปัดขวา / กดเพิ่ม = เพิ่มเข้าแผนทริป (ตรวจสอบ ID ไม่ให้ซ้ำ)
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
-      const exists = selectedPlaces.some(p => {
-        const pId = p.id || p.docId;
-        return pId === placeId;
+      setSelectedPlaces(prev => {
+        const exists = prev.some(p => (p.id || p.docId) === placeId);
+        if (!exists) {
+          return [...prev, place];
+        }
+        return prev;
       });
-      
-      if (!exists) {
-        setSelectedPlaces([...selectedPlaces, place]);
-      }
     }
   };
 
-  // 🔴 ปัดซ้าย = ลบออกจากแผนทริป
+  // 🔴 ปัดซ้าย / กดลบ = ลบออกจากแผนทริป
   const handleSwipeLeftRemove = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
-      setSelectedPlaces(selectedPlaces.filter(p => {
-        const pId = p.id || p.docId;
-        return pId !== placeId;
-      }));
+      setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
     }
   };
 
+  // 🖱️ ฟังก์ชันสำหรับคลิกปุ่มบน Card (สลับเพิ่ม/ลบ)
   const handleToggleAddToPlan = (place) => {
     const placeId = place.id || place.docId;
-    const exists = selectedPlaces.some(p => {
-      const pId = p.id || p.docId;
-      return pId === placeId;
-    });
+    const exists = selectedPlaces.some(p => (p.id || p.docId) === placeId);
 
     if (exists) {
       handleSwipeLeftRemove(place);
     } else {
       handleSwipeRightAdd(place);
     }
+
+    if (onAddToPlan) {
+      onAddToPlan(place);
+    }
   };
   
   // แปลงโครงสร้างสถานที่จาก Firestore/Props ให้พร้อมสำหรับการค้นหาและการ์ดแสดงผล
-  const formattedPlaces = (places || []).map(p => ({
-    id: p.id || p.docId,
-    docId: p.docId || p.id,
-    name: p.title || p.name,
-    nameEn: p.title_en || p.nameEn,
-    description: p.description,
-    descriptionEn: p.description_en || p.descriptionEn,
-    detail: p.detailDescription || p.detail || p.description,
-    detailEn: p.detailDescription_en || p.detailEn || p.description_en,
-    img: p.img,
-    mapUrl: p.mapUrl,
-    workingHours: p.workingHours,
-    phone: p.phone,
-    category: p.category,
-    coords: p.coords,
-    lat: p.lat,
-    lng: p.lng
-  }));
+  const formattedPlaces = (places || []).map(p => {
+    const id = p.id || p.docId;
+    return {
+      id: id,
+      docId: p.docId || p.id,
+      name: p.title || p.name || '',
+      nameEn: p.title_en || p.nameEn || '',
+      description: p.description || '',
+      descriptionEn: p.description_en || p.descriptionEn || '',
+      detail: p.detailDescription || p.detail || p.description || '',
+      detailEn: p.detailDescription_en || p.detailEn || p.description_en || '',
+      img: p.img,
+      mapUrl: p.mapUrl,
+      workingHours: p.workingHours,
+      phone: p.phone,
+      category: p.category,
+      coords: p.coords,
+      lat: p.lat,
+      lng: p.lng
+    };
+  });
 
   // ระบบค้นหา: ค้นหาได้ทั้งภาษาไทยและอังกฤษ
   const filteredPlaces = formattedPlaces.filter(place => {
-    const thName = place.name || '';
-    const enName = place.nameEn || '';
-    const searchKey = keyword.toLowerCase();
+    const searchKey = keyword.trim().toLowerCase();
+    if (!searchKey) return true;
 
-    return thName.toLowerCase().includes(searchKey) ||
-           enName.toLowerCase().includes(searchKey);
+    const thName = (place.name || '').toLowerCase();
+    const enName = (place.nameEn || '').toLowerCase();
+
+    return thName.includes(searchKey) || enName.includes(searchKey);
   });
 
   return (
@@ -127,7 +129,6 @@ export default function Home({
         <div className="search-container-inside">
           <h1>{t('hero_title', 'เที่ยวในเทศบาลตำบล คลองไผ่')}</h1><br />
           
-          {/* ปรับกล่องเสิร์ชให้มีโครงสร้างสวยงามและจัดกึ่งกลาง */}
           <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
             <div className="search-box" style={{ margin: 0 }}>
               <input 
@@ -160,11 +161,10 @@ export default function Home({
             {filteredPlaces.length > 0 ? (
               filteredPlaces.map(place => {
                 const placeId = place.id || place.docId;
-                // เช็คสถานะว่าสถานที่นี้ถูกเลือกไว้ในทริปหรือยัง
                 const isAdded = selectedPlaces.some(p => (p.id || p.docId) === placeId);
 
                 return (
-                  // 🎴 ครอบด้วย SwipeCard เพื่อให้ปัดซ้าย-ขวาได้ทั้งคอมและมือถือ
+                  // 🎴 ครอบด้วย SwipeCard เพื่อรองรับ Touch Swipe บนมือถือ
                   <SwipeCard
                     key={placeId}
                     isAdded={isAdded}
@@ -180,7 +180,7 @@ export default function Home({
                       isAdmin={isAdmin}
                       onEdit={onEditPlace}
                       onDelete={onDeletePlace}
-                      onAddToPlan={handleToggleAddToPlan}
+                      onAddToPlan={() => handleToggleAddToPlan(place)}
                       isAddedToPlan={isAdded}
                     />
                   </SwipeCard>

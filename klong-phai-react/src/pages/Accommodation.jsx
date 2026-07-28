@@ -20,19 +20,29 @@ export default function Accommodation({
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // กรองเอาเฉพาะข้อมูลที่เป็นที่พักจาก Props places (รองรับทั้ง field category และ type)
+  // 📌 กรองเอาเฉพาะข้อมูลที่เป็นที่พัก (ปรับปรุงให้ไม่สนตัวพิมพ์ใหญ่-เล็ก และรองรับภาษาไทย/คีย์เวิร์ดอื่นๆ)
   const accommodations = (places || [])
-    .filter(place => place.category === 'accommodation' || place.type === 'accommodation')
+    .filter(place => {
+      const cat = String(place.category || place.type || '').toLowerCase().trim();
+      return (
+        cat === 'accommodation' || 
+        cat === 'hotel' || 
+        cat === 'resort' || 
+        cat === 'stay' || 
+        cat === 'ที่พัก' || 
+        cat === 'โรงแรม'
+      );
+    })
     .map(p => ({
-      id: p.id,
+      id: p.id || p.docId,
       name: p.title || p.name,
       nameEn: p.title_en || p.nameEn,
       description: p.description,
       descriptionEn: p.description_en || p.descriptionEn,
       detail: p.detailDescription || p.detail || p.description,
       detailEn: p.detailDescription_en || p.detailEn || p.description_en,
-      img: p.img,
-      mapUrl: p.mapUrl,
+      img: p.img || p.imageUrl || p.image,
+      mapUrl: p.mapUrl || p.googleMap || p.map,
       workingHours: p.workingHours,
       phone: p.phone,
       category: p.category || p.type
