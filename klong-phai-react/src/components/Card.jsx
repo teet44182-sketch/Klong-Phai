@@ -11,31 +11,25 @@ export default function Card({
   isAdmin = false,
   onEdit,
   onDelete,
-  onAddToPlan,
+  onAddToPlan,          // ยังรับไว้ แต่ไม่เรียกใช้
   isAddedToPlan = false
 }) {
   const { t, i18n } = useTranslation();
 
-  // เช็คภาษาปัจจุบัน
   const activeLang = lang || i18n.language || 'th';
   const isEn = String(activeLang).startsWith('en');
 
-  // ดึงชื่อสถานที่
   const titleTh = place.title || place.name || '';
   const titleEn = place.title_en || place.nameEn || titleTh;
   const displayTitle = isEn ? titleEn : titleTh;
 
-  // ดึงคำอธิบายสถานที่
   const descTh = place.description || place.detailDescription || place.detail || '';
   const descEn = place.description_en || place.descriptionEn || place.detailDescription_en || place.detailEn || descTh;
   const displayDesc = isEn ? descEn : descTh;
 
-  // รูปภาพสำรองกรณีไม่มี URL
   const imageSrc = place.img || 'https://via.placeholder.com/400x250?text=No+Image';
 
-  // Handler สำหรับเหตุการณ์ Drag & Drop
   const handleDragStart = (e) => {
-    // ส่งข้อมูลวัตถุ place ในรูปแบบ JSON string เมื่อเริ่มลาก
     e.dataTransfer.setData('application/json', JSON.stringify(place));
     e.dataTransfer.effectAllowed = 'copy';
   };
@@ -107,7 +101,6 @@ export default function Card({
         </div>
       )}
 
-      {/* แสดงรูปภาพสถานที่ */}
       <img 
         className="card-img" 
         src={imageSrc} 
@@ -118,7 +111,6 @@ export default function Card({
         }}
       />
       
-      {/* ปุ่มกดไลก์ */}
       {onLike && (
         <button 
           className="card-like-btn"
@@ -153,7 +145,6 @@ export default function Card({
         </button>
       )}
       
-      {/* รายละเอียดของการ์ด */}
       <div className="card-content">
         <div className="card-title" style={{ fontFamily: 'Mitr, sans-serif' }}>
           {displayTitle}
@@ -183,13 +174,10 @@ export default function Card({
              {t('btn_map_view', 'ดูรายละเอียดและแผนที่')}
           </span>
 
-          {/* ปุ่มกดเพิ่มลงทริปจาก Card โดยตรง */}
+          {/* ปุ่มเพิ่มลงทริป — แสดง UI แต่กดไม่ได้ */}
           {onAddToPlan && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToPlan(place);
-              }}
+              disabled
               style={{
                 background: isAddedToPlan ? '#333' : '#00a854',
                 color: isAddedToPlan ? '#aaa' : '#fff',
@@ -198,11 +186,12 @@ export default function Card({
                 borderRadius: '16px',
                 fontSize: '0.78rem',
                 fontWeight: 'bold',
-                cursor: 'pointer',
+                cursor: 'not-allowed',
+                opacity: 0.75,
                 transition: 'all 0.2s ease'
               }}
             >
-              {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? '+ Add to Trip' : '+ เพิ่มลงทริป')}
+              {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add to Trip' : 'เพิ่มลงทริป')}
             </button>
           )}
         </div>

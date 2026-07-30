@@ -52,6 +52,7 @@ export default function Home({
       setSelectedPlaces(prev => {
         const exists = prev.some(p => (p.id || p.docId) === placeId);
         if (!exists) {
+          if (onAddToPlan) onAddToPlan(place);
           return [...prev, place];
         }
         return prev;

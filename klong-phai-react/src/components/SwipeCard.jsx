@@ -4,9 +4,10 @@ import React, { useState, useRef } from 'react';
 export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const startPos = useRef({ x: 0, y: 0 });
 
-  // ตรวจสอบว่าเป็นการกดลงบน Interactive Elements (เช่น ปุ่ม, ลิงก์) หรือไม่
+  const startPos = useRef({ x: 0, y: 0, time: 0 });
+  const isHorizontalSwipe = useRef(null);
+
   const isInteractiveElement = (target) => {
     return (
       target.tagName === 'BUTTON' ||
@@ -18,52 +19,85 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
 
   const handleStart = (e, clientX, clientY) => {
     if (isInteractiveElement(e.target)) return;
-    startPos.current = { x: clientX, y: clientY };
+    
+    startPos.current = { 
+      x: clientX, 
+      y: clientY, 
+      time: Date.now() 
+    };
+    isHorizontalSwipe.current = null;
     setIsDragging(true);
   };
 
-  const handleMove = (clientX, clientY) => {
+  const handleMove = (e, clientX, clientY) => {
     if (!isDragging) return;
+
     const deltaX = clientX - startPos.current.x;
     const deltaY = clientY - startPos.current.y;
-    setDragOffset({ x: deltaX, y: deltaY });
+
+    if (isHorizontalSwipe.current === null) {
+      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY);
+      }
+    }
+
+    if (isHorizontalSwipe.current === false) return;
+
+    if (e.cancelable) e.preventDefault();
+
+    setDragOffset({ x: deltaX, y: deltaY * 0.2 });
   };
 
   const handleEnd = () => {
     if (!isDragging) return;
     setIsDragging(false);
 
-    const threshold = 100;
-
-    if (dragOffset.x > threshold) {
-      if (onSwipeRight) onSwipeRight();
-    } else if (dragOffset.x < -threshold) {
-      if (onSwipeLeft) onSwipeLeft();
+    if (isHorizontalSwipe.current === false) {
+      setDragOffset({ x: 0, y: 0 });
+      return;
     }
 
+    const duration = Date.now() - startPos.current.time;
+    const velocityX = Math.abs(dragOffset.x) / (duration || 1);
+
+    const distanceThreshold = 100;
+    const velocityThreshold = 0.5;
+
+    const isSwipeRight = dragOffset.x > distanceThreshold || (dragOffset.x > 30 && velocityX > velocityThreshold);
+    const isSwipeLeft = dragOffset.x < -distanceThreshold || (dragOffset.x < -30 && velocityX > velocityThreshold);
+
+    if (isSwipeRight && onSwipeRight) {
+      onSwipeRight();
+    } else if (isSwipeLeft && onSwipeLeft) {
+      onSwipeLeft();
+    }
+
+    // เด้งกลับตำแหน่งเดิมเสมอ การ์ดไม่หาย
     setDragOffset({ x: 0, y: 0 });
   };
 
-  const rotation = dragOffset.x * 0.1;
-  const opacity = 1 - Math.abs(dragOffset.x) / 300;
+  const rotation = dragOffset.x * 0.08;
+  const badgeOpacity = Math.min(Math.abs(dragOffset.x) / 80, 1);
 
   return (
     <div
       onTouchStart={(e) => handleStart(e, e.touches[0].clientX, e.touches[0].clientY)}
-      onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
+      onTouchMove={(e) => handleMove(e, e.touches[0].clientX, e.touches[0].clientY)}
       onTouchEnd={handleEnd}
       onMouseDown={(e) => {
         if (isInteractiveElement(e.target)) return;
-        e.preventDefault(); // ป้องกันการเลือกข้อความ หรือจับลากรูปภาพ
+        e.preventDefault();
         handleStart(e, e.clientX, e.clientY);
       }}
-      onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
+      onMouseMove={(e) => handleMove(e, e.clientX, e.clientY)}
       onMouseUp={handleEnd}
       onMouseLeave={() => { if (isDragging) handleEnd(); }}
       style={{
         transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${rotation}deg)`,
-        opacity: opacity,
-        transition: isDragging ? 'none' : 'transform 0.3s ease, opacity 0.3s ease',
+        opacity: 1,
+        transition: isDragging 
+          ? 'none' 
+          : 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -72,27 +106,27 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
         touchAction: 'pan-y'
       }}
     >
-      {/* Indicator ปัดขวา */}
-      {dragOffset.x > 30 && (
+      {/* Badge + ADD */}
+      {dragOffset.x > 20 && (
         <div style={{
-          position: 'absolute', top: '12px', left: '12px',
-          border: '2px solid #00a854', color: '#00a854', fontWeight: 'bold',
-          padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem',
-          transform: 'rotate(-15deg)', zIndex: 10, background: 'rgba(0,0,0,0.8)',
-          pointerEvents: 'none'
+          position: 'absolute', top: '16px', left: '16px',
+          border: '3px solid #00a854', color: '#00a854', fontWeight: '900',
+          padding: '4px 12px', borderRadius: '8px', fontSize: '1rem',
+          transform: 'rotate(-15deg)', zIndex: 20, background: 'rgba(0,0,0,0.75)',
+          opacity: badgeOpacity, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,168,84,0.3)'
         }}>
           + ADD
         </div>
       )}
 
-      {/* Indicator ปัดซ้าย */}
-      {dragOffset.x < -30 && (
+      {/* Badge SKIP */}
+      {dragOffset.x < -20 && (
         <div style={{
-          position: 'absolute', top: '12px', right: '12px',
-          border: '2px solid #ff4d4d', color: '#ff4d4d', fontWeight: 'bold',
-          padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem',
-          transform: 'rotate(15deg)', zIndex: 10, background: 'rgba(0,0,0,0.8)',
-          pointerEvents: 'none'
+          position: 'absolute', top: '16px', right: '16px',
+          border: '3px solid #ff4d4d', color: '#ff4d4d', fontWeight: '900',
+          padding: '4px 12px', borderRadius: '8px', fontSize: '1rem',
+          transform: 'rotate(15deg)', zIndex: 20, background: 'rgba(0,0,0,0.75)',
+          opacity: badgeOpacity, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(255,77,77,0.3)'
         }}>
           SKIP
         </div>

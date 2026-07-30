@@ -2,30 +2,34 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
+import SwipeCard from '../components/SwipeCard';
 
 export default function Accommodation({ 
-  places = [],        // รับ places จาก Props
-  loading = false,    // รับ loading จาก Props
+  places = [],
+  loading = false,
   onOpenMap, 
   likes = {}, 
   onLike, 
   lang,
   isAdmin = false,
   onEditPlace,
-  onDeletePlace
+  onDeletePlace,
+  selectedPlaces = [],
+  setSelectedPlaces,
+  onAddToPlan
 }) {
   const { t, i18n } = useTranslation();
 
-  // กำหนดภาษาปัจจุบัน (ถ้าไม่ส่ง lang ผ่าน prop ให้ถอยไปใช้ i18n.language)
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // 📌 กรองเอาเฉพาะข้อมูลที่เป็นที่พัก (ปรับปรุงให้ไม่สนตัวพิมพ์ใหญ่-เล็ก และรองรับภาษาไทย/คีย์เวิร์ดอื่นๆ)
+  // กรองเฉพาะที่พัก + รองรับ gallery
   const accommodations = (places || [])
     .filter(place => {
       const cat = String(place.category || place.type || '').toLowerCase().trim();
       return (
         cat === 'accommodation' || 
+        cat === 'accomodation' ||
         cat === 'hotel' || 
         cat === 'resort' || 
         cat === 'stay' || 
@@ -42,21 +46,48 @@ export default function Accommodation({
       detail: p.detailDescription || p.detail || p.description,
       detailEn: p.detailDescription_en || p.detailEn || p.description_en,
       img: p.img || p.imageUrl || p.image,
+      gallery: Array.isArray(p.gallery) ? p.gallery : [],
       mapUrl: p.mapUrl || p.googleMap || p.map,
       workingHours: p.workingHours,
       phone: p.phone,
-      category: p.category || p.type
+      category: p.category || p.type,
+      coords: p.coords,
+      lat: p.lat,
+      lng: p.lng
     }));
 
-  // สั่งให้หน้าเว็บเลื่อนกลับไปบนสุดโดยอัตโนมัติเมื่อเปลี่ยนมาหน้านี้
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // 🟢 ปัดขวา = เพิ่มเข้าทริป + Toast
+  const handleSwipeRightAdd = (place) => {
+    if (setSelectedPlaces) {
+      const placeId = place.id || place.docId;
+      setSelectedPlaces(prev => {
+        const safePrev = prev || [];
+        const exists = safePrev.some(p => (p.id || p.docId) === placeId);
+        if (!exists) {
+          if (onAddToPlan) onAddToPlan(place); // ให้ Toast เด้ง
+          return [...safePrev, place];
+        }
+        return safePrev;
+      });
+    }
+  };
+
+  // 🔴 ปัดซ้าย = ลบออกจากทริป
+  const handleSwipeLeftRemove = (place) => {
+    if (setSelectedPlaces) {
+      const placeId = place.id || place.docId;
+      setSelectedPlaces(prev => (prev || []).filter(p => (p.id || p.docId) !== placeId));
+    }
+  };
+
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
       
-      {/* ส่วนหัวภาพพื้นหลังแบบเบลอ (Hero BG Blur) */}
+      {/* Hero BG Blur */}
       <div style={{
         position: 'relative',
         width: '100%',
@@ -68,7 +99,6 @@ export default function Accommodation({
         alignItems: 'center',
         zIndex: 10
       }}>
-        {/* รูปภาพพื้นหลังฝั่งที่พักที่สั่งเบลอ */}
         <img 
           src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" 
           alt={t('nav_accommodation', isEn ? 'Accommodation' : 'ที่พัก')}
@@ -86,7 +116,6 @@ export default function Accommodation({
           }}
         />
         
-        {/* แผ่น Layer สีดำไล่เฉด เพื่อดันให้ตัวหนังสือหัวข้อเด่นขึ้นมา */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -97,7 +126,6 @@ export default function Accommodation({
           zIndex: 2
         }} />
 
-        {/* ข้อความหัวข้อ */}
         <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
           <h2 className="page-title" style={{ 
             fontSize: '2.5rem', 
@@ -111,7 +139,6 @@ export default function Accommodation({
         </div>
       </div>
 
-      {/* ส่วนแสดงผลเนื้อหาการ์ดผลลัพธ์ด้านล่าง */}
       <div className="page-container" style={{ 
         width: '100%',
         maxWidth: '1126px',
@@ -125,22 +152,34 @@ export default function Accommodation({
             {isEn ? 'Loading accommodations...' : 'กำลังโหลดข้อมูลที่พัก...'}
           </div>
         ) : (
-          /* แสดงผลการ์ดที่พักในรูปแบบ Grid ตามที่กำหนดไว้ใน CSS */
           <div className="results-grid">
             {accommodations.length > 0 ? (
-              accommodations.map(place => (
-                <Card 
-                  key={place.id} 
-                  place={place} 
-                  onOpenMap={onOpenMap} 
-                  likesCount={likes[place.id] || 0}
-                  onLike={onLike}
-                  lang={currentLang}
-                  isAdmin={isAdmin}
-                  onEdit={onEditPlace}
-                  onDelete={onDeletePlace}
-                />
-              ))
+              accommodations.map(place => {
+                const placeId = place.id || place.docId;
+                const isAdded = (selectedPlaces || []).some(p => (p.id || p.docId) === placeId);
+
+                return (
+                  <SwipeCard
+                    key={placeId}
+                    isAdded={isAdded}
+                    onSwipeRight={() => handleSwipeRightAdd(place)}
+                    onSwipeLeft={() => handleSwipeLeftRemove(place)}
+                  >
+                    <Card 
+                      place={place} 
+                      onOpenMap={onOpenMap} 
+                      likesCount={likes[placeId] || 0}
+                      onLike={onLike}
+                      lang={currentLang}
+                      isAdmin={isAdmin}
+                      onEdit={onEditPlace}
+                      onDelete={onDeletePlace}
+                      onAddToPlan={onAddToPlan}
+                      isAddedToPlan={isAdded}
+                    />
+                  </SwipeCard>
+                );
+              })
             ) : (
               <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
                 {t('no_accommodation', isEn ? 'No accommodations available at the moment.' : 'ยังไม่มีข้อมูลที่พักในขณะนี้')}
@@ -149,7 +188,6 @@ export default function Accommodation({
           </div>
         )}
       </div>
-
     </div>
   );
 }

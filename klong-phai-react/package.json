@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vis.gl/react-google-maps": "^1.9.0",
     "firebase": "^12.16.0",
     "i18next": "^26.3.6",
     "leaflet": "^1.9.4",

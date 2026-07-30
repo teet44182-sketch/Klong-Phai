@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
+import { bannedWords } from '../utils/wordlist';
 
 // นำเข้า Firebase Firestore เฉพาะส่วนการจัดการ Review
 import { db } from '../firebase';
@@ -45,7 +46,6 @@ export default function CheckInPoints({
 
   const pageId = 'checkin_page'; 
   const pageReviews = reviewsData[pageId] || [];
-  const bannedWords = ["ควย", "เย็ด", "มึง", "กู", "สัส", "เหี้ย", "ค_ย", "เ_ยด", "ดกทอง"];
 
   // เลื่อนกลับไปบนสุดเมื่อเปิดหน้านี้
   useEffect(() => {
@@ -60,6 +60,7 @@ export default function CheckInPoints({
         const safePrev = prev || [];
         const exists = safePrev.some(p => (p.id || p.docId) === placeId);
         if (!exists) {
+          if (onAddToPlan) onAddToPlan(place);
           return [...safePrev, place];
         }
         return safePrev;
@@ -92,39 +93,62 @@ export default function CheckInPoints({
     }
   };
 
-  // ฟังก์ชันช่วยแปลงและจัด Format ข้อมูลสถานที่ให้พร้อมใช้งาน
-  const mapPlaceData = (p) => ({
-    id: p.id || p.docId,
-    docId: p.docId || p.id,
-    name: p.title || p.name || p.placeName || 'ไม่มีชื่อสถานที่',
-    nameEn: p.title_en || p.nameEn || p.title || p.name,
-    description: p.description || p.detail || '',
-    descriptionEn: p.description_en || p.descriptionEn || p.description || '',
-    detail: p.detailDescription || p.detail || p.description || '',
-    detailEn: p.detailDescription_en || p.detailEn || p.description_en || '',
-    img: p.img || p.imageUrl || p.image,
-    mapUrl: p.mapUrl || p.googleMap,
-    workingHours: p.workingHours || p.time,
-    phone: p.phone,
-    category: p.category || p.type || 'checkin',
-    coords: p.coords,
-    lat: p.lat,
-    lng: p.lng
-  });
+  // ฟังก์ชันช่วยแปลงและจัด Format ข้อมูลสถานที่ให้พร้อมใช้งาน (รองรับ coords แบบ Array และ _en จาก Firestore)
+  const mapPlaceData = (p) => {
+    if (!p) return null;
 
-  // 1. กรองเฉพาะสถานที่หมวดหมู่เกี่ยวกับจุดเช็คอิน/ท่องเที่ยว (ยืดหยุ่นรองรับทุกรูปแบบ)
+    // 1. จัดการพิกัด lat, lng รองรับทั้ง coords: [lat, lng], lat/lng, latitude/longitude
+    let lat = p.lat || p.latitude;
+    let lng = p.lng || p.longitude;
+
+    if (Array.isArray(p.coords) && p.coords.length >= 2) {
+      lat = p.coords[0];
+      lng = p.coords[1];
+    }
+
+    // 2. Map ค่าฟิลด์ต่างๆ พร้อม Fallback ครอบคลุมทั้ง camelCase และ snake_case (_en)
+    return {
+      ...p,
+      id: p.id || p.docId,
+      docId: p.docId || p.id,
+      name: p.title || p.name || p.placeName || 'ไม่มีชื่อสถานที่',
+      nameEn: p.title_en || p.titleEn || p.nameEn || p.title || p.name,
+      description: p.description || p.detail || '',
+      descriptionEn: p.description_en || p.descriptionEn || p.description || '',
+      detail: p.detailDescription || p.detail || p.description || '',
+      detailEn: p.detailDescription_en || p.detailDescriptionEn || p.detailEn || p.description_en || '',
+      img: p.img || p.imageUrl || p.image || '',
+      gallery: Array.isArray(p.gallery) ? p.gallery : [],
+      mapUrl: p.mapUrl || p.googleMap || p.map || '',
+      workingHours: p.workingHours || p.time || '',
+      workingHoursEn: p.workingHours_en || p.workingHoursEn || p.workingHours || '',
+      phone: p.phone || '-',
+      category: p.category || p.type || 'checkin',
+      coords: p.coords || null,
+      lat: lat || null,
+      lng: lng || null
+    };
+  };
+
+  // 1. กรองเฉพาะสถานที่หมวดหมู่เกี่ยวกับจุดเช็คอิน/ท่องเที่ยว
   const filteredPlaces = (places || [])
     .filter(p => {
       if (!p) return false;
       const cat = (p.category || p.type || '').toString().toLowerCase().trim();
-      return ['checkin', 'check_in', 'check-in', 'attraction', 'tourist', 'travel', 'top10', ''].includes(cat) || !p.category;
+      const validCategories = ['checkin', 'check_in', 'check-in', 'attraction', 'tourist', 'travel', 'top10', ''];
+      
+      // ถ้าไม่มี category และ type กำหนด ให้ยอมรับไว้ก่อน
+      if (!p.category ) return true;
+
+      return validCategories.includes(cat);
     })
-    .map(mapPlaceData);
+    .map(mapPlaceData)
+    .filter(Boolean);
 
   // 2. Fallback: ถ้ากรองแล้วไม่พบข้อมูลเลย ให้ใช้สถานที่ทั้งหมดจาก props เพื่อป้องกันหน้าว่าง
   const finalPlaces = filteredPlaces.length > 0 
     ? filteredPlaces 
-    : (places || []).map(mapPlaceData);
+    : (places || []).map(mapPlaceData).filter(Boolean);
 
   const validateReviewText = (text) => {
     const cleanText = text.trim();

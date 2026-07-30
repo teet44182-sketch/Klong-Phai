@@ -1,10 +1,10 @@
-// src/pages/Restaurant.jsx
+// src/pages/Attractions.jsx
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 
-export default function Restaurant({ 
+export default function Attractions({ 
   places = [],
   loading = false,
   onOpenMap, 
@@ -23,15 +23,17 @@ export default function Restaurant({
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // กรองเฉพาะร้านอาหาร + รองรับ gallery
-  const restaurants = (places || [])
+  // กรองเฉพาะสถานที่ท่องเที่ยว (travel)
+  const attractions = (places || [])
     .filter(place => {
       const cat = String(place.category || place.type || '').toLowerCase().trim();
       return (
-        cat === 'restaurant' || 
-        cat === 'food' || 
-        cat === 'ร้านอาหาร' ||
-        cat === 'dining'
+        cat === 'travel' || 
+        cat === 'attraction' || 
+        cat === 'tourist' || 
+        cat === 'checkin' ||
+        cat === 'สถานที่ท่องเที่ยว' ||
+        cat === ''
       );
     })
     .map(p => ({
@@ -65,7 +67,7 @@ export default function Restaurant({
         const safePrev = prev || [];
         const exists = safePrev.some(p => (p.id || p.docId) === placeId);
         if (!exists) {
-          if (onAddToPlan) onAddToPlan(place); // ให้ Toast เด้ง
+          if (onAddToPlan) onAddToPlan(place);
           return [...safePrev, place];
         }
         return safePrev;
@@ -84,7 +86,7 @@ export default function Restaurant({
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
       
-      {/* Hero BG Blur */}
+      {/* Hero */}
       <div style={{
         position: 'relative',
         width: '100%',
@@ -97,8 +99,8 @@ export default function Restaurant({
         zIndex: 10
       }}>
         <img 
-          src="src/assets/cf.jpg" 
-          alt="Restaurant Background"
+          src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200" 
+          alt={isEn ? 'Attractions' : 'สถานที่ท่องเที่ยว'}
           style={{
             position: 'absolute',
             top: 0,
@@ -131,7 +133,7 @@ export default function Restaurant({
             textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
             fontFamily: 'Mitr, sans-serif'
           }}>
-            {t('nav_restaurant', isEn ? 'Restaurants' : 'ร้านอาหาร')}
+            {isEn ? 'All Attractions' : 'สถานที่ท่องเที่ยวทั้งหมด'}
           </h2>
         </div>
       </div>
@@ -146,12 +148,12 @@ export default function Restaurant({
       }}>
         {loading ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
-            {isEn ? 'Loading restaurants...' : 'กำลังโหลดข้อมูลร้านอาหาร...'}
+            {isEn ? 'Loading attractions...' : 'กำลังโหลดข้อมูลสถานที่ท่องเที่ยว...'}
           </div>
         ) : (
           <div className="results-grid">
-            {restaurants.length > 0 ? (
-              restaurants.map(place => {
+            {attractions.length > 0 ? (
+              attractions.map(place => {
                 const placeId = place.id || place.docId;
                 const isAdded = (selectedPlaces || []).some(p => (p.id || p.docId) === placeId);
 
@@ -179,7 +181,7 @@ export default function Restaurant({
               })
             ) : (
               <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
-                {isEn ? 'No restaurants available at the moment.' : 'ยังไม่มีข้อมูลร้านอาหารในขณะนี้'}
+                {isEn ? 'No attractions available at the moment.' : 'ยังไม่มีข้อมูลสถานที่ท่องเที่ยวในขณะนี้'}
               </div>
             )}
           </div>
