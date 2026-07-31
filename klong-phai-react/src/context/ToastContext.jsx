@@ -3,6 +3,17 @@ import React, { createContext, useContext, useState, useRef } from 'react';
 
 const ToastContext = createContext();
 
+// ✅ Sanitize toast message - ป้องกัน XSS
+const sanitizeMessage = (message) => {
+  if (!message) return '';
+  return String(message)
+    .replace(/[<>]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+};
+
 export const ToastProvider = ({ children }) => {
   const [toast, setToast] = useState({ show: false, message: '' });
   const [visible, setVisible] = useState(false);
@@ -13,8 +24,9 @@ export const ToastProvider = ({ children }) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 
-    setToast({ show: true, message });
-    // ให้ browser render ก่อน แล้วค่อยเปิด visible เพื่อให้ transition ทำงาน
+    const safeMessage = sanitizeMessage(message);
+
+    setToast({ show: true, message: safeMessage });
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setVisible(true));
     });
@@ -60,9 +72,8 @@ export const ToastProvider = ({ children }) => {
             lineHeight: 1.45,
             fontFamily: 'Prompt, sans-serif'
           }}
-        >
-          {toast.message}
-        </div>
+          dangerouslySetInnerHTML={{ __html: toast.message }}
+        />
       )}
     </ToastContext.Provider>
   );

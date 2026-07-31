@@ -4,16 +4,21 @@ import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
-
+// ✅ ใช้ env พร้อม fallback
 const firebaseConfig = {
-  apiKey: "AIzaSyD9-7W4KE18wAaLIE2CAN5oJWP1Oz3w4EM",
-  authDomain: "klong-phai.firebaseapp.com",
-  projectId: "klong-phai",
-  storageBucket: "klong-phai.firebasestorage.app",
-  messagingSenderId: "1099143524818",
-  appId: "1:1099143524818:web:4a1be68d6cd0b7cf35980b",
-  measurementId: "G-37JR86V3T8"
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || "AIzaSyD9-7W4KE18wAaLIE2CAN5oJWP1Oz3w4EM",
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "klong-phai.firebaseapp.com",
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "klong-phai",
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "klong-phai.firebasestorage.app",
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "1099143524818",
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || "1:1099143524818:web:4a1be68d6cd0b7cf35980b",
+  measurementId: import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID || "G-37JR86V3T8"
 };
+
+console.log("🔥 Firebase Config:", {
+  ...firebaseConfig,
+  apiKey: "***HIDDEN***" // ไม่แสดง apiKey ใน console
+});
 
 // เริ่มต้นเปิดระบบ Firebase
 const app = initializeApp(firebaseConfig);
@@ -36,37 +41,3 @@ export const loginWithGoogle = async () => {
 };
 
 export const logout = () => signOut(auth);
-
-// 🚀 ฟังก์ชันสำหรับอัปโหลดข้อมูล Hardcode ขึ้น Firestore (รันครั้งเดียวจบ)
-export const uploadPlacesToFirestore = async () => {
-  try {
-    const placesRef = collection(db, 'places');
-    
-    // 1. เช็คก่อนว่าใน Firestore มีข้อมูลอยู่แล้วหรือยัง เพื่อป้องกันการลงข้อมูลซ้ำ
-    const snapshot = await getDocs(placesRef);
-    if (!snapshot.empty) {
-      console.log('⚠️ มีข้อมูลสถานที่ใน Firestore อยู่แล้ว ยกเลิกการอัปโหลดเพื่อป้องกันข้อมูลซ้ำ');
-      alert('มีข้อมูลอยู่ใน Firestore อยู่แล้วครับ');
-      return;
-    }
-
-    console.log('🚀 กำลังเริ่มอัปโหลดข้อมูลเข้า Firestore...');
-
-    // 2. ลูปนำข้อมูลจาก placesDatabase ยัดเข้า Firestore
-    for (const place of placesDatabase) {
-      const { id, ...dataToUpload } = place; // ตัด id เดิมออก ให้ Firestore สร้างให้อัตโนมัติ
-
-      await addDoc(placesRef, {
-        ...dataToUpload,
-        category: dataToUpload.category || dataToUpload.type || 'checkin',
-        createdAt: new Date()
-      });
-      console.log(`✅ อัปโหลดเรียบร้อย: ${place.title}`);
-    }
-
-    console.log('🎉 อัปโหลดข้อมูลสถานที่ทั้งหมดขึ้น Firestore สำเร็จ!');
-    alert('อัปโหลดข้อมูลสถานที่ขึ้น Firestore สำเร็จเรียบร้อย!');
-  } catch (error) {
-    console.error('❌ เกิดข้อผิดพลาดในการอัปโหลดข้อมูล:', error);
-  }
-};

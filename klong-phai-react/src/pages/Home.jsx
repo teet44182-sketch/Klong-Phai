@@ -22,11 +22,9 @@ export default function Home({
   const { t, i18n } = useTranslation();
   const [keyword, setKeyword] = useState('');
 
-  // ภาษาปัจจุบัน ('th' หรือ 'en')
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // Fade-up on scroll using IntersectionObserver 
   useEffect(() => {
     const rows = document.querySelectorAll('.info-row');
     const observer = new IntersectionObserver(
@@ -45,7 +43,7 @@ export default function Home({
     return () => observer.disconnect();
   }, []);
 
-  // 🟢 ปัดขวา / กดเพิ่ม = เพิ่มเข้าแผนทริป (ตรวจสอบ ID ไม่ให้ซ้ำ)
+  // 🟢 ปัดขวา = เพิ่ม
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -60,15 +58,17 @@ export default function Home({
     }
   };
 
-  // 🔴 ปัดซ้าย / กดลบ = ลบออกจากแผนทริป
+  // 🔴 ปัดซ้าย = ลบ
   const handleSwipeLeftRemove = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
       setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
+      // ✅ เพิ่มบรรทัดนี้ให้ Toast เด้ง
+      if (onAddToPlan) onAddToPlan(place);
     }
   };
 
-  // 🖱️ ฟังก์ชันสำหรับคลิกปุ่มบน Card (สลับเพิ่ม/ลบ)
+  // 🖱️ คลิกปุ่ม
   const handleToggleAddToPlan = (place) => {
     const placeId = place.id || place.docId;
     const exists = selectedPlaces.some(p => (p.id || p.docId) === placeId);
@@ -78,13 +78,8 @@ export default function Home({
     } else {
       handleSwipeRightAdd(place);
     }
-
-    if (onAddToPlan) {
-      onAddToPlan(place);
-    }
   };
   
-  // แปลงโครงสร้างสถานที่จาก Firestore/Props ให้พร้อมสำหรับการค้นหาและการ์ดแสดงผล
   const formattedPlaces = (places || []).map(p => {
     const id = p.id || p.docId;
     return {
@@ -107,14 +102,11 @@ export default function Home({
     };
   });
 
-  // ระบบค้นหา: ค้นหาได้ทั้งภาษาไทยและอังกฤษ
   const filteredPlaces = formattedPlaces.filter(place => {
     const searchKey = keyword.trim().toLowerCase();
     if (!searchKey) return true;
-
     const thName = (place.name || '').toLowerCase();
     const enName = (place.nameEn || '').toLowerCase();
-
     return thName.includes(searchKey) || enName.includes(searchKey);
   });
 
@@ -129,7 +121,6 @@ export default function Home({
 
         <div className="search-container-inside">
           <h1>{t('hero_title', 'เที่ยวในเทศบาลตำบล คลองไผ่')}</h1><br />
-          
           <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
             <div className="search-box" style={{ margin: 0 }}>
               <input 
@@ -143,7 +134,6 @@ export default function Home({
         </div>
       </div>
       
-      {/* แผงแสดงผลลัพธ์การเสิร์ช */}
       <div className={`search-panel-bottom ${keyword.trim() !== '' ? 'lift-up' : 'hidden-panel'}`}>
         <h2 className="panel-title">
           {keyword.trim() !== '' && (
@@ -165,7 +155,6 @@ export default function Home({
                 const isAdded = selectedPlaces.some(p => (p.id || p.docId) === placeId);
 
                 return (
-                  // 🎴 ครอบด้วย SwipeCard เพื่อรองรับ Touch Swipe บนมือถือ
                   <SwipeCard
                     key={placeId}
                     isAdded={isAdded}
@@ -197,7 +186,6 @@ export default function Home({
         )}
       </div>
 
-      {/* ส่วนเนื้อหาสลับซ้ายขวา */}
       <section className="info-sections">
         <div className="info-row">
           <div className="info-img">

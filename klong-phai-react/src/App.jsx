@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import './App.css';
@@ -33,21 +33,20 @@ import CheckInPoints from './pages/CheckInPoints';
 import Detail from './pages/Detail';
 import TripPlanner from './pages/TripPlanner';
 import Attractions from './pages/Attractions';
-import MapModal from './components/MapModal';
 import { ToastProvider, useToast } from './context/ToastContext';
 
-
-
-
-
-  
-
+// ============================================================
+// ✅ Admin Emails
+// ============================================================
 const ADMIN_EMAILS = [
   'teet44182@gmail.com',
   'เทศบาล@gmail.com',
   'admin2@gmail.com'
 ];
 
+// ============================================================
+// ✅ Page View Tracker
+// ============================================================
 function PageViewTracker() {
   const location = useLocation();
   useEffect(() => {
@@ -67,7 +66,9 @@ function PageViewTracker() {
   return null;
 }
 
-// ===== ย่อรูปก่อนแปลง Base64 =====
+// ============================================================
+// ✅ Compress Image
+// ============================================================
 const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -95,6 +96,116 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   });
 };
 
+// ============================================================
+// ✅ Sanitize Input
+// ============================================================
+export const sanitizeInput = (text) => {
+  if (!text) return '';
+  return String(text)
+    .replace(/[<>]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+    .replace(/`/g, '&#96;')
+    .trim();
+};
+
+// ============================================================
+// ✅ Parse iFrame URL - ดึงเฉพาะ src
+// ============================================================
+const parseIframeUrl = (input) => {
+  if (!input) return '';
+  if (typeof input !== 'string') return '';
+
+  if (input.includes('<iframe') || input.includes('iframe')) {
+    let match = input.match(/src\s*=\s*["']([^"']+)["']/i);
+    if (match) return match[1];
+    match = input.match(/src\s*=\s*([^\s>]+)/i);
+    if (match) return match[1];
+  }
+
+  if (input.includes('google.com/maps/embed')) return input;
+  if (input.startsWith('http://') || input.startsWith('https://')) return input;
+  if (input.startsWith('//')) return `https:${input}`;
+
+  return input;
+};
+
+// ============================================================
+// ✅ ดึงพิกัดจาก URL - แก้ไขให้ตรงเหมือนของเก่า
+// ============================================================
+const extractCoordsFromUrl = (url) => {
+  if (!url) return null;
+  const cleanUrl = parseIframeUrl(url);
+
+  // 1. หา q=lat,lng
+  const qMatch = cleanUrl.match(/[?&]q=([^&]+)/i);
+  if (qMatch) {
+    let q = decodeURIComponent(qMatch[1]).replace(/%2C/g, ',');
+    const coordsMatch = q.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
+    if (coordsMatch) {
+      return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
+    }
+  }
+
+  // 2. หา !2d!3d
+  const embedMatch = cleanUrl.match(/!2d([^!]+)!3d([^!]+)/i);
+  if (embedMatch) {
+    return [parseFloat(embedMatch[2]), parseFloat(embedMatch[1])];
+  }
+
+  // 3. หา !3d!2d
+  const embedMatch2 = cleanUrl.match(/!3d([^!]+)!2d([^!]+)/i);
+  if (embedMatch2) {
+    return [parseFloat(embedMatch2[1]), parseFloat(embedMatch2[2])];
+  }
+
+  // 4. หา @lat,lng
+  const atMatch = cleanUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/i);
+  if (atMatch) {
+    return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
+  }
+
+  // 5. หา center=lat,lng
+  const centerMatch = cleanUrl.match(/[?&]center=([^&]+)/i);
+  if (centerMatch) {
+    const center = decodeURIComponent(centerMatch[1]);
+    const coordsMatch = center.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
+    if (coordsMatch) {
+      return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
+    }
+  }
+
+  return null;
+};
+
+// ============================================================
+// ✅ ดึงพิกัดจาก place
+// ============================================================
+const getPlaceCoords = (place) => {
+  if (!place) return null;
+
+  if (Array.isArray(place.coords) && place.coords.length === 2) {
+    return [parseFloat(place.coords[0]), parseFloat(place.coords[1])];
+  }
+
+  const lat = parseFloat(place.lat || place.latitude);
+  const lng = parseFloat(place.lng || place.longitude);
+  if (!isNaN(lat) && !isNaN(lng)) {
+    return [lat, lng];
+  }
+
+  if (place.mapUrl) {
+    return extractCoordsFromUrl(place.mapUrl);
+  }
+
+  return null;
+};
+
+// ============================================================
+// ✅ Main App
+// ============================================================
 function MainApp() {
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
@@ -102,6 +213,7 @@ function MainApp() {
   const currentLang = (i18n.language || 'th').startsWith('th') ? 'th' : 'en';
   const isEn = currentLang === 'en';
 
+  // ===== State =====
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [places, setPlaces] = useState([]);
@@ -118,84 +230,15 @@ function MainApp() {
     }
   });
 
-  useEffect(() => {
-    localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
-  }, [selectedPlaces]);
-
-  const handleAddPlaceToTrip = (place) => {
-  if (!place) return;
-  const placeId = place.id || place.docId;
-  const title = place.title || place.name || 'สถานที่';
-  const exists = selectedPlaces.some(item => (item.id || item.docId) === placeId);
-
-  if (exists) {
-    showToast(` "${title}" อยู่ในทริปแล้ว`);
-    return;
-  }
-  setSelectedPlaces(prev => [...prev, place]);
-  showToast(` เพิ่ม "${title}" ลงทริปแล้ว`);
-};
-
-const handleRemovePlaceFromTrip = (place) => {
-  if (!place) return;
-  const placeId = place.id || place.docId;
-  const title = place.title || place.name || 'สถานที่';
-  setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
-  showToast(`ลบ "${title}" ออกจากทริปแล้ว`);
-};
-
-  const generateMultiStopMapUrl = (placesList) => {
-    if (!placesList || placesList.length === 0) return '#';
-    const getCoordsOnly = (place) => {
-      if (Array.isArray(place.coords) && place.coords.length >= 2) {
-        const lat = parseFloat(place.coords[0]);
-        const lng = parseFloat(place.coords[1]);
-        if (!isNaN(lat) && !isNaN(lng)) return `${lat},${lng}`;
-      }
-      const lat = parseFloat(place.lat || place.latitude);
-      const lng = parseFloat(place.lng || place.longitude);
-      if (!isNaN(lat) && !isNaN(lng)) return `${lat},${lng}`;
-      return null;
-    };
-    const coordsList = placesList.map(getCoordsOnly).filter(Boolean);
-    if (coordsList.length === 0) return '#';
-    if (coordsList.length === 1) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${coordsList[0]}`;
-    }
-    const origin = coordsList[0];
-    const destination = coordsList[coordsList.length - 1];
-    const waypoints = coordsList.slice(1, -1).join('|');
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-    if (waypoints) url += `&waypoints=${waypoints}`;
-    return url;
-  };
-
-  const estimateTripTime = (count) => {
-  if (count === 0) return isEn ? '0 นาที' : '0 นาที';
-
-  const minutes = count * 35 + Math.max(0, count - 1) * 12;
-
-  if (minutes < 60) {
-    return `~${minutes} นาที`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remain = minutes % 60;
-
-  if (remain === 0) {
-    return `~${hours} ชม.`;
-  }
-  return `~${hours} ชม. ${remain} นาที`;
-};
-
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
+  const [showEmbedMap, setShowEmbedMap] = useState(false);
+  const [embedMapUrl, setEmbedMapUrl] = useState('');
   const [isAddPlaceModalOpen, setIsAddPlaceModalOpen] = useState(false);
   const [editingPlaceId, setEditingPlaceId] = useState(null);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Review states สำหรับ Detail Modal
   const [reviewText, setReviewText] = useState('');
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editReviewText, setEditReviewText] = useState('');
@@ -211,6 +254,10 @@ const handleRemovePlaceFromTrip = (place) => {
   const [reviewsData, setReviewsData] = useState({});
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
+  useEffect(() => {
+    localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
+  }, [selectedPlaces]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -267,24 +314,133 @@ const handleRemovePlaceFromTrip = (place) => {
     return () => unsub();
   }, [isAdmin]);
 
-  const handleLogin = async () => {
-  try {
-    const result = await loginWithGoogle();
-    const email = result?.email || auth.currentUser?.email || '';
-    const isUserAdmin = ADMIN_EMAILS.some(
-      e => e.toLowerCase() === email.toLowerCase()
-    );
+  // ============================================================
+  // ✅ TRIP PLANNER FUNCTIONS
+  // ============================================================
+  
+  const isAddedToTrip = (place) => {
+    if (!place) return false;
+    const placeId = place.id || place.docId;
+    return selectedPlaces.some(item => (item.id || item.docId) === placeId);
+  };
 
-    if (isUserAdmin) {
-      showToast('เข้าสู่ระบบ Admin (เพิ่ม/แก้ไข/ลบสถานที่ + ดูยอดเข้าชมได้');
+  const handleAddPlaceToTrip = (place) => {
+    if (!place) return;
+    const placeId = place.id || place.docId;
+    const title = sanitizeInput(place.title || place.name || 'สถานที่');
+    const exists = selectedPlaces.some(item => (item.id || item.docId) === placeId);
+
+    if (exists) {
+      setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
+      showToast(`${isEn ? 'Removed' : 'ลบ'} "${title}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     } else {
-      showToast('เข้าสู่ระบบสำเร็จ');
+      setSelectedPlaces(prev => [...prev, place]);
+      showToast(`${isEn ? 'Added' : 'เพิ่ม'} "${title}" ${isEn ? 'to trip' : 'ลงทริปแล้ว'}`);
     }
-  } catch (e) {
-    console.error(e);
-    showToast('เข้าสู่ระบบไม่สำเร็จ');
-  }
-};
+  };
+
+  const handleRemovePlaceFromTrip = (place) => {
+    if (!place) return;
+    const placeId = place.id || place.docId;
+    const title = sanitizeInput(place.title || place.name || 'สถานที่');
+    setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
+    showToast(`${isEn ? 'Removed' : 'ลบ'} "${title}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
+  };
+
+  const generateMultiStopMapUrl = (placesList) => {
+    if (!placesList || placesList.length === 0) return '#';
+
+    const coordsList = placesList.map(p => getPlaceCoords(p)).filter(Boolean);
+    if (coordsList.length === 0) return '#';
+
+    if (coordsList.length === 1) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${coordsList[0][0]},${coordsList[0][1]}`;
+    }
+
+    const origin = `${coordsList[0][0]},${coordsList[0][1]}`;
+    const destination = `${coordsList[coordsList.length - 1][0]},${coordsList[coordsList.length - 1][1]}`;
+    const waypoints = coordsList.slice(1, -1).map(c => `${c[0]},${c[1]}`).join('|');
+
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+    if (waypoints) url += `&waypoints=${waypoints}`;
+    return url;
+  };
+
+  const estimateTripTime = (count) => {
+    if (count === 0) return isEn ? '0 min' : '0 นาที';
+    const minutes = count * 35 + Math.max(0, count - 1) * 12;
+    if (minutes < 60) {
+      return `~${minutes} ${isEn ? 'min' : 'นาที'}`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remain = minutes % 60;
+    if (remain === 0) {
+      return `~${hours} ${isEn ? 'hr' : 'ชม.'}`;
+    }
+    return `~${hours} ${isEn ? 'hr' : 'ชม.'} ${remain} ${isEn ? 'min' : 'นาที'}`;
+  };
+
+  // ============================================================
+  // ✅ Get Embed Map URL
+  // ============================================================
+  const getEmbedMapUrl = (place) => {
+    if (!place) return '';
+
+    if (place.mapUrl) {
+      const parsed = parseIframeUrl(place.mapUrl);
+      if (parsed) return parsed;
+    }
+
+    const coords = getPlaceCoords(place);
+    if (coords) {
+      return `https://www.google.com/maps?q=${coords[0]},${coords[1]}&z=15&output=embed`;
+    }
+
+    return '';
+  };
+
+  // ============================================================
+  // ✅ Open Map (นำทาง)
+  // ============================================================
+  const openMap = (place) => {
+    if (!place) return;
+    const coords = getPlaceCoords(place);
+    if (coords) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`, '_blank');
+    } else {
+      showToast('ไม่พบพิกัดของสถานที่นี้');
+    }
+  };
+
+  const openDetail = (place) => {
+    setDetailModal({ isOpen: true, placeData: place });
+    setGalleryIndex(0);
+    setShowEmbedMap(false);
+    setEmbedMapUrl('');
+    setReviewText('');
+    setEditingReviewId(null);
+  };
+
+  // ============================================================
+  // ✅ Login / Logout
+  // ============================================================
+  const handleLogin = async () => {
+    try {
+      const result = await loginWithGoogle();
+      const email = result?.email || auth.currentUser?.email || '';
+      const isUserAdmin = ADMIN_EMAILS.some(
+        e => e.toLowerCase() === email.toLowerCase()
+      );
+      if (isUserAdmin) {
+        showToast('เข้าสู่ระบบ Admin (เพิ่ม/แก้ไข/ลบสถานที่ + ดูยอดเข้าชมได้)');
+      } else {
+        showToast('เข้าสู่ระบบสำเร็จ');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('เข้าสู่ระบบไม่สำเร็จ');
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -295,7 +451,9 @@ const handleRemovePlaceFromTrip = (place) => {
     }
   };
 
-  // ===== อัปโหลดรูป (ย่อก่อน) =====
+  // ============================================================
+  // ✅ Image Handlers
+  // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -356,6 +514,9 @@ const handleRemovePlaceFromTrip = (place) => {
     });
   };
 
+  // ============================================================
+  // ✅ Add / Edit Place - Parse iFrame ก่อนบันทึก
+  // ============================================================
   const handleAddPlaceSubmit = async (e) => {
     e.preventDefault();
     if (!newPlace.title) {
@@ -389,6 +550,10 @@ const handleRemovePlaceFromTrip = (place) => {
         payload.coords = [parseFloat(newPlace.lat), parseFloat(newPlace.lng)];
       }
 
+      if (newPlace.mapUrl) {
+        payload.mapUrl = parseIframeUrl(newPlace.mapUrl);
+      }
+
       if (editingPlaceId) {
         await updateDoc(doc(db, "places", String(editingPlaceId)), {
           ...payload,
@@ -410,6 +575,9 @@ const handleRemovePlaceFromTrip = (place) => {
     }
   };
 
+  // ============================================================
+  // ✅ Like
+  // ============================================================
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
     try {
@@ -420,6 +588,9 @@ const handleRemovePlaceFromTrip = (place) => {
     }
   };
 
+  // ============================================================
+  // ✅ Edit / Delete Place
+  // ============================================================
   const handleEditPlace = (place) => {
     const targetId = place.id || place.docId;
     setEditingPlaceId(targetId);
@@ -457,7 +628,7 @@ const handleRemovePlaceFromTrip = (place) => {
       showToast('ไม่พบ ID ของสถานที่');
       return;
     }
-    if (window.confirm(`[Admin] ลบ "${place.title || place.name}" ใช่หรือไม่?`)) {
+    if (window.confirm(`🗑️ [Admin] ลบ "${place.title || place.name}" ใช่หรือไม่?`)) {
       try {
         await deleteDoc(doc(db, "places", String(targetId)));
         showToast('ลบเรียบร้อยแล้ว');
@@ -468,42 +639,22 @@ const handleRemovePlaceFromTrip = (place) => {
     }
   };
 
-  // ===== นำทางด้วยพิกัดเป็นหลัก =====
-  const openMap = (place) => {
-    if (!place) return;
-    let finalUrl = '';
-    if (place.lat && place.lng) {
-      finalUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
-    } else if (Array.isArray(place.coords) && place.coords.length >= 2) {
-      finalUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`;
-    } else if (place.mapUrl || place.googleMap) {
-      finalUrl = place.mapUrl || place.googleMap;
-    }
-    if (finalUrl) {
-      window.open(finalUrl, '_blank', 'noopener,noreferrer');
-    } else {
-      showToast('ไม่พบพิกัดของสถานที่นี้');
-    }
-  };
-
-  const openDetail = (place) => {
-    setDetailModal({ isOpen: true, placeData: place });
-    setGalleryIndex(0);
-    setReviewText('');
-    setEditingReviewId(null);
-  };
-
+  // ============================================================
+  // ✅ Language
+  // ============================================================
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
-  // ===== ระบบรีวิวแบบปลอดภัย (1 คน 1 รีวิวต่อสถานที่) =====
+  // ============================================================
+  // ✅ Reviews
+  // ============================================================
   const validateReviewText = (text) => {
-    const clean = text.trim();
+    const clean = sanitizeInput(text.trim());
     if (clean.length < 2) {
-      showToast(isEn ? 'Review too short' : 'ข้อความสั้นเกินไป');
+      showToast(isEn ? 'Review is too short (min 2 characters)' : 'ข้อความสั้นเกินไป');
       return false;
     }
     if (clean.length > 200) {
-      showToast(isEn ? 'Max 200 characters' : 'ไม่เกิน 200 ตัวอักษร');
+      showToast(isEn ? 'Review is too long (max 200 characters)' : 'ไม่เกิน 200 ตัวอักษร');
       return false;
     }
     const lower = clean.toLowerCase();
@@ -574,7 +725,9 @@ const handleRemovePlaceFromTrip = (place) => {
     }
   };
 
-  // กดตะกร้า → ไปหน้า planner + เลื่อนบนสุด
+  // ============================================================
+  // ✅ Open Planner
+  // ============================================================
   const handleOpenPlanner = () => {
     navigate('/planner');
     setTimeout(() => {
@@ -613,16 +766,19 @@ const handleRemovePlaceFromTrip = (place) => {
     '/planner': isEn ? 'Planner' : 'วางแผนทริป'
   };
 
-  // รีวิวของสถานที่ที่เปิดใน modal
   const currentPlaceId = detailModal.placeData?.id || detailModal.placeData?.docId;
   const currentReviews = currentPlaceId ? (reviewsData[currentPlaceId] || []) : [];
 
+  // ============================================================
+  // ✅ Render
+  // ============================================================
   return (
     <>
       <PageViewTracker />
+      
       <nav className="navbar">
         <Link to="/" className="nav-logo" onClick={closeMobileMenu}>
-          <span>#</span> {t('brand_title', 'คลองไผ่')}
+          <span></span> {t('brand_title', 'คลองไผ่')}
         </Link>
 
         <button
@@ -659,14 +815,14 @@ const handleRemovePlaceFromTrip = (place) => {
             </div>
           </div>
 
-          <Link to="/checkin" onClick={closeMobileMenu}>{t('nav_top10', '10 จุดเช็คอิน')}</Link>
-          <Link to="/map" onClick={closeMobileMenu}>{t('nav_map', 'แผนที่ชุมชน')}</Link>
+          <Link to="/checkin" onClick={closeMobileMenu}> {t('nav_top10', '10 จุดเช็คอิน')}</Link>
+          <Link to="/map" onClick={closeMobileMenu}> {t('nav_map', 'แผนที่ชุมชน')}</Link>
 
           {isAdmin && (
             <>
               <button
                 onClick={() => { resetForm(); setIsAddPlaceModalOpen(true); }}
-                style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9 rem' }}
+                style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
               >
                 เพิ่มสถานที่
               </button>
@@ -674,7 +830,7 @@ const handleRemovePlaceFromTrip = (place) => {
                 onClick={() => setShowAnalytics(true)}
                 style={{ background: '#7c4dff', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
               >
-                ยอดเข้าชมเว็บไซต์
+                ยอดเข้าชม
               </button>
             </>
           )}
@@ -684,7 +840,7 @@ const handleRemovePlaceFromTrip = (place) => {
             onClick={() => { closeMobileMenu(); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}
             style={{ background: '#00a854', color: '#fff', padding: '8px 18px', borderRadius: '25px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-             {t('nav_plan', 'วางแผนการเดินทาง')}
+            {t('nav_plan', 'วางแผนการเดินทาง')}
             {selectedPlaces.length > 0 && (
               <span style={{ background: '#fff', color: '#00a854', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
                 {selectedPlaces.length}
@@ -692,7 +848,6 @@ const handleRemovePlaceFromTrip = (place) => {
             )}
           </Link>
 
-          {/* ===== ปุ่ม Login / Logout บน Navbar ===== */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -733,37 +888,100 @@ const handleRemovePlaceFromTrip = (place) => {
 
       <Routes>
         <Route path="/" element={
-          <Home places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike}
-            lang={currentLang} selectedPlaces={selectedPlaces} setSelectedPlaces={setSelectedPlaces}
-            onAddToPlan={handleAddPlaceToTrip} isAdmin={isAdmin} onEditPlace={handleEditPlace} onDeletePlace={handleDeletePlace}  />
+          <Home 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike}
+            lang={currentLang} 
+            selectedPlaces={selectedPlaces} 
+            setSelectedPlaces={setSelectedPlaces}
+            onAddToPlan={handleAddPlaceToTrip} 
+            isAdmin={isAdmin} 
+            onEditPlace={handleEditPlace} 
+            onDeletePlace={handleDeletePlace}  
+          />
         } />
         <Route path="/checkin" element={
-          <CheckInPoints places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike}
-            googleUser={user} handleGoogleLogin={handleLogin} handleGoogleLogout={handleLogout}
-            reviewsData={reviewsData} lang={currentLang} isAdmin={isAdmin}
-            onEditPlace={handleEditPlace} onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} setSelectedPlaces={setSelectedPlaces} onAddToPlan={handleAddPlaceToTrip} />
+          <CheckInPoints 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike}
+            googleUser={user} 
+            handleGoogleLogin={handleLogin} 
+            handleGoogleLogout={handleLogout}
+            reviewsData={reviewsData} 
+            lang={currentLang} 
+            isAdmin={isAdmin}
+            onEditPlace={handleEditPlace} 
+            onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces} 
+            setSelectedPlaces={setSelectedPlaces} 
+            onAddToPlan={handleAddPlaceToTrip} 
+          />
         } />
         <Route path="/attractions" element={
-          <Attractions places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike}
-            lang={currentLang} isAdmin={isAdmin} onEditPlace={handleEditPlace} onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} setSelectedPlaces={setSelectedPlaces} onAddToPlan={handleAddPlaceToTrip} />
+          <Attractions 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike}
+            lang={currentLang} 
+            isAdmin={isAdmin} 
+            onEditPlace={handleEditPlace} 
+            onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces} 
+            setSelectedPlaces={setSelectedPlaces} 
+            onAddToPlan={handleAddPlaceToTrip} 
+          />
         } />
         <Route path="/restaurant" element={
-          <Restaurant places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike}
-            lang={currentLang} isAdmin={isAdmin} onEditPlace={handleEditPlace} onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} setSelectedPlaces={setSelectedPlaces} onAddToPlan={handleAddPlaceToTrip} />
+          <Restaurant 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike}
+            lang={currentLang} 
+            isAdmin={isAdmin} 
+            onEditPlace={handleEditPlace} 
+            onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces} 
+            setSelectedPlaces={setSelectedPlaces} 
+            onAddToPlan={handleAddPlaceToTrip} 
+          />
         } />
         <Route path="/accommodation" element={
-          <Accommodation places={places} loading={loadingPlaces} onOpenMap={openDetail} likes={likes} onLike={handleLike}
-            lang={currentLang} isAdmin={isAdmin} onEditPlace={handleEditPlace} onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} setSelectedPlaces={setSelectedPlaces} onAddToPlan={handleAddPlaceToTrip} />
+          <Accommodation 
+            places={places} 
+            loading={loadingPlaces} 
+            onOpenMap={openDetail} 
+            likes={likes} 
+            onLike={handleLike}
+            lang={currentLang} 
+            isAdmin={isAdmin} 
+            onEditPlace={handleEditPlace} 
+            onDeletePlace={handleDeletePlace}
+            selectedPlaces={selectedPlaces} 
+            setSelectedPlaces={setSelectedPlaces} 
+            onAddToPlan={handleAddPlaceToTrip} 
+          />
         } />
         <Route path="/map" element={<CommunityMap places={places} lang={currentLang} />} />
         <Route path="/planner" element={
-          <TripPlanner places={places} lang={currentLang} selectedPlaces={selectedPlaces}
-            setSelectedPlaces={setSelectedPlaces} generateMultiStopMapUrl={generateMultiStopMapUrl}
-            estimateTripTime={estimateTripTime} />
+          <TripPlanner 
+            places={places} 
+            lang={currentLang} 
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces} 
+            generateMultiStopMapUrl={generateMultiStopMapUrl}
+            estimateTripTime={estimateTripTime}
+            onRemoveFromPlan={handleRemovePlaceFromTrip}
+          />
         } />
         <Route path="/detail/:id" element={<Detail places={places} onOpenMap={openMap} lang={currentLang} />} />
       </Routes>
@@ -774,11 +992,12 @@ const handleRemovePlaceFromTrip = (place) => {
         onOpenTripPlanner={handleOpenPlanner}
       />
 
-      {/* ===== Analytics Modal ===== */}
       {showAnalytics && isAdmin && (
         <div className="map-modal-overlay active" style={{ zIndex: 2300 }} onClick={() => setShowAnalytics(false)}>
           <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '480px', padding: '28px', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#7c4dff', marginBottom: '8px' }}>ยอดเข้าชมเว็บไซต์</h2>
+            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#7c4dff', marginBottom: '8px' }}>
+              ยอดเข้าชมเว็บไซต์
+            </h2>
             <p style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '20px' }}>อัปเดตแบบเรียลไทม์</p>
             <div style={{ background: 'rgba(124,77,255,0.12)', border: '1px solid rgba(124,77,255,0.3)', borderRadius: '12px', padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
               <div style={{ fontSize: '0.85rem', color: '#bbb' }}>ยอดรวมทั้งหมด</div>
@@ -792,16 +1011,19 @@ const handleRemovePlaceFromTrip = (place) => {
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowAnalytics(false)} style={{ marginTop: '24px', width: '100%', background: '#6c757d', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>ปิด</button>
+            <button onClick={() => setShowAnalytics(false)} style={{ marginTop: '24px', width: '100%', background: '#6c757d', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+              ปิด
+            </button>
           </div>
         </div>
       )}
 
-      {/* ===== Add / Edit Place Modal ===== */}
       {isAddPlaceModalOpen && (
         <div className="map-modal-overlay active" style={{ zIndex: 2200 }} onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }}>
           <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '560px', padding: '24px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#f0ff6c', marginBottom: '20px' }}>{editingPlaceId ? 'แก้ไขสถานที่' : 'เพิ่มสถานที่ใหม่'}</h2>
+            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '20px' }}>
+              {editingPlaceId ? 'แก้ไขสถานที่' : 'เพิ่มสถานที่ใหม่'}
+            </h2>
             <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>ประเภท</label>
@@ -841,124 +1063,379 @@ const handleRemovePlaceFromTrip = (place) => {
                   <input type="text" placeholder="Longitude" value={newPlace.lng} onChange={e => setNewPlace({ ...newPlace, lng: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
                 </div>
                 <button type="button" onClick={() => window.open('https://www.google.com/maps', '_blank')} style={{ width: '100%', background: 'rgba(66,133,244,0.15)', border: '1px solid #4285F4', color: '#8ab4f8', padding: '10px', borderRadius: 8, cursor: 'pointer' }}>
-                  Google Maps
+                  เปิด Google Maps
                 </button>
               </div>
               <input type="text" placeholder="เวลาทำการ" value={newPlace.workingHours} onChange={e => setNewPlace({ ...newPlace, workingHours: e.target.value })} style={inputStyle} />
               <input type="text" placeholder="เบอร์โทร" value={newPlace.phone} onChange={e => setNewPlace({ ...newPlace, phone: e.target.value })} style={inputStyle} />
-              <input type="text" placeholder="Google Maps URL (ถ้ามี)" value={newPlace.mapUrl} onChange={e => setNewPlace({ ...newPlace, mapUrl: e.target.value })} style={inputStyle} />
+              <input type="text" placeholder="Google Maps URL หรือ Embed Code" value={newPlace.mapUrl} onChange={e => setNewPlace({ ...newPlace, mapUrl: e.target.value })} style={inputStyle} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
-                <button type="button" onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>ยกเลิก</button>
-                <button type="submit" style={{ background: '#ff9800', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>{editingPlaceId ? 'บันทึก' : 'เพิ่มสถานที่'}</button>
+                <button type="button" onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
+                  ยกเลิก
+                </button>
+                <button type="submit" style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
+                  {editingPlaceId ? 'บันทึก' : 'เพิ่มสถานที่'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ===== Detail Modal + รีวิว ===== */}
-      <div className={`map-modal-overlay ${detailModal.isOpen ? 'active' : ''}`} style={{ zIndex: 2100 }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>
-        <div className="map-modal-content" style={{ backgroundColor: '#2b2b2b', color: '#fff', maxWidth: 550, padding: 0, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      {/* ===== DETAIL MODAL ===== */}
+      <div className={`map-modal-overlay ${detailModal.isOpen ? 'active' : ''}`} style={{ zIndex: 2100 }} onClick={() => {
+        setDetailModal({ isOpen: false, placeData: null });
+        setShowEmbedMap(false);
+        setEmbedMapUrl('');
+      }}>
+        <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: 600, padding: 0, maxHeight: '95vh', overflowY: 'auto', borderRadius: '16px' }} onClick={e => e.stopPropagation()}>
           {detailModal.placeData && (() => {
             const p = detailModal.placeData;
             const images = [p.img, ...(p.gallery || [])].filter(Boolean);
             const title = isEn && p.title_en ? p.title_en : (p.title || p.name);
             const desc = isEn && p.detailDescription_en ? p.detailDescription_en : (p.detailDescription || p.detail || p.description || '');
+            const embedUrl = getEmbedMapUrl(p);
+            const placeId = p.id || p.docId;
+            const placeReviews = reviewsData[placeId] || [];
+
             return (
               <div>
-                <div style={{ width: '100%', height: 220, position: 'relative', background: '#111' }}>
-                  <img src={images[galleryIndex] || 'https://via.placeholder.com/400x220'} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <span 
+                  className="map-modal-close" 
+                  style={{ 
+                    color: '#fff', 
+                    position: 'absolute',
+                    top: '12px',
+                    right: '18px',
+                    zIndex: 10,
+                    fontSize: '2rem',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={() => {
+                    setDetailModal({ isOpen: false, placeData: null });
+                    setShowEmbedMap(false);
+                    setEmbedMapUrl('');
+                  }}
+                >
+                  &times;
+                </span>
+
+                <div style={{ width: '100%', height: 250, position: 'relative', background: '#111' }}>
+                  <img 
+                    src={images[galleryIndex] || 'https://via.placeholder.com/600x250?text=No+Image'} 
+                    alt="" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
                   {images.length > 1 && (
                     <>
-                      <button onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i - 1 + images.length) % images.length); }} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', cursor: 'pointer' }}>‹</button>
-                      <button onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i + 1) % images.length); }} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', cursor: 'pointer' }}>›</button>
+                      <button 
+                        onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i - 1 + images.length) % images.length); }} 
+                        style={{ 
+                          position: 'absolute', 
+                          left: 10, 
+                          top: '50%', 
+                          transform: 'translateY(-50%)', 
+                          background: 'rgba(0,0,0,0.6)', 
+                          border: 'none', 
+                          color: '#fff', 
+                          width: 36, 
+                          height: 36, 
+                          borderRadius: '50%', 
+                          cursor: 'pointer', 
+                          fontSize: '1.2rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        ‹
+                      </button>
+                      <button 
+                        onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i + 1) % images.length); }} 
+                        style={{ 
+                          position: 'absolute', 
+                          right: 10, 
+                          top: '50%', 
+                          transform: 'translateY(-50%)', 
+                          background: 'rgba(0,0,0,0.6)', 
+                          border: 'none', 
+                          color: '#fff', 
+                          width: 36, 
+                          height: 36, 
+                          borderRadius: '50%', 
+                          cursor: 'pointer', 
+                          fontSize: '1.2rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        ›
+                      </button>
                     </>
                   )}
-                  <span className="map-modal-close" style={{ color: '#fff', top: 10, right: 15, zIndex: 3 }} onClick={() => setDetailModal({ isOpen: false, placeData: null })}>&times;</span>
+                  {images.length > 1 && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 10,
+                      right: 10,
+                      background: 'rgba(0,0,0,0.6)',
+                      padding: '2px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      color: '#fff'
+                    }}>
+                      {galleryIndex + 1} / {images.length}
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ padding: 25 }}>
-                  <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: 8 }}>{title}</h2>
-                  <p style={{ color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-line', marginBottom: 16 }}>{desc}</p>
+                <div style={{ padding: '20px 24px' }}>
+                  <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '8px', fontSize: '1.3rem' }}>
+                    {title}
+                  </h2>
+                  <p style={{ color: '#ddd', lineHeight: '1.7', whiteSpace: 'pre-line', marginBottom: '12px', fontSize: '0.95rem' }}>
+                    {desc}
+                  </p>
 
                   {(p.workingHours || p.phone) && (
-                    <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: 16 }}>
-                      {p.workingHours && <div> {p.workingHours}</div>}
-                      {p.phone && <div> {p.phone}</div>}
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '16px' }}>
+                      {p.workingHours && <div>{p.workingHours}</div>}
+                      {p.phone && <div>{p.phone}</div>}
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
-                    <button onClick={() => openMap(p)} style={{ flex: 1, background: '#00a854', color: '#fff', border: 'none', padding: '12px', borderRadius: 50, cursor: 'pointer', fontWeight: 'bold' }}>
-                      นำทาง
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                    <button 
+                      onClick={() => {
+                        if (embedUrl) {
+                          setEmbedMapUrl(embedUrl);
+                          setShowEmbedMap(!showEmbedMap);
+                        } else {
+                          showToast(isEn ? 'No location data available' : 'ไม่มีข้อมูลพิกัด');
+                        }
+                      }} 
+                      style={{ 
+                        flex: 1,
+                        background: showEmbedMap ? '#ff6b35' : '#00a854', 
+                        color: '#fff', 
+                        border: 'none', 
+                        padding: '12px', 
+                        borderRadius: '50px', 
+                        cursor: 'pointer', 
+                        fontWeight: 'bold',
+                        fontSize: '0.95rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {showEmbedMap ? 'ซ่อนแผนที่' : 'ดูแผนที่'}
                     </button>
-                    <button onClick={() => handleAddPlaceToTrip(p)} style={{ flex: 1, background: 'rgba(0,168,84,0.15)', color: '#00a854', border: '1px solid #00a854', padding: '12px', borderRadius: 50, cursor: 'pointer', fontWeight: 'bold' }}>
-                      เพิ่มลงทริป
+                    
+                    <button 
+                      onClick={() => {
+                        const coords = getPlaceCoords(p);
+                        if (coords) {
+                          window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`, '_blank');
+                        } else {
+                          showToast('ไม่พบพิกัดของสถานที่นี้');
+                        }
+                      }} 
+                      style={{ 
+                        flex: 1,
+                        background: '#4285F4', 
+                        color: '#fff', 
+                        border: 'none', 
+                        padding: '12px', 
+                        borderRadius: '50px', 
+                        cursor: 'pointer', 
+                        fontWeight: 'bold',
+                        fontSize: '0.95rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {isEn ? 'Navigate' : 'นำทาง'}
                     </button>
                   </div>
 
-                  {/* ===== ส่วนรีวิว ===== */}
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 20 }}>
-                    <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: 14, fontSize: '1.1rem' }}>
-                      รีวิว ({currentReviews.length})
+                  {showEmbedMap && embedUrl && (
+                    <div style={{ 
+                      marginBottom: '16px',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        background: 'rgba(255,255,255,0.05)'
+                      }}>
+                        <span style={{ fontSize: '0.85rem', color: '#aaa' }}>
+                          {isEn ? 'Map' : 'แผนที่'}
+                        </span>
+                        <button 
+                          onClick={() => setShowEmbedMap(false)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ff4d4d',
+                            cursor: 'pointer',
+                            fontSize: '1.2rem'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div style={{ width: '100%', height: '320px', background: '#333' }}>
+                        <iframe 
+                          src={embedUrl}
+                          width="100%" 
+                          height="100%" 
+                          style={{ border: 0 }} 
+                          allowFullScreen 
+                          loading="lazy"
+                          title="Map"
+                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+                    <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '12px', fontSize: '1rem' }}>
+                      {isEn ? 'Reviews' : 'รีวิว'} ({placeReviews.length})
                     </h3>
 
                     {user ? (
-                      <div style={{ marginBottom: 20 }}>
+                      <div style={{ marginBottom: '16px' }}>
                         <textarea
                           value={reviewText}
                           onChange={e => setReviewText(e.target.value)}
-                          placeholder="เขียนรีวิว... (2-200 ตัวอักษร)"
+                          placeholder={isEn ? "Write a review... (2-200 chars)" : "เขียนรีวิว... (2-200 ตัวอักษร)"}
                           maxLength={200}
-                          rows={3}
-                          style={{ width: '100%', padding: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', resize: 'none', fontFamily: 'Prompt, sans-serif' }}
+                          rows="2"
+                          style={{ 
+                            width: '100%', 
+                            padding: '10px 14px', 
+                            background: 'rgba(255,255,255,0.06)', 
+                            border: '1px solid rgba(255,255,255,0.1)', 
+                            borderRadius: '8px', 
+                            color: '#fff', 
+                            fontSize: '0.9rem',
+                            resize: 'none',
+                            fontFamily: 'Prompt, sans-serif',
+                            outline: 'none'
+                          }}
                         />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                          <span style={{ fontSize: '0.8rem', color: '#666' }}>{reviewText.length}/200</span>
-                          <button onClick={() => handleReviewSubmit(currentPlaceId)} style={{ background: '#00a854', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 20, cursor: 'pointer', fontWeight: 'bold' }}>
-                            ส่งรีวิว
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#666' }}>{reviewText.length}/200</span>
+                          <button 
+                            onClick={() => handleReviewSubmit(placeId)} 
+                            style={{ 
+                              background: '#00a854', 
+                              color: '#fff', 
+                              border: 'none', 
+                              padding: '6px 18px', 
+                              borderRadius: '20px', 
+                              cursor: 'pointer', 
+                              fontWeight: 'bold',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            {isEn ? 'Submit' : 'ส่งรีวิว'}
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, marginBottom: 16 }}>
-                        <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: 10 }}>เข้าสู่ระบบเพื่อเขียนรีวิว</p>
-                        <button onClick={handleLogin} style={{ background: '#fff', color: '#222', border: 'none', padding: '8px 18px', borderRadius: 20, cursor: 'pointer', fontWeight: 'bold' }}>
-                          เข้าสู่ระบบด้วย Google
-                        </button>
+                      <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', marginBottom: '16px' }}>
+                        <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>
+                          {isEn ? 'Sign in to write a review' : 'เข้าสู่ระบบเพื่อเขียนรีวิว'}
+                        </p>
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {currentReviews.length === 0 ? (
-                        <p style={{ color: '#666', textAlign: 'center', fontSize: '0.9rem' }}>ยังไม่มีรีวิว</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {placeReviews.length === 0 ? (
+                        <p style={{ color: '#555', textAlign: 'center', fontSize: '0.85rem' }}>
+                          {isEn ? 'No reviews yet' : 'ยังไม่มีรีวิว'}
+                        </p>
                       ) : (
-                        currentReviews.map((review) => {
+                        placeReviews.map((review) => {
                           const isOwner = user && review.userId === user.uid;
                           return (
-                            <div key={review.id} style={{ padding: 14, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  {review.userPhoto && <img src={review.userPhoto} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />}
-                                  <strong style={{ fontSize: '0.95rem' }}>{review.name}</strong>
+                            <div key={review.id} style={{ 
+                              padding: '10px 14px', 
+                              background: 'rgba(255,255,255,0.03)', 
+                              borderRadius: '8px',
+                              border: '1px solid rgba(255,255,255,0.06)'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {review.userPhoto && (
+                                    <img src={review.userPhoto} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
+                                  )}
+                                  <strong style={{ fontSize: '0.85rem', color: '#ddd' }}>{review.name}</strong>
                                 </div>
                                 {isOwner && editingReviewId !== review.id && (
-                                  <div style={{ display: 'flex', gap: 10, fontSize: '0.8rem' }}>
-                                    <button onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); }} style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer' }}>แก้ไข</button>
-                                    <button onClick={() => handleDeleteReview(review)} style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer' }}>ลบ</button>
+                                  <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem' }}>
+                                    <button 
+                                      onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); }} 
+                                      style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer' }}
+                                    >
+                                      
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteReview(review)} 
+                                      style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer' }}
+                                    >
+                                      
+                                    </button>
                                   </div>
                                 )}
                               </div>
                               {editingReviewId === review.id ? (
                                 <div>
-                                  <textarea value={editReviewText} onChange={e => setEditReviewText(e.target.value)} maxLength={200} rows={2} style={{ width: '100%', padding: 10, background: '#333', border: '1px solid #555', borderRadius: 6, color: '#fff', resize: 'none' }} />
-                                  <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
-                                    <button onClick={() => setEditingReviewId(null)} style={{ background: '#555', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 4, cursor: 'pointer' }}>ยกเลิก</button>
-                                    <button onClick={() => handleUpdateReview(review)} style={{ background: '#00a854', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 4, cursor: 'pointer' }}>บันทึก</button>
+                                  <textarea 
+                                    value={editReviewText} 
+                                    onChange={e => setEditReviewText(e.target.value)} 
+                                    maxLength={200} 
+                                    rows="2" 
+                                    style={{ 
+                                      width: '100%', 
+                                      padding: '8px 12px', 
+                                      background: '#333', 
+                                      border: '1px solid #555', 
+                                      borderRadius: '6px', 
+                                      color: '#fff', 
+                                      resize: 'none',
+                                      fontSize: '0.85rem',
+                                      fontFamily: 'Prompt, sans-serif'
+                                    }} 
+                                  />
+                                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
+                                    <button 
+                                      onClick={() => setEditingReviewId(null)} 
+                                      style={{ background: '#555', color: '#fff', border: 'none', padding: '3px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                    >
+                                      {isEn ? 'Cancel' : 'ยกเลิก'}
+                                    </button>
+                                    <button 
+                                      onClick={() => handleUpdateReview(review)} 
+                                      style={{ background: '#00a854', color: '#fff', border: 'none', padding: '3px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                    >
+                                      {isEn ? 'Save' : 'บันทึก'}
+                                    </button>
                                   </div>
                                 </div>
                               ) : (
-                                <p style={{ margin: 0, color: '#ccc', fontSize: '0.9rem', whiteSpace: 'pre-line' }}>{review.text}</p>
+                                <p style={{ margin: 0, color: '#ccc', fontSize: '0.85rem', whiteSpace: 'pre-line' }}>{review.text}</p>
                               )}
                             </div>
                           );

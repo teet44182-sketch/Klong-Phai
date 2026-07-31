@@ -11,7 +11,7 @@ export default function Card({
   isAdmin = false,
   onEdit,
   onDelete,
-  onAddToPlan,          // ยังรับไว้ แต่ไม่เรียกใช้
+  onAddToPlan,
   isAddedToPlan = false
 }) {
   const { t, i18n } = useTranslation();
@@ -19,19 +19,47 @@ export default function Card({
   const activeLang = lang || i18n.language || 'th';
   const isEn = String(activeLang).startsWith('en');
 
+  // ✅ Sanitize title & description
+  const sanitizeText = (text) => {
+    if (!text) return '';
+    return String(text)
+      .replace(/[<>]/g, '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  };
+
   const titleTh = place.title || place.name || '';
   const titleEn = place.title_en || place.nameEn || titleTh;
-  const displayTitle = isEn ? titleEn : titleTh;
+  const displayTitle = sanitizeText(isEn ? titleEn : titleTh);
 
   const descTh = place.description || place.detailDescription || place.detail || '';
   const descEn = place.description_en || place.descriptionEn || place.detailDescription_en || place.detailEn || descTh;
-  const displayDesc = isEn ? descEn : descTh;
+  const displayDesc = sanitizeText(isEn ? descEn : descTh);
 
   const imageSrc = place.img || 'https://via.placeholder.com/400x250?text=No+Image';
 
   const handleDragStart = (e) => {
-    e.dataTransfer.setData('application/json', JSON.stringify(place));
-    e.dataTransfer.effectAllowed = 'copy';
+    try {
+      const safePlace = {
+        id: place.id || place.docId,
+        title: sanitizeText(place.title || place.name || ''),
+        category: place.category || 'travel'
+      };
+      e.dataTransfer.setData('application/json', JSON.stringify(safePlace));
+      e.dataTransfer.effectAllowed = 'copy';
+    } catch (err) {
+      console.error('Drag error:', err);
+    }
+  };
+
+  // ✅ ปุ่มเพิ่มลงทริป - ใช้งานได้
+  const handleAddToPlanClick = (e) => {
+    e.stopPropagation();
+    if (onAddToPlan) {
+      onAddToPlan(place);
+    }
   };
 
   return (
@@ -42,7 +70,7 @@ export default function Card({
       onDragStart={handleDragStart}
       style={{ position: 'relative', cursor: 'grab' }}
     >
-      {/* ปุ่ม Action สำหรับ Admin */}
+      {/* Admin Actions */}
       {isAdmin && (
         <div 
           className="admin-actions"
@@ -76,7 +104,7 @@ export default function Card({
                 padding: '2px 4px'
               }}
             >
-              แก้ไข
+              {isEn ? 'Edit' : 'แก้ไข'}
             </button>
           )}
           {onDelete && (
@@ -95,7 +123,7 @@ export default function Card({
                 padding: '2px 4px'
               }}
             >
-              ลบ
+              {isEn ? 'Delete' : 'ลบ'}
             </button>
           )}
         </div>
@@ -104,11 +132,12 @@ export default function Card({
       <img 
         className="card-img" 
         src={imageSrc} 
-        alt={displayTitle} 
+        alt={displayTitle || 'Place image'} 
         onError={(e) => {
           e.target.onerror = null; 
           e.target.src = 'https://via.placeholder.com/400x250?text=Image+Not+Found';
         }}
+        loading="lazy"
       />
       
       {onLike && (
@@ -116,7 +145,8 @@ export default function Card({
           className="card-like-btn"
           onClick={(e) => {
             e.stopPropagation();
-            onLike(place.id);
+            const placeId = place.id || place.docId;
+            if (placeId) onLike(placeId);
           }}
           style={{
             position: 'absolute',
@@ -141,7 +171,7 @@ export default function Card({
           onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.92)'}
           onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-           ❤️ {likesCount}
+           ❤️ {likesCount || 0}
         </button>
       )}
       
@@ -155,7 +185,7 @@ export default function Card({
             className="card-desc" 
             style={{ 
               fontSize: '0.85rem', 
-              color: '#bbb', 
+              color: '#555', 
               marginTop: '6px', 
               marginBottom: '8px', 
               lineHeight: '1.4',
@@ -170,28 +200,35 @@ export default function Card({
         )}
         
         <div className="card-meta" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="map-btn" style={{ fontSize: '0.85rem', color: '#00a854', fontWeight: 'bold' }}>
-             {t('btn_map_view', 'ดูรายละเอียดและแผนที่')}
+          <span className="map-btn" style={{ fontSize: '0.85rem', color: '#00a854', fontWeight: 'bold', cursor: 'pointer' }}>
+            {t('btn_map_view', isEn ? 'Details & Map' : 'ดูรายละเอียดและแผนที่')}
           </span>
 
-          {/* ปุ่มเพิ่มลงทริป — แสดง UI แต่กดไม่ได้ */}
+          {/* ✅ ปุ่มเพิ่มลงทริป - ใช้งานได้ */}
           {onAddToPlan && (
             <button
-              disabled
+              onClick={handleAddToPlanClick}
               style={{
-                background: isAddedToPlan ? '#333' : '#00a854',
-                color: isAddedToPlan ? '#aaa' : '#fff',
-                border: isAddedToPlan ? '1px solid rgba(255,255,255,0.2)' : 'none',
-                padding: '5px 12px',
+                background: isAddedToPlan ? '#ff4d4d' : '#00a854',
+                color: '#fff',
+                border: 'none',
+                padding: '5px 14px',
                 borderRadius: '16px',
                 fontSize: '0.78rem',
                 fontWeight: 'bold',
-                cursor: 'not-allowed',
-                opacity: 0.75,
+                cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.opacity = '0.85';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
             >
-              {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add to Trip' : 'เพิ่มลงทริป')}
+              {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add to trip' : 'เพิ่มลงทริป')}
             </button>
           )}
         </div>

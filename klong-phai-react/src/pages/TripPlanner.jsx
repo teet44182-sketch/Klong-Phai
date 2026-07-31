@@ -1,5 +1,5 @@
 // src/pages/TripPlanner.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -37,23 +37,99 @@ const createNumberedIcon = (number, color = '#00a854') =>
     popupAnchor: [0, -15],
   });
 
-const extractCoords = (place) => {
-  if (!place) return null;
-  if (Array.isArray(place.coords) && place.coords.length === 2) {
-    const p1 = parseFloat(place.coords[0]);
-    const p2 = parseFloat(place.coords[1]);
-    if (!isNaN(p1) && !isNaN(p2)) {
-      if (p1 >= 5 && p1 <= 21) return [p1, p2];
-      if (p2 >= 5 && p2 <= 21) return [p2, p1];
+// ============================================================
+// ✅ Parse iFrame URL - ดึงเฉพาะ src
+// ============================================================
+const parseIframeUrl = (input) => {
+  if (!input) return '';
+  if (typeof input !== 'string') return '';
+
+  if (input.includes('<iframe') || input.includes('iframe')) {
+    let match = input.match(/src\s*=\s*["']([^"']+)["']/i);
+    if (match) return match[1];
+    match = input.match(/src\s*=\s*([^\s>]+)/i);
+    if (match) return match[1];
+  }
+
+  if (input.includes('google.com/maps/embed')) return input;
+  if (input.startsWith('http://') || input.startsWith('https://')) return input;
+  if (input.startsWith('//')) return `https:${input}`;
+
+  return input;
+};
+
+// ============================================================
+// ✅ ดึงพิกัดจาก URL - แก้ไขให้ตรง
+// ============================================================
+const extractCoordsFromUrl = (url) => {
+  if (!url) return null;
+  const cleanUrl = parseIframeUrl(url);
+
+  // 1. หา q=lat,lng
+  const qMatch = cleanUrl.match(/[?&]q=([^&]+)/i);
+  if (qMatch) {
+    let q = decodeURIComponent(qMatch[1]).replace(/%2C/g, ',');
+    const coordsMatch = q.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
+    if (coordsMatch) {
+      return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
     }
   }
-  const latVal = place.lat ?? place.latitude;
-  const lngVal = place.lng ?? place.longitude;
-  if (latVal !== undefined && lngVal !== undefined) {
-    const lat = parseFloat(latVal);
-    const lng = parseFloat(lngVal);
-    if (!isNaN(lat) && !isNaN(lng)) return [lat, lng];
+
+  // 2. หา !2d!3d
+  const embedMatch = cleanUrl.match(/!2d([^!]+)!3d([^!]+)/i);
+  if (embedMatch) {
+    return [parseFloat(embedMatch[2]), parseFloat(embedMatch[1])];
   }
+
+  // 3. หา !3d!2d
+  const embedMatch2 = cleanUrl.match(/!3d([^!]+)!2d([^!]+)/i);
+  if (embedMatch2) {
+    return [parseFloat(embedMatch2[1]), parseFloat(embedMatch2[2])];
+  }
+
+  // 4. หา @lat,lng
+  const atMatch = cleanUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/i);
+  if (atMatch) {
+    return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
+  }
+
+  // 5. หา center=lat,lng
+  const centerMatch = cleanUrl.match(/[?&]center=([^&]+)/i);
+  if (centerMatch) {
+    const center = decodeURIComponent(centerMatch[1]);
+    const coordsMatch = center.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
+    if (coordsMatch) {
+      return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
+    }
+  }
+
+  return null;
+};
+
+// ============================================================
+// ✅ ดึงพิกัดจาก place - ใช้ฟังก์ชันเดียวกับ App.jsx
+// ============================================================
+const getPlaceCoords = (place) => {
+  if (!place) return null;
+
+  // 1. coords array
+  if (Array.isArray(place.coords) && place.coords.length === 2) {
+    return [parseFloat(place.coords[0]), parseFloat(place.coords[1])];
+  }
+
+  // 2. lat/lng
+  const lat = parseFloat(place.lat || place.latitude);
+  const lng = parseFloat(place.lng || place.longitude);
+  if (!isNaN(lat) && !isNaN(lng)) {
+    return [lat, lng];
+  }
+
+  // 3. mapUrl (iFrame หรือ URL)
+  if (place.mapUrl) {
+    const fromUrl = extractCoordsFromUrl(place.mapUrl);
+    if (fromUrl) return fromUrl;
+  }
+
   return null;
 };
 
@@ -72,7 +148,6 @@ function MapController({ coordsList }) {
   return null;
 }
 
-// ===== Combo แนะนำ (แก้รายการตามข้อมูลจริงได้) =====
 const COMBO_LIST = [
   {
     id: 'nature',
@@ -102,8 +177,8 @@ export default function TripPlanner({
   lang,
   selectedPlaces = [],
   setSelectedPlaces,
-  generateMultiStopMapUrl,
-  estimateTripTime,
+  generateMultiStopMapUrl: propsGenerateMultiStopMapUrl,
+  estimateTripTime: propsEstimateTripTime,
   onRemoveFromPlan
 }) {
   const { i18n } = useTranslation();
@@ -125,17 +200,45 @@ export default function TripPlanner({
     setSwipeQueue(places);
   }, [places]);
 
+  // ============================================================
+  // ✅ สร้าง Google Maps URL - ใช้ destination= แทน q=
+  // ============================================================
+  const generateGoogleMapsUrl = (placesList) => {
+    if (!placesList || placesList.length === 0) return '';
+
+    const coordsList = placesList.map(p => getPlaceCoords(p)).filter(Boolean);
+    
+    if (coordsList.length === 0) {
+      showToast('ไม่พบพิกัดของสถานที่');
+      return '';
+    }
+
+    // 1 ที่
+    if (coordsList.length === 1) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${coordsList[0][0]},${coordsList[0][1]}`;
+    }
+
+    // หลายที่
+    const origin = `${coordsList[0][0]},${coordsList[0][1]}`;
+    const destination = `${coordsList[coordsList.length - 1][0]},${coordsList[coordsList.length - 1][1]}`;
+    const waypoints = coordsList.slice(1, -1).map(c => `${c[0]},${c[1]}`).join('|');
+
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+    if (waypoints) url += `&waypoints=${waypoints}`;
+    return url;
+  };
+
   const handleSwipeRight = (place) => {
     const targetId = place.id || place.docId;
     const placeTitle = place.title || place.name || 'สถานที่';
     const exists = activeSelected.some(p => (p.id || p.docId) === targetId);
 
     if (exists) {
-      showToast(` "${placeTitle}" อยู่ในทริปแล้ว`);
+      showToast(`"${placeTitle}" ${isEn ? 'already in trip' : 'อยู่ในทริปแล้ว'}`);
       return;
     }
     setActiveSelected(prev => [...prev, place]);
-    showToast(` เพิ่ม "${placeTitle}" ลงทริปแล้ว`);
+    showToast(`${isEn ? 'Added' : 'เพิ่ม'} "${placeTitle}" ${isEn ? 'to trip' : 'ลงทริปแล้ว'}`);
   };
 
   const handleSwipeLeft = (place) => {
@@ -146,7 +249,7 @@ export default function TripPlanner({
       onRemoveFromPlan(place);
     } else {
       setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
-      showToast(` ลบ "${placeTitle}" ออกจากทริปแล้ว`);
+      showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     }
     setSwipeQueue(prev => prev.filter(p => (p.id || p.docId) !== targetId));
   };
@@ -159,6 +262,18 @@ export default function TripPlanner({
     }
   };
 
+  const handleRemove = (place) => {
+    const targetId = place.id || place.docId;
+    const placeTitle = place.title || place.name || 'สถานที่';
+
+    if (onRemoveFromPlan) {
+      onRemoveFromPlan(place);
+    } else {
+      setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
+      showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
+    }
+  };
+
   const handleMove = (index, direction) => {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= activeSelected.length) return;
@@ -168,53 +283,32 @@ export default function TripPlanner({
     setActiveSelected(updated);
   };
 
-  const handleRemove = (place) => {
-    const targetId = place.id || place.docId;
-    const placeTitle = place.title || place.name || 'สถานที่';
-
-    if (onRemoveFromPlan) {
-      onRemoveFromPlan(place);
-    } else {
-      setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
-      showToast(` ลบ "${placeTitle}" ออกจากทริปแล้ว`);
+  // ============================================================
+  // ✅ นำทาง - เปิด Google Maps
+  // ============================================================
+  const handleNavigate = () => {
+    if (activeSelected.length === 0) {
+      showToast('กรุณาเลือกสถานที่ก่อน');
+      return;
     }
-  };
 
-  const handleOpenGoogleMapsRoute = () => {
-    if (activeSelected.length === 0) return;
-
-    if (typeof generateMultiStopMapUrl === 'function') {
-      const url = generateMultiStopMapUrl(activeSelected);
+    // ใช้จาก props ถ้ามี
+    if (typeof propsGenerateMultiStopMapUrl === 'function') {
+      const url = propsGenerateMultiStopMapUrl(activeSelected);
       if (url && url !== '#') {
         window.open(url, '_blank');
         return;
       }
     }
 
-    const items = activeSelected.map(p => {
-      const coords = extractCoords(p);
-      if (coords) return `${coords[0]},${coords[1]}`;
-      return null;
-    }).filter(Boolean);
-
-    if (items.length === 0) {
-      showToast('ไม่พบพิกัดสถานที่');
-      return;
-    }
-
-    let mapsUrl = '';
-    if (items.length === 1) {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${items[0]}`;
+    const url = generateGoogleMapsUrl(activeSelected);
+    if (url) {
+      window.open(url, '_blank');
     } else {
-      const origin = items[0];
-      const destination = items[items.length - 1];
-      const waypoints = items.slice(1, -1).join('|');
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ''}`;
+      showToast('ไม่พบพิกัดของสถานที่ที่เลือก');
     }
-    window.open(mapsUrl, '_blank');
   };
 
-  // ===== ใส่ Combo เข้าคิว =====
   const applyCombo = (combo) => {
     const matched = places.filter(p => {
       const cat = String(p.category || p.type || '').toLowerCase();
@@ -232,7 +326,7 @@ export default function TripPlanner({
     );
 
     if (newOnes.length === 0) {
-      showToast('สถานที่ใน Combo นี้อยู่ในทริปครบแล้ว');
+      showToast('ℹสถานที่ใน Combo นี้อยู่ในทริปครบแล้ว');
       return;
     }
 
@@ -240,26 +334,36 @@ export default function TripPlanner({
     showToast(`เพิ่ม Combo "${isEn ? combo.titleEn : combo.title}" (${newOnes.length} ที่)`);
   };
 
-  const routePolyline = activeSelected.map(p => extractCoords(p)).filter(Boolean);
+  // ============================================================
+  // ✅ Route Polyline
+  // ============================================================
+  const routePolyline = activeSelected.map(p => getPlaceCoords(p)).filter(Boolean);
   const defaultCenter = [14.872085, 101.569337];
   const mapCenter = routePolyline.length > 0 ? routePolyline[0] : defaultCenter;
 
-  const totalTimeText = typeof estimateTripTime === 'function'
-  ? estimateTripTime(activeSelected.length)
-  : (() => {
-      if (activeSelected.length === 0) return '0 นาที';
-      const minutes = activeSelected.length * 35 + Math.max(0, activeSelected.length - 1) * 12;
-      if (minutes < 60) return `~${minutes} นาที`;
-      const h = Math.floor(minutes / 60);
-      const m = minutes % 60;
-      return m === 0 ? `~${h} ชม.` : `~${h} ชม. ${m} นาที`;
-    })();
+  const totalTimeText = typeof propsEstimateTripTime === 'function'
+    ? propsEstimateTripTime(activeSelected.length)
+    : (() => {
+        if (activeSelected.length === 0) return isEn ? '0 min' : '0 นาที';
+        const minutes = activeSelected.length * 35 + Math.max(0, activeSelected.length - 1) * 12;
+        if (minutes < 60) {
+          return `~${minutes} ${isEn ? 'min' : 'นาที'}`;
+        }
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        if (m === 0) {
+          return `~${h} ${isEn ? 'hr' : 'ชม.'}`;
+        }
+        return `~${h} ${isEn ? 'hr' : 'ชม.'} ${m} ${isEn ? 'min' : 'นาที'}`;
+      })();
 
+  // ============================================================
+  // ✅ Render
+  // ============================================================
   return (
     <div style={{ paddingTop: '80px', minHeight: '100vh', background: '#1a1a1a', color: '#fff', fontFamily: 'Prompt, sans-serif' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px 60px' }}>
 
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <h1 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.8rem', marginBottom: '8px' }}>
             {isEn ? 'Trip Planner' : 'วางแผนเส้นทางท่องเที่ยว'}
@@ -269,7 +373,6 @@ export default function TripPlanner({
           </p>
         </div>
 
-        {/* ===== Combo แนะนำ ===== */}
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.05rem', marginBottom: 12 }}>
             {isEn ? 'Recommended Combos' : 'Combo แนะนำ'}
@@ -302,15 +405,12 @@ export default function TripPlanner({
           </div>
         </div>
 
-        {/* Selected Places Box */}
         <div
-          onClick={handleOpenGoogleMapsRoute}
           style={{
             background: activeSelected.length > 0 ? 'rgba(0, 168, 84, 0.12)' : 'rgba(255,255,255,0.03)',
             padding: '20px',
             borderRadius: '16px',
             border: activeSelected.length > 0 ? '2px dashed #00a854' : '2px dashed rgba(255,255,255,0.2)',
-            cursor: activeSelected.length > 0 ? 'pointer' : 'default',
             marginBottom: '24px',
             textAlign: 'center'
           }}
@@ -322,134 +422,140 @@ export default function TripPlanner({
               </h3>
               {activeSelected.length > 0 && (
                 <p style={{ margin: '4px 0 0', color: '#aaa', fontSize: '0.85rem' }}>
-                  ⏱ {isEn ? 'Est. time' : 'เวลาโดยประมาณ'}: <strong style={{ color: '#fff' }}>{totalTimeText}</strong>
-                  <span style={{ color: '#666', marginLeft: 6 }}>({isEn ? 'no traffic' : 'รถไม่ติด'})</span>
+                  {isEn ? 'Est. time' : 'เวลาโดยประมาณ'}: <strong style={{ color: '#fff' }}>{totalTimeText}</strong>
                 </p>
               )}
             </div>
 
-            
+            {activeSelected.length > 0 && (
+              <button
+                onClick={handleNavigate}
+                style={{
+                  background: '#4285F4',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '8px 20px',
+                  borderRadius: '25px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {isEn ? 'Navigate' : 'นำทาง'}
+              </button>
+            )}
           </div>
 
           {activeSelected.length === 0 ? (
-  <div style={{ padding: '30px 10px', color: '#888' }}>
-    {isEn ? 'No places selected yet' : 'ยังไม่มีสถานที่ในทริป'}
-  </div>
-) : (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
-    {/* ข้อความเวลา */}
-    <p style={{ margin: '0 0 6px', color: '#aaa', fontSize: '0.84rem', lineHeight: 1.5, textAlign: 'left' }}>
-       {isEn ? 'Est. total' : 'เวลารวมโดยประมาณ'}: <strong style={{ color: '#fff' }}>{totalTimeText}</strong>
-      <br />
-      <span style={{ color: '#777', fontSize: '0.78rem' }}>
-        {isEn
-          ? '(~35 min per place + ~12 min travel between places · no traffic)'
-          : '(อยู่ที่ละ ~35 นาที + เดินทางระหว่างที่ ~12 นาที · รถไม่ติด)'}
-      </span>
-    </p>
+            <div style={{ padding: '30px 10px', color: '#888' }}>
+              {isEn ? 'No places selected yet' : 'ยังไม่มีสถานที่ในทริป'}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
+              {activeSelected.map((place, index) => {
+                const placeId = place.id || place.docId;
+                const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
 
-    {activeSelected.map((place, index) => {
-      const placeId = place.id || place.docId;
-      const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
+                return (
+                  <div
+                    key={placeId || index}
+                    draggable={true}
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', String(index));
+                      e.currentTarget.style.opacity = '0.45';
+                    }}
+                    onDragEnd={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+                      const toIndex = index;
+                      if (isNaN(fromIndex) || fromIndex === toIndex) return;
 
-      return (
-        <div
-          key={placeId || index}
-          draggable={true}
-          onDragStart={(e) => {
-            e.stopPropagation();
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', String(index));
-            e.currentTarget.style.opacity = '0.45';
-          }}
-          onDragEnd={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const fromIndex = Number(e.dataTransfer.getData('text/plain'));
-            const toIndex = index;
-            if (isNaN(fromIndex) || fromIndex === toIndex) return;
+                      const updated = [...activeSelected];
+                      const [moved] = updated.splice(fromIndex, 1);
+                      updated.splice(toIndex, 0, moved);
+                      setActiveSelected(updated);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: 'rgba(255,255,255,0.06)',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      cursor: 'grab',
+                      userSelect: 'none',
+                      transition: 'background 0.15s, opacity 0.15s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
+                      <span style={{
+                        background: '#00a854',
+                        color: '#fff',
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '0.8rem',
+                        flexShrink: 0
+                      }}>
+                        {index + 1}
+                      </span>
+                      <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
+                    </div>
 
-            const updated = [...activeSelected];
-            const [moved] = updated.splice(fromIndex, 1);
-            updated.splice(toIndex, 0, moved);
-            setActiveSelected(updated);
-          }}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'rgba(255,255,255,0.06)',
-            padding: '12px 14px',
-            borderRadius: '10px',
-            cursor: 'grab',
-            userSelect: 'none',
-            transition: 'background 0.15s, opacity 0.15s'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
-            <span style={{
-              background: '#00a854',
-              color: '#fff',
-              width: '26px',
-              height: '26px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '0.8rem',
-              flexShrink: 0
-            }}>
-              {index + 1}
-            </span>
-            <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRemove(place);
-              }}
-              style={{
-                background: 'rgba(255,77,77,0.2)',
-                color: '#ff4d4d',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '5px 10px',
-                cursor: 'pointer',
-                fontSize: '0.85rem'
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      );
-    })}
-  </div>
-)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemove(place);
+                        }}
+                        style={{
+                          background: 'rgba(255,77,77,0.2)',
+                          color: '#ff4d4d',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '5px 10px',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Map */}
         <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
           <MapContainer center={mapCenter} zoom={13} style={{ height: '320px', width: '100%' }}>
-            <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapController coordsList={routePolyline} />
             {routePolyline.length > 1 && (
               <Polyline positions={routePolyline} color="#00a854" weight={3} dashArray="6, 6" />
             )}
             {activeSelected.map((place, idx) => {
-              const coords = extractCoords(place);
+              const coords = getPlaceCoords(place);
               if (!coords) return null;
               const placeTitle = place.title || place.name || 'สถานที่';
               return (
@@ -468,7 +574,6 @@ export default function TripPlanner({
           </MapContainer>
         </div>
 
-        {/* Queue */}
         <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.1rem', marginBottom: '12px' }}>
           {isEn ? `Queue (${swipeQueue.length})` : `คิวสถานที่แนะนำ (${swipeQueue.length})`}
         </h3>
@@ -504,9 +609,7 @@ export default function TripPlanner({
                     marginBottom: '10px'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {imgUrl && (
-                        <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
-                      )}
+                      {imgUrl && <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />}
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{title}</div>
                         <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '2px' }}>

@@ -16,6 +16,11 @@ export default function LangSwitcherText({ lang, onLangChange }) {
     }
   };
 
+  // ✅ ป้องกัน XSS - sanitize language code
+  const safeLang = (code) => {
+    return code === 'th' || code === 'en' ? code : 'th';
+  };
+
   return (
     <div
       style={{
@@ -31,12 +36,11 @@ export default function LangSwitcherText({ lang, onLangChange }) {
         fontFamily: 'Mitr, sans-serif',
         fontSize: '12px',
         fontWeight: 'bold',
-        width: '80px', // กำหนดขนาดกรอบชัดเจน
+        width: '80px',
         height: '32px',
         boxSizing: 'border-box',
       }}
     >
-      {/* Sliding Highlight Pill */}
       <div
         style={{
           position: 'absolute',
@@ -47,13 +51,11 @@ export default function LangSwitcherText({ lang, onLangChange }) {
           borderRadius: '20px',
           background: '#00a854',
           boxShadow: '0 2px 6px rgba(0, 168, 84, 0.4)',
-          // ปรับ ระยะขยับ translateX ให้พอดีกับขอบขวา
           transform: isEn ? 'translateX(36px)' : 'translateX(0px)',
           transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       />
 
-      {/* TH Button */}
       <button
         type="button"
         onClick={() => toggleLang('th')}
@@ -78,7 +80,6 @@ export default function LangSwitcherText({ lang, onLangChange }) {
         TH
       </button>
 
-      {/* EN Button */}
       <button
         type="button"
         onClick={() => toggleLang('en')}

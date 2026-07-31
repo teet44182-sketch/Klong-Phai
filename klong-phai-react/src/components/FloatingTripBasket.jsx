@@ -1,6 +1,7 @@
 // src/components/FloatingTripBasket.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 
 export default function FloatingTripBasket({ 
   selectedPlaces = [], 
@@ -9,6 +10,7 @@ export default function FloatingTripBasket({
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -36,13 +38,15 @@ export default function FloatingTripBasket({
       const droppedPlace = JSON.parse(rawData);
       if (onAddPlace) {
         onAddPlace(droppedPlace);
+        const title = droppedPlace.title || droppedPlace.name || 'สถานที่';
+        showToast(`เพิ่ม "${title}" ลงทริปแล้ว`);
       }
     } catch (err) {
       console.error("Failed to parse dragged place:", err);
+      showToast('ไม่สามารถเพิ่มสถานที่นี้ได้');
     }
   };
 
-  // 🟢 เมื่อคลิกปุ่มตะกร้า ให้ไปหน้า Plan
   const handleClick = () => {
     if (onOpenTripPlanner) {
       onOpenTripPlanner();
@@ -50,6 +54,9 @@ export default function FloatingTripBasket({
       navigate('/planner');
     }
   };
+
+  // ✅ แสดงเฉพาะถ้ามี selectedPlaces
+  if (selectedPlaces.length === 0) return null;
 
   return (
     <div
@@ -85,7 +92,8 @@ export default function FloatingTripBasket({
           {isDragOver ? 'ปล่อยเพื่อเพิ่ม!' : 'ทริปของคุณ'}
         </span>
         <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-          {selectedPlaces.length} สถานที่ (กดเพื่อดูแผนทริป)
+          {selectedPlaces.length} {selectedPlaces.length === 1 ? 'สถานที่' : 'สถานที่'} 
+          (กดเพื่อดูแผน)
         </span>
       </div>
     </div>

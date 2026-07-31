@@ -8,13 +8,16 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
   const startPos = useRef({ x: 0, y: 0, time: 0 });
   const isHorizontalSwipe = useRef(null);
 
+  // ✅ ป้องกันการ swipe บน element ที่เป็น interactive
   const isInteractiveElement = (target) => {
-    return (
-      target.tagName === 'BUTTON' ||
-      target.tagName === 'A' ||
-      target.closest('button') ||
-      target.closest('a')
-    );
+    if (!target) return false;
+    const interactiveTags = ['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT'];
+    if (interactiveTags.includes(target.tagName)) return true;
+    if (target.closest('button')) return true;
+    if (target.closest('a')) return true;
+    if (target.closest('input')) return true;
+    if (target.closest('textarea')) return true;
+    return false;
   };
 
   const handleStart = (e, clientX, clientY) => {
@@ -45,7 +48,10 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
 
     if (e.cancelable) e.preventDefault();
 
-    setDragOffset({ x: deltaX, y: deltaY * 0.2 });
+    // ✅ จำกัดการเลื่อน
+    const maxOffset = 250;
+    const clampedX = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
+    setDragOffset({ x: clampedX, y: deltaY * 0.2 });
   };
 
   const handleEnd = () => {
@@ -60,8 +66,8 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
     const duration = Date.now() - startPos.current.time;
     const velocityX = Math.abs(dragOffset.x) / (duration || 1);
 
-    const distanceThreshold = 100;
-    const velocityThreshold = 0.5;
+    const distanceThreshold = 80;
+    const velocityThreshold = 0.3;
 
     const isSwipeRight = dragOffset.x > distanceThreshold || (dragOffset.x > 30 && velocityX > velocityThreshold);
     const isSwipeLeft = dragOffset.x < -distanceThreshold || (dragOffset.x < -30 && velocityX > velocityThreshold);
@@ -72,12 +78,11 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
       onSwipeLeft();
     }
 
-    // เด้งกลับตำแหน่งเดิมเสมอ การ์ดไม่หาย
     setDragOffset({ x: 0, y: 0 });
   };
 
-  const rotation = dragOffset.x * 0.08;
-  const badgeOpacity = Math.min(Math.abs(dragOffset.x) / 80, 1);
+  const rotation = dragOffset.x * 0.06;
+  const badgeOpacity = Math.min(Math.abs(dragOffset.x) / 60, 1);
 
   return (
     <div
@@ -115,7 +120,7 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
           transform: 'rotate(-15deg)', zIndex: 20, background: 'rgba(0,0,0,0.75)',
           opacity: badgeOpacity, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,168,84,0.3)'
         }}>
-          + ADD
+          ADD
         </div>
       )}
 

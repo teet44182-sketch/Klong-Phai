@@ -2,8 +2,25 @@
 import React from 'react';
 
 export default function MapModal({ isOpen, mapUrl, onClose, zIndex }) {
-  // ถ้าไม่ได้สั่งให้เปิด (isOpen === false) ไม่ต้องเรนเดอร์อะไรออกมา
   if (!isOpen) return null;
+
+  // ✅ Validate URL - ป้องกัน XSS
+  const validateMapUrl = (url) => {
+    if (!url) return '';
+    if (typeof url !== 'string') return '';
+    
+    // อนุญาตเฉพาะ URL ที่ขึ้นต้นด้วย https
+    if (url.startsWith('https://')) {
+      return url;
+    }
+    // ถ้าเป็น URL สั้นๆ ให้แปลง
+    if (url.startsWith('//')) {
+      return `https:${url}`;
+    }
+    return '';
+  };
+
+  const safeUrl = validateMapUrl(mapUrl);
 
   return (
     <div className="map-modal-overlay active" onClick={onClose} style={zIndex ? { zIndex } : {}}>
@@ -13,15 +30,29 @@ export default function MapModal({ isOpen, mapUrl, onClose, zIndex }) {
           แผนที่สถานที่
         </h3>
         <div className="map-iframe-container">
-          <iframe 
-            src={mapUrl} 
-            width="100%" 
-            height="100%" 
-            style={{ border: 0 }} 
-            allowFullScreen="" 
-            loading="lazy"
-            title="Map"
-          ></iframe>
+          {safeUrl ? (
+            <iframe 
+              src={safeUrl} 
+              width="100%" 
+              height="100%" 
+              style={{ border: 0 }} 
+              allowFullScreen="" 
+              loading="lazy"
+              title="Map"
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            ></iframe>
+          ) : (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: '100%',
+              color: '#999',
+              fontSize: '1rem'
+            }}>
+              ไม่พบข้อมูลแผนที่
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -23,7 +23,6 @@ export default function Restaurant({
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // กรองเฉพาะร้านอาหาร + รองรับ gallery
   const restaurants = (places || [])
     .filter(place => {
       const cat = String(place.category || place.type || '').toLowerCase().trim();
@@ -57,7 +56,7 @@ export default function Restaurant({
     window.scrollTo(0, 0);
   }, []);
 
-  // 🟢 ปัดขวา = เพิ่มเข้าทริป + Toast
+  // 🟢 ปัดขวา = เพิ่ม
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -65,7 +64,7 @@ export default function Restaurant({
         const safePrev = prev || [];
         const exists = safePrev.some(p => (p.id || p.docId) === placeId);
         if (!exists) {
-          if (onAddToPlan) onAddToPlan(place); // ให้ Toast เด้ง
+          if (onAddToPlan) onAddToPlan(place);
           return [...safePrev, place];
         }
         return safePrev;
@@ -73,18 +72,18 @@ export default function Restaurant({
     }
   };
 
-  // 🔴 ปัดซ้าย = ลบออกจากทริป
+  // 🔴 ปัดซ้าย = ลบ
   const handleSwipeLeftRemove = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
       setSelectedPlaces(prev => (prev || []).filter(p => (p.id || p.docId) !== placeId));
+      // ✅ เพิ่มบรรทัดนี้ให้ Toast เด้ง
+      if (onAddToPlan) onAddToPlan(place);
     }
   };
 
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
-      
-      {/* Hero BG Blur */}
       <div style={{
         position: 'relative',
         width: '100%',
@@ -112,7 +111,6 @@ export default function Restaurant({
             zIndex: 1
           }}
         />
-        
         <div style={{
           position: 'absolute',
           top: 0,
@@ -122,7 +120,6 @@ export default function Restaurant({
           background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(43, 43, 43, 0.9))',
           zIndex: 2
         }} />
-
         <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
           <h2 className="page-title" style={{ 
             fontSize: '2.5rem', 
