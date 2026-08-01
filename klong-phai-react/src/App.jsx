@@ -10,7 +10,7 @@ import LangSwitcherText from './components/LangSwitcherText';
 import FloatingTripBasket from './components/FloatingTripBasket';
 import ScrollProgress from './components/ScrollProgress';
 import SkeletonCard from './components/SkeletonCard';
-
+import Footer from './components/Footer';
 import { auth, db, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -1096,7 +1096,7 @@ function MainApp() {
           <Route path="/detail/:id" element={<Detail places={places} onOpenMap={openMap} lang={currentLang} />} />
         </Routes>
       </Suspense>
-
+             <Footer />
       <FloatingTripBasket
         selectedPlaces={selectedPlaces}
         onAddPlace={handleAddPlaceToTrip}

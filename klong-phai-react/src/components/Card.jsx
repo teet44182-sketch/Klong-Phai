@@ -19,7 +19,7 @@ export default function Card({
   const activeLang = lang || i18n.language || 'th';
   const isEn = String(activeLang).startsWith('en');
 
-  // ✅ Sanitize title & description
+  // ✅ Sanitize
   const sanitizeText = (text) => {
     if (!text) return '';
     return String(text)
@@ -40,6 +40,24 @@ export default function Card({
 
   const imageSrc = place.img || 'https://via.placeholder.com/400x250?text=No+Image';
 
+  // ✅ ปุ่ม Like
+  const handleLikeClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onLike) {
+      const placeId = place.id || place.docId;
+      if (placeId) onLike(placeId);
+    }
+  };
+
+  // ✅ เปิด Modal
+  const handleCardClick = () => {
+    if (onOpenMap) {
+      onOpenMap(place);
+    }
+  };
+
+  // ✅ Drag Start
   const handleDragStart = (e) => {
     try {
       const safePlace = {
@@ -54,21 +72,13 @@ export default function Card({
     }
   };
 
-  // ✅ ปุ่มเพิ่มลงทริป - ใช้งานได้
-  const handleAddToPlanClick = (e) => {
-    e.stopPropagation();
-    if (onAddToPlan) {
-      onAddToPlan(place);
-    }
-  };
-
   return (
     <div 
       className="card card-interactive" 
-      onClick={() => onOpenMap && onOpenMap(place)}
+      onClick={handleCardClick}
       draggable={true}
       onDragStart={handleDragStart}
-      style={{ position: 'relative', cursor: 'grab' }}
+      style={{ position: 'relative', cursor: 'pointer' }}
     >
       {/* Admin Actions */}
       {isAdmin && (
@@ -90,8 +100,10 @@ export default function Card({
         >
           {onEdit && (
             <button 
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 onEdit(place);
               }}
               style={{
@@ -109,8 +121,10 @@ export default function Card({
           )}
           {onDelete && (
             <button 
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 onDelete(place);
               }}
               style={{
@@ -142,12 +156,9 @@ export default function Card({
       
       {onLike && (
         <button 
+          type="button"
           className="card-like-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            const placeId = place.id || place.docId;
-            if (placeId) onLike(placeId);
-          }}
+          onClick={handleLikeClick}
           style={{
             position: 'absolute',
             top: '12px',
@@ -177,7 +188,7 @@ export default function Card({
       
       <div className="card-content">
         <div className="card-title" style={{ fontFamily: 'Mitr, sans-serif' }}>
-          {displayTitle}
+          {displayTitle || 'ไม่มีชื่อสถานที่'}
         </div>
 
         {displayDesc && (
@@ -204,33 +215,27 @@ export default function Card({
             {t('btn_map_view', isEn ? 'Details & Map' : 'ดูรายละเอียดและแผนที่')}
           </span>
 
-          {/* ✅ ปุ่มเพิ่มลงทริป - ใช้งานได้ */}
-          {onAddToPlan && (
-            <button
-              onClick={handleAddToPlanClick}
-              style={{
-                background: isAddedToPlan ? '#ff4d4d' : '#00a854',
-                color: '#fff',
-                border: 'none',
-                padding: '5px 14px',
-                borderRadius: '16px',
-                fontSize: '0.78rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.opacity = '0.85';
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add to trip' : 'เพิ่มลงทริป')}
-            </button>
-          )}
+          {/* ✅ ปุ่มแสดงสถานะ - UI อย่างเดียว กดไม่ได้ */}
+          <span
+            style={{
+              background: isAddedToPlan ? '#ff6b6b' : '#00a854',
+              color: '#fff',
+              padding: '5px 14px',
+              borderRadius: '20px',
+              fontSize: '0.78rem',
+              fontWeight: 'bold',
+              opacity: 0.8,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              pointerEvents: 'none',  // ✅ ป้องกันการคลิก
+              userSelect: 'none',      // ✅ ป้องกันการเลือกข้อความ
+              boxShadow: isAddedToPlan ? 'none' : '0 2px 10px rgba(0,168,84,0.3)'
+            }}
+          >
+            {isAddedToPlan ? '' : ''}
+            {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add' : 'เพิ่ม')}
+          </span>
         </div>
       </div>
     </div>

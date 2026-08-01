@@ -4,9 +4,11 @@ import React, { useState, useRef } from 'react';
 export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState(null);
 
   const startPos = useRef({ x: 0, y: 0, time: 0 });
   const isHorizontalSwipe = useRef(null);
+  const hasTriggeredAction = useRef(false);
 
   // ✅ ป้องกันการ swipe บน element ที่เป็น interactive
   const isInteractiveElement = (target) => {
@@ -30,6 +32,8 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
     };
     isHorizontalSwipe.current = null;
     setIsDragging(true);
+    setSwipeDirection(null);
+    hasTriggeredAction.current = false;
   };
 
   const handleMove = (e, clientX, clientY) => {
@@ -48,10 +52,17 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
 
     if (e.cancelable) e.preventDefault();
 
-    // ✅ จำกัดการเลื่อน
     const maxOffset = 250;
     const clampedX = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
     setDragOffset({ x: clampedX, y: deltaY * 0.2 });
+
+    if (clampedX > 30) {
+      setSwipeDirection('right');
+    } else if (clampedX < -30) {
+      setSwipeDirection('left');
+    } else {
+      setSwipeDirection(null);
+    }
   };
 
   const handleEnd = () => {
@@ -60,6 +71,7 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
 
     if (isHorizontalSwipe.current === false) {
       setDragOffset({ x: 0, y: 0 });
+      setSwipeDirection(null);
       return;
     }
 
@@ -72,17 +84,56 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
     const isSwipeRight = dragOffset.x > distanceThreshold || (dragOffset.x > 30 && velocityX > velocityThreshold);
     const isSwipeLeft = dragOffset.x < -distanceThreshold || (dragOffset.x < -30 && velocityX > velocityThreshold);
 
-    if (isSwipeRight && onSwipeRight) {
-      onSwipeRight();
-    } else if (isSwipeLeft && onSwipeLeft) {
-      onSwipeLeft();
+    // ✅ ตรวจสอบสถานะปัจจุบันก่อนตัดสินใจ
+    // 🔴 ถ้าอยู่ในคิวแล้ว (isAdded = true) ปัดซ้าย = REMOVE, ปัดขวา = ไม่มีผล
+    // 🟢 ถ้ายังไม่อยู่ในคิว (isAdded = false) ปัดขวา = ADD, ปัดซ้าย = ไม่มีผล
+    
+    if (isAdded) {
+      // ✅ อยู่ในคิวแล้ว - ปัดซ้ายเท่านั้นที่ใช้ได้ (REMOVE)
+      if (isSwipeLeft && onSwipeLeft && !hasTriggeredAction.current) {
+        hasTriggeredAction.current = true;
+        onSwipeLeft();
+      }
+      // ❌ ปัดขวาไม่มีผล (เพราะอยู่ในคิวแล้ว)
+    } else {
+      // ✅ ยังไม่อยู่ในคิว - ปัดขวาเท่านั้นที่ใช้ได้ (ADD)
+      if (isSwipeRight && onSwipeRight && !hasTriggeredAction.current) {
+        hasTriggeredAction.current = true;
+        onSwipeRight();
+      }
+      // ❌ ปัดซ้ายไม่มีผล (เพราะยังไม่ได้อยู่ในคิว)
     }
 
     setDragOffset({ x: 0, y: 0 });
+    setSwipeDirection(null);
   };
 
   const rotation = dragOffset.x * 0.06;
   const badgeOpacity = Math.min(Math.abs(dragOffset.x) / 60, 1);
+
+  const showRightBadge = dragOffset.x > 20 && swipeDirection === 'right';
+  const showLeftBadge = dragOffset.x < -20 && swipeDirection === 'left';
+
+  // ✅ แสดงข้อความตามสถานะ
+  const getRightBadgeText = () => {
+    if (isAdded) return 'ADDED';
+    return 'ADD';
+  };
+
+  const getLeftBadgeText = () => {
+    if (isAdded) return 'REMOVE';
+    return '';
+  };
+
+  const getRightBadgeColor = () => {
+    if (isAdded) return '#ffaa00';
+    return '#00a854';
+  };
+
+  const getLeftBadgeColor = () => {
+    if (isAdded) return '#ff4d4d';
+    return '#ffaa00';
+  };
 
   return (
     <div
@@ -111,29 +162,35 @@ export default function SwipeCard({ children, onSwipeLeft, onSwipeRight, isAdded
         touchAction: 'pan-y'
       }}
     >
-      {/* Badge + ADD */}
-      {dragOffset.x > 20 && (
+      {/* ✅ Badge ด้านขวา */}
+      {showRightBadge && (
         <div style={{
           position: 'absolute', top: '16px', left: '16px',
-          border: '3px solid #00a854', color: '#00a854', fontWeight: '900',
+          border: `3px solid ${getRightBadgeColor()}`, 
+          color: getRightBadgeColor(), 
+          fontWeight: '900',
           padding: '4px 12px', borderRadius: '8px', fontSize: '1rem',
           transform: 'rotate(-15deg)', zIndex: 20, background: 'rgba(0,0,0,0.75)',
-          opacity: badgeOpacity, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,168,84,0.3)'
+          opacity: badgeOpacity, pointerEvents: 'none', 
+          boxShadow: `0 4px 12px rgba(0,168,84,0.3)`
         }}>
-          ADD
+          {getRightBadgeText()}
         </div>
       )}
 
-      {/* Badge SKIP */}
-      {dragOffset.x < -20 && (
+      {/* ✅ Badge ด้านซ้าย */}
+      {showLeftBadge && (
         <div style={{
           position: 'absolute', top: '16px', right: '16px',
-          border: '3px solid #ff4d4d', color: '#ff4d4d', fontWeight: '900',
+          border: `3px solid ${getLeftBadgeColor()}`, 
+          color: getLeftBadgeColor(), 
+          fontWeight: '900',
           padding: '4px 12px', borderRadius: '8px', fontSize: '1rem',
           transform: 'rotate(15deg)', zIndex: 20, background: 'rgba(0,0,0,0.75)',
-          opacity: badgeOpacity, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(255,77,77,0.3)'
+          opacity: badgeOpacity, pointerEvents: 'none', 
+          boxShadow: `0 4px 12px rgba(255,77,77,0.3)`
         }}>
-          SKIP
+          {getLeftBadgeText()}
         </div>
       )}
 
