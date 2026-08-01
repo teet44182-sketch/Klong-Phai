@@ -60,6 +60,7 @@ export default function FloatingTripBasket({
 
   return (
     <div
+      className="float-animation"  // ✅ เพิ่ม Animation เด้ง
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -86,6 +87,20 @@ export default function FloatingTripBasket({
         userSelect: 'none'
       }}
     >
+      {/* ✅ Pulse Ring Effect */}
+      <div style={{
+        position: 'absolute',
+        top: '-4px',
+        left: '-4px',
+        right: '-4px',
+        bottom: '-4px',
+        borderRadius: '50%',
+        background: 'rgba(0, 168, 84, 0.15)',
+        animation: 'pulseRing 2.5s infinite',
+        pointerEvents: 'none',
+        zIndex: -1,
+      }} />
+
       <span style={{ fontSize: '1.4rem' }}>🗺️</span>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
         <span style={{ fontSize: '0.85rem', fontWeight: 'bold', lineHeight: '1.2' }}>

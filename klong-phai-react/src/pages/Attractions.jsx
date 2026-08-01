@@ -1,5 +1,5 @@
 // src/pages/Attractions.jsx
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
@@ -16,12 +16,27 @@ export default function Attractions({
   onDeletePlace,
   selectedPlaces = [],
   setSelectedPlaces,
-  onAddToPlan
+  onAddToPlan,
+  searchKeyword = '',
+  onSearchChange
 }) {
   const { t, i18n } = useTranslation();
+  const [keyword, setKeyword] = useState(searchKeyword || '');
+  const [isVisible, setIsVisible] = useState(false);
 
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    setTimeout(() => setIsVisible(true), 100);
+  }, []);
+
+  useEffect(() => {
+    if (onSearchChange) {
+      onSearchChange(keyword);
+    }
+  }, [keyword, onSearchChange]);
 
   const attractions = (places || [])
     .filter(place => {
@@ -54,11 +69,17 @@ export default function Attractions({
       lng: p.lng
     }));
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+  const filteredAttractions = attractions.filter(place => {
+    const searchKey = keyword.trim().toLowerCase();
+    if (!searchKey) return true;
+    const name = (place.name || '').toLowerCase();
+    const nameEn = (place.nameEn || '').toLowerCase();
+    const desc = (place.description || '').toLowerCase();
+    const descEn = (place.descriptionEn || '').toLowerCase();
+    return name.includes(searchKey) || nameEn.includes(searchKey) || 
+           desc.includes(searchKey) || descEn.includes(searchKey);
+  });
 
-  // 🟢 ปัดขวา = เพิ่ม
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -74,22 +95,21 @@ export default function Attractions({
     }
   };
 
-  // 🔴 ปัดซ้าย = ลบ
   const handleSwipeLeftRemove = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
       setSelectedPlaces(prev => (prev || []).filter(p => (p.id || p.docId) !== placeId));
-      // ✅ เพิ่มบรรทัดนี้ให้ Toast เด้ง
       if (onAddToPlan) onAddToPlan(place);
     }
   };
 
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
+      
       <div style={{
         position: 'relative',
         width: '100%',
-        height: '35vh', 
+        height: '30vh', 
         marginTop: '70px', 
         overflow: 'hidden',
         display: 'flex',
@@ -112,7 +132,11 @@ export default function Attractions({
             transform: 'scale(1.1)', 
             zIndex: 1
           }}
+          onError={(e) => {
+            e.target.src = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200';
+          }}
         />
+        
         <div style={{
           position: 'absolute',
           top: 0,
@@ -122,16 +146,62 @@ export default function Attractions({
           background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(43, 43, 43, 0.9))',
           zIndex: 2
         }} />
-        <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
+
+        <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px', width: '100%' }}>
           <h2 className="page-title" style={{ 
             fontSize: '2.5rem', 
             color: '#ffffff', 
-            marginBottom: 0,
+            marginBottom: '12px',
             textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
-            fontFamily: 'Mitr, sans-serif'
+            fontFamily: 'Mitr, sans-serif',
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
+            transition: 'opacity 0.6s ease, transform 0.6s ease'
           }}>
             {isEn ? 'All Attractions' : 'สถานที่ท่องเที่ยวทั้งหมด'}
           </h2>
+          
+          <div style={{
+            maxWidth: '500px',
+            margin: '0 auto',
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s'
+          }}>
+            <div className="search-box" style={{ margin: 0 }}>
+              <input 
+                type="text" 
+                value={keyword}
+                onChange={(e) => {
+                  setKeyword(e.target.value);
+                  if (onSearchChange) onSearchChange(e.target.value);
+                }}
+                placeholder={isEn ? 'Search attractions...' : 'ค้นหาสถานที่ท่องเที่ยว...'} 
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  borderRadius: '30px',
+                  border: '2px solid rgba(255,255,255,0.25)',
+                  outline: 'none',
+                  fontSize: '16px',
+                  background: 'rgba(255,255,255,0.12)',
+                  color: '#fff',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#00a854';
+                  e.target.style.background = 'rgba(255,255,255,0.2)';
+                  e.target.style.boxShadow = '0 0 30px rgba(0,168,84,0.15)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(255,255,255,0.25)';
+                  e.target.style.background = 'rgba(255,255,255,0.12)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -143,42 +213,72 @@ export default function Attractions({
         minHeight: '50vh',
         height: 'auto' 
       }}>
+        {!loading && (
+          <div style={{
+            marginBottom: '20px',
+            color: '#888',
+            fontSize: '0.9rem',
+            fontFamily: 'Prompt, sans-serif',
+            opacity: isVisible ? 1 : 0,
+            transition: 'opacity 0.6s ease 0.5s',
+            textAlign: 'center'
+          }}>
+            {keyword.trim() !== '' ? (
+              isEn 
+                ? `Found ${filteredAttractions.length} results for "${keyword}"`
+                : `พบ ${filteredAttractions.length} ผลลัพธ์สำหรับ "${keyword}"`
+            ) : (
+              isEn 
+                ? `Showing all ${filteredAttractions.length} attractions`
+                : `แสดงสถานที่ท่องเที่ยวทั้งหมด ${filteredAttractions.length} แห่ง`
+            )}
+          </div>
+        )}
+
         {loading ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
             {isEn ? 'Loading attractions...' : 'กำลังโหลดข้อมูลสถานที่ท่องเที่ยว...'}
           </div>
         ) : (
           <div className="results-grid">
-            {attractions.length > 0 ? (
-              attractions.map(place => {
+            {filteredAttractions.length > 0 ? (
+              filteredAttractions.map((place, index) => {
                 const placeId = place.id || place.docId;
                 const isAdded = (selectedPlaces || []).some(p => (p.id || p.docId) === placeId);
 
                 return (
-                  <SwipeCard
+                  <div
                     key={placeId}
-                    isAdded={isAdded}
-                    onSwipeRight={() => handleSwipeRightAdd(place)}
-                    onSwipeLeft={() => handleSwipeLeftRemove(place)}
+                    style={{
+                      opacity: isVisible ? 1 : 0,
+                      transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
+                      transition: `opacity 0.6s ease ${0.05 + index * 0.04}s, transform 0.6s ease ${0.05 + index * 0.04}s`
+                    }}
                   >
-                    <Card 
-                      place={place} 
-                      onOpenMap={onOpenMap} 
-                      likesCount={likes[placeId] || 0}
-                      onLike={onLike}
-                      lang={currentLang}
-                      isAdmin={isAdmin}
-                      onEdit={onEditPlace}
-                      onDelete={onDeletePlace}
-                      onAddToPlan={onAddToPlan}
-                      isAddedToPlan={isAdded}
-                    />
-                  </SwipeCard>
+                    <SwipeCard
+                      isAdded={isAdded}
+                      onSwipeRight={() => handleSwipeRightAdd(place)}
+                      onSwipeLeft={() => handleSwipeLeftRemove(place)}
+                    >
+                      <Card 
+                        place={place} 
+                        onOpenMap={onOpenMap} 
+                        likesCount={likes[placeId] || 0}
+                        onLike={onLike}
+                        lang={currentLang}
+                        isAdmin={isAdmin}
+                        onEdit={onEditPlace}
+                        onDelete={onDeletePlace}
+                        onAddToPlan={onAddToPlan}
+                        isAddedToPlan={isAdded}
+                      />
+                    </SwipeCard>
+                  </div>
                 );
               })
             ) : (
-              <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%' }}>
-                {isEn ? 'No attractions available at the moment.' : 'ยังไม่มีข้อมูลสถานที่ท่องเที่ยวในขณะนี้'}
+              <div className="no-result" style={{ color: '#aaa', textAlign: 'center', width: '100%', padding: '40px' }}>
+                {isEn ? 'No attractions found' : 'ไม่พบสถานที่ท่องเที่ยว'}
               </div>
             )}
           </div>

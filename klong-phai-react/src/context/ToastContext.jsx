@@ -45,6 +45,7 @@ export const ToastProvider = ({ children }) => {
 
       {toast.show && (
         <div
+          className="toast-premium"
           style={{
             position: 'fixed',
             top: '50%',
@@ -53,22 +54,11 @@ export const ToastProvider = ({ children }) => {
               ? 'translate(-50%, -50%) scale(1)'
               : 'translate(-50%, -48%) scale(0.92)',
             opacity: visible ? 1 : 0,
-            background: 'rgba(18, 18, 18, 0.78)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            color: '#fff',
-            padding: '16px 32px',
-            borderRadius: '50px',
-            fontSize: '0.95rem',
-            fontWeight: '500',
-            letterSpacing: '0.2px',
-            boxShadow: '0 16px 48px rgba(0,0,0,0.45)',
-            border: '1px solid rgba(255,255,255,0.1)',
             zIndex: 999999,
             transition: 'opacity 0.32s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)',
             pointerEvents: 'none',
-            textAlign: 'center',
             maxWidth: '90vw',
+            textAlign: 'center',
             lineHeight: 1.45,
             fontFamily: 'Prompt, sans-serif'
           }}

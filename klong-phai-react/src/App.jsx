@@ -1,12 +1,15 @@
 // src/App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 import './App.css';
 
 import { bannedWords } from './utils/wordlist';
 import LangSwitcherText from './components/LangSwitcherText';
 import FloatingTripBasket from './components/FloatingTripBasket';
+import ScrollProgress from './components/ScrollProgress';
+import SkeletonCard from './components/SkeletonCard';
 
 import { auth, db, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -25,14 +28,18 @@ import {
   getDoc
 } from 'firebase/firestore';
 
-import Home from './pages/Home';
-import Restaurant from './pages/Restaurant';
-import Accommodation from './pages/Accommodation';
-import CommunityMap from './pages/CommunityMap';
-import CheckInPoints from './pages/CheckInPoints';
-import Detail from './pages/Detail';
-import TripPlanner from './pages/TripPlanner';
-import Attractions from './pages/Attractions';
+// ============================================================
+// ✅ Lazy Loading - โหลดเฉพาะหน้าที่เข้า
+// ============================================================
+const Home = lazy(() => import('./pages/Home'));
+const Restaurant = lazy(() => import('./pages/Restaurant'));
+const Accommodation = lazy(() => import('./pages/Accommodation'));
+const CommunityMap = lazy(() => import('./pages/CommunityMap'));
+const CheckInPoints = lazy(() => import('./pages/CheckInPoints'));
+const Detail = lazy(() => import('./pages/Detail'));
+const TripPlanner = lazy(() => import('./pages/TripPlanner'));
+const Attractions = lazy(() => import('./pages/Attractions'));
+
 import { ToastProvider, useToast } from './context/ToastContext';
 
 // ============================================================
@@ -107,7 +114,6 @@ export const sanitizeInput = (text) => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
     .replace(/\//g, '&#x2F;')
-    .replace(/`/g, '&#96;')
     .trim();
 };
 
@@ -251,6 +257,17 @@ function MainApp() {
   const [imageFileName, setImageFileName] = useState('');
   const [likes, setLikes] = useState({});
   const [reviewsData, setReviewsData] = useState({});
+
+  // ===== Cursor Glow Effect =====
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -668,7 +685,6 @@ function MainApp() {
     return clean;
   };
 
-  // ✅ REVIEW SUBMIT - ส่งได้เรื่อยๆ (Cooldown 5s)
   const handleReviewSubmit = async (placeId) => {
     if (!user) {
       showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
@@ -713,7 +729,6 @@ function MainApp() {
     }
   };
 
-  // ✅ UPDATE REVIEW
   const handleUpdateReview = async (review) => {
     if (!review || !review.id) {
       showToast(isEn ? 'Review ID not found' : 'ไม่พบ ID ของรีวิว');
@@ -725,7 +740,6 @@ function MainApp() {
       return;
     }
 
-    // ✅ ตรวจสอบว่าเป็นเจ้าของหรือ Admin
     const isOwner = review.userId === user.uid;
     const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
     
@@ -751,7 +765,6 @@ function MainApp() {
     }
   };
 
-  // ✅ DELETE REVIEW
   const handleDeleteReview = async (review) => {
     if (!review || !review.id) {
       showToast(isEn ? 'Review ID not found' : 'ไม่พบ ID ของรีวิว');
@@ -763,7 +776,6 @@ function MainApp() {
       return;
     }
 
-    // ✅ ตรวจสอบว่าเป็นเจ้าของหรือ Admin
     const isOwner = review.userId === user.uid;
     const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
     
@@ -831,7 +843,24 @@ function MainApp() {
   // RENDER
   // ============================================================
   return (
-    <>
+    <HelmetProvider>
+      <Helmet>
+        <html lang={currentLang === 'en' ? 'en' : 'th'} />
+        <title>{isEn ? 'Khlong Phai Travel Guide' : 'เที่ยวคลองไผ่'}</title>
+        <meta name="description" content={isEn 
+          ? 'Travel guide for Khlong Phai - attractions, accommodations, restaurants with maps and reviews'
+          : 'แหล่งรวมสถานที่ท่องเที่ยว ที่พัก ร้านอาหาร ในคลองไผ่ พร้อมแผนที่และรีวิว'
+        } />
+        <meta property="og:title" content={isEn ? 'Khlong Phai Travel Guide' : 'เที่ยวคลองไผ่'} />
+        <meta property="og:description" content={isEn 
+          ? 'Travel guide for Khlong Phai - attractions, accommodations, restaurants with maps and reviews'
+          : 'แหล่งรวมสถานที่ท่องเที่ยว ที่พัก ร้านอาหาร ในคลองไผ่ พร้อมแผนที่และรีวิว'
+        } />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        <meta name="theme-color" content="#00a854" />
+      </Helmet>
+
       <PageViewTracker />
       
       <nav className="navbar">
@@ -936,105 +965,137 @@ function MainApp() {
         </div>
       </nav>
 
-      <Routes>
-        <Route path="/" element={
-          <Home 
-            places={places} 
-            loading={loadingPlaces} 
-            onOpenMap={openDetail} 
-            likes={likes} 
-            onLike={handleLike}
-            lang={currentLang} 
-            selectedPlaces={selectedPlaces} 
-            setSelectedPlaces={setSelectedPlaces}
-            onAddToPlan={handleAddPlaceToTrip} 
-            isAdmin={isAdmin} 
-            onEditPlace={handleEditPlace} 
-            onDeletePlace={handleDeletePlace}  
-          />
-        } />
-        <Route path="/checkin" element={
-          <CheckInPoints 
-            places={places} 
-            loading={loadingPlaces} 
-            onOpenMap={openDetail} 
-            likes={likes} 
-            onLike={handleLike}
-            googleUser={user} 
-            handleGoogleLogin={handleLogin} 
-            handleGoogleLogout={handleLogout}
-            reviewsData={reviewsData} 
-            lang={currentLang} 
-            isAdmin={isAdmin}
-            onEditPlace={handleEditPlace} 
-            onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} 
-            setSelectedPlaces={setSelectedPlaces} 
-            onAddToPlan={handleAddPlaceToTrip} 
-          />
-        } />
-        <Route path="/attractions" element={
-          <Attractions 
-            places={places} 
-            loading={loadingPlaces} 
-            onOpenMap={openDetail} 
-            likes={likes} 
-            onLike={handleLike}
-            lang={currentLang} 
-            isAdmin={isAdmin} 
-            onEditPlace={handleEditPlace} 
-            onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} 
-            setSelectedPlaces={setSelectedPlaces} 
-            onAddToPlan={handleAddPlaceToTrip} 
-          />
-        } />
-        <Route path="/restaurant" element={
-          <Restaurant 
-            places={places} 
-            loading={loadingPlaces} 
-            onOpenMap={openDetail} 
-            likes={likes} 
-            onLike={handleLike}
-            lang={currentLang} 
-            isAdmin={isAdmin} 
-            onEditPlace={handleEditPlace} 
-            onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} 
-            setSelectedPlaces={setSelectedPlaces} 
-            onAddToPlan={handleAddPlaceToTrip} 
-          />
-        } />
-        <Route path="/accommodation" element={
-          <Accommodation 
-            places={places} 
-            loading={loadingPlaces} 
-            onOpenMap={openDetail} 
-            likes={likes} 
-            onLike={handleLike}
-            lang={currentLang} 
-            isAdmin={isAdmin} 
-            onEditPlace={handleEditPlace} 
-            onDeletePlace={handleDeletePlace}
-            selectedPlaces={selectedPlaces} 
-            setSelectedPlaces={setSelectedPlaces} 
-            onAddToPlan={handleAddPlaceToTrip} 
-          />
-        } />
-        <Route path="/map" element={<CommunityMap places={places} lang={currentLang} />} />
-        <Route path="/planner" element={
-          <TripPlanner 
-            places={places} 
-            lang={currentLang} 
-            selectedPlaces={selectedPlaces}
-            setSelectedPlaces={setSelectedPlaces} 
-            generateMultiStopMapUrl={generateMultiStopMapUrl}
-            estimateTripTime={estimateTripTime}
-            onRemoveFromPlan={handleRemovePlaceFromTrip}
-          />
-        } />
-        <Route path="/detail/:id" element={<Detail places={places} onOpenMap={openMap} lang={currentLang} />} />
-      </Routes>
+      {/* ✅ Scroll Progress Bar */}
+      <ScrollProgress />
+
+      {/* ✅ Cursor Glow */}
+      <div 
+        className="cursor-glow" 
+        style={{ 
+          left: mousePos.x, 
+          top: mousePos.y,
+          opacity: mousePos.x > 0 ? 1 : 0
+        }} 
+      />
+
+      {/* ============================================================ */}
+      {/* ✅ Routes with Suspense */}
+      {/* ============================================================ */}
+      <Suspense fallback={
+        <div style={{ 
+          paddingTop: '90px', 
+          minHeight: '100vh', 
+          background: '#2b2b2b',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '25px',
+          maxWidth: '1126px',
+          margin: '0 auto',
+          padding: '90px 20px 40px'
+        }}>
+          {[1,2,3,4,5,6].map(i => <SkeletonCard key={i} />)}
+        </div>
+      }>
+        <Routes>
+          <Route path="/" element={
+            <Home 
+              places={places} 
+              loading={loadingPlaces} 
+              onOpenMap={openDetail} 
+              likes={likes} 
+              onLike={handleLike}
+              lang={currentLang} 
+              selectedPlaces={selectedPlaces} 
+              setSelectedPlaces={setSelectedPlaces}
+              onAddToPlan={handleAddPlaceToTrip} 
+              isAdmin={isAdmin} 
+              onEditPlace={handleEditPlace} 
+              onDeletePlace={handleDeletePlace}  
+            />
+          } />
+          <Route path="/checkin" element={
+            <CheckInPoints 
+              places={places} 
+              loading={loadingPlaces} 
+              onOpenMap={openDetail} 
+              likes={likes} 
+              onLike={handleLike}
+              googleUser={user} 
+              handleGoogleLogin={handleLogin} 
+              handleGoogleLogout={handleLogout}
+              reviewsData={reviewsData} 
+              lang={currentLang} 
+              isAdmin={isAdmin}
+              onEditPlace={handleEditPlace} 
+              onDeletePlace={handleDeletePlace}
+              selectedPlaces={selectedPlaces} 
+              setSelectedPlaces={setSelectedPlaces} 
+              onAddToPlan={handleAddPlaceToTrip} 
+            />
+          } />
+          <Route path="/attractions" element={
+            <Attractions 
+              places={places} 
+              loading={loadingPlaces} 
+              onOpenMap={openDetail} 
+              likes={likes} 
+              onLike={handleLike}
+              lang={currentLang} 
+              isAdmin={isAdmin} 
+              onEditPlace={handleEditPlace} 
+              onDeletePlace={handleDeletePlace}
+              selectedPlaces={selectedPlaces} 
+              setSelectedPlaces={setSelectedPlaces} 
+              onAddToPlan={handleAddPlaceToTrip} 
+            />
+          } />
+          <Route path="/restaurant" element={
+            <Restaurant 
+              places={places} 
+              loading={loadingPlaces} 
+              onOpenMap={openDetail} 
+              likes={likes} 
+              onLike={handleLike}
+              lang={currentLang} 
+              isAdmin={isAdmin} 
+              onEditPlace={handleEditPlace} 
+              onDeletePlace={handleDeletePlace}
+              selectedPlaces={selectedPlaces} 
+              setSelectedPlaces={setSelectedPlaces} 
+              onAddToPlan={handleAddPlaceToTrip} 
+            />
+          } />
+          <Route path="/accommodation" element={
+            <Accommodation 
+              places={places} 
+              loading={loadingPlaces} 
+              onOpenMap={openDetail} 
+              likes={likes} 
+              onLike={handleLike}
+              lang={currentLang} 
+              isAdmin={isAdmin} 
+              onEditPlace={handleEditPlace} 
+              onDeletePlace={handleDeletePlace}
+              selectedPlaces={selectedPlaces} 
+              setSelectedPlaces={setSelectedPlaces} 
+              onAddToPlan={handleAddPlaceToTrip} 
+            />
+          } />
+          <Route path="/map" element={<CommunityMap places={places} lang={currentLang} />} />
+          <Route path="/planner" element={
+            <TripPlanner 
+              places={places} 
+              lang={currentLang} 
+              selectedPlaces={selectedPlaces}
+              setSelectedPlaces={setSelectedPlaces} 
+              generateMultiStopMapUrl={generateMultiStopMapUrl}
+              estimateTripTime={estimateTripTime}
+              onRemoveFromPlan={handleRemovePlaceFromTrip}
+            />
+          } />
+          <Route path="/detail/:id" element={<Detail places={places} onOpenMap={openMap} lang={currentLang} />} />
+        </Routes>
+      </Suspense>
 
       <FloatingTripBasket
         selectedPlaces={selectedPlaces}
@@ -1518,7 +1579,7 @@ function MainApp() {
           })()}
         </div>
       </div>
-    </>
+    </HelmetProvider>
   );
 }
 

@@ -32,11 +32,16 @@ export default function CheckInPoints({
   onDeletePlace,
   selectedPlaces = [],
   setSelectedPlaces,
-  onAddToPlan
+  onAddToPlan,
+  searchKeyword = '',
+  onSearchChange
 }) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   
+  const [keyword, setKeyword] = useState(searchKeyword || '');
+  const [isVisible, setIsVisible] = useState(false);
+
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
@@ -45,20 +50,23 @@ export default function CheckInPoints({
   const [editText, setEditText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // ✅ Rate Limiting - ป้องกัน Spam
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
-  const COOLDOWN_MS = 5000; // 5 วินาที
+  const COOLDOWN_MS = 5000;
 
   const pageId = 'checkin_page'; 
   const pageReviews = reviewsData[pageId] || [];
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  // ============================================================
-  // ✅ SECURITY: Input Sanitization (ป้องกัน XSS)
-  // ============================================================
+  useEffect(() => {
+    if (onSearchChange) {
+      onSearchChange(keyword);
+    }
+  }, [keyword, onSearchChange]);
+
   const sanitizeInput = (text) => {
     if (!text) return '';
     return String(text)
@@ -72,7 +80,6 @@ export default function CheckInPoints({
       .trim();
   };
 
-  // ✅ แสดงผลแบบปลอดภัย
   const escapeHtml = (text) => {
     if (!text) return '';
     const div = document.createElement('div');
@@ -80,7 +87,6 @@ export default function CheckInPoints({
     return div.innerHTML;
   };
 
-  // ✅ ตรวจจับ Script Injection
   const detectScriptInjection = (text) => {
     const patterns = [
       /<script/i,
@@ -100,9 +106,6 @@ export default function CheckInPoints({
     return patterns.some(pattern => pattern.test(text));
   };
 
-  // ============================================================
-  // ✅ SWIPE HANDLERS
-  // ============================================================
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -122,7 +125,6 @@ export default function CheckInPoints({
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
       setSelectedPlaces(prev => (prev || []).filter(p => (p.id || p.docId) !== placeId));
-      // ✅ เรียก onAddToPlan เพื่อให้ Toast เด้ง
       if (onAddToPlan) onAddToPlan(place);
     }
   };
@@ -137,13 +139,8 @@ export default function CheckInPoints({
     } else {
       handleSwipeRightAdd(place);
     }
-
-    // ไม่ต้องเรียก onAddToPlan ซ้ำ เพราะ handleSwipeRightAdd/LeftRemove เรียกแล้ว
   };
 
-  // ============================================================
-  // ✅ MAP PLACE DATA
-  // ============================================================
   const mapPlaceData = (p) => {
     if (!p) return null;
 
@@ -178,9 +175,6 @@ export default function CheckInPoints({
     };
   };
 
-  // ============================================================
-  // ✅ FILTER PLACES
-  // ============================================================
   const filteredPlaces = (places || [])
     .filter(p => {
       if (!p) return false;
@@ -196,9 +190,18 @@ export default function CheckInPoints({
     ? filteredPlaces 
     : (places || []).map(mapPlaceData).filter(Boolean);
 
-  // ============================================================
-  // ✅ SECURITY: Validate Review Text
-  // ============================================================
+  // ✅ Search filter
+  const searchFilteredPlaces = finalPlaces.filter(place => {
+    const searchKey = keyword.trim().toLowerCase();
+    if (!searchKey) return true;
+    const name = (place.name || '').toLowerCase();
+    const nameEn = (place.nameEn || '').toLowerCase();
+    const desc = (place.description || '').toLowerCase();
+    const descEn = (place.descriptionEn || '').toLowerCase();
+    return name.includes(searchKey) || nameEn.includes(searchKey) || 
+           desc.includes(searchKey) || descEn.includes(searchKey);
+  });
+
   const validateReviewText = (text) => {
     const cleanText = sanitizeInput(text);
     
@@ -226,10 +229,7 @@ export default function CheckInPoints({
     return cleanText;
   };
 
-  // ============================================================
-  // ✅ SORT PLACES BY LIKES
-  // ============================================================
-  const sortedPlaces = [...finalPlaces].sort((a, b) => {
+  const sortedPlaces = [...searchFilteredPlaces].sort((a, b) => {
     const scoreA = likes[a.id || a.docId] || 0;
     const scoreB = likes[b.id || b.docId] || 0;
     return scoreB - scoreA;
@@ -245,9 +245,6 @@ export default function CheckInPoints({
     };
   };
 
-  // ============================================================
-  // ✅ SUBMIT REVIEW
-  // ============================================================
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     
@@ -302,9 +299,6 @@ export default function CheckInPoints({
     }
   };
 
-  // ============================================================
-  // ✅ UPDATE REVIEW
-  // ============================================================
   const handleUpdateReview = async (review) => {
     const targetId = review.id || review.docId;
     if (!targetId) {
@@ -316,7 +310,6 @@ export default function CheckInPoints({
       return;
     }
 
-    // ✅ ตรวจสอบว่าเป็นเจ้าของ
     if (googleUser && review.userId !== googleUser.uid) {
       showToast(isEn ? " You can only edit your own reviews" : " คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ");
       return;
@@ -326,7 +319,6 @@ export default function CheckInPoints({
     if (!validatedText) return;
 
     try {
-      // ✅ ส่งเฉพาะ text และ updatedAt ตาม Rules
       await updateDoc(doc(db, "reviews", targetId), {
         text: validatedText,
         updatedAt: serverTimestamp()
@@ -340,9 +332,6 @@ export default function CheckInPoints({
     }
   };
 
-  // ============================================================
-  // ✅ DELETE REVIEW
-  // ============================================================
   const handleDeleteReview = async (review) => {
     const targetId = review.id || review.docId || review._id;
     
@@ -367,17 +356,23 @@ export default function CheckInPoints({
     }
   };
 
-  // ============================================================
-  // ✅ RENDER REVIEW TEXT
-  // ============================================================
   const renderReviewText = (text) => {
     if (!text) return '';
     return escapeHtml(text);
   };
 
-  // ============================================================
-  // ✅ JSX
-  // ============================================================
+  // ✅ แสดงผลลัพธ์การค้นหา
+  const getResultText = () => {
+    if (keyword.trim() !== '') {
+      return isEn 
+        ? `Found ${sortedPlaces.length} results for "${keyword}"`
+        : `พบ ${sortedPlaces.length} ผลลัพธ์สำหรับ "${keyword}"`;
+    }
+    return isEn 
+      ? `Showing top ${sortedPlaces.length} check-in points`
+      : `แสดงจุดเช็คอินทั้งหมด ${sortedPlaces.length} แห่ง`;
+  };
+
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
       
@@ -422,21 +417,76 @@ export default function CheckInPoints({
           zIndex: 2
         }} />
 
-        <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px' }}>
-          <h1 className="page-title" style={{ 
+        <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px', width: '100%' }}>
+          {/* ✅ Gradient Text */}
+          <h1 className="gradient-text" style={{ 
             fontSize: '2.2rem', 
-            color: '#ffffff', 
             marginBottom: '8px',
             textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
-            fontFamily: 'Mitr, sans-serif'
+            fontFamily: 'Mitr, sans-serif',
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
+            transition: 'opacity 0.6s ease, transform 0.6s ease'
           }}>
             {isEn ? 'Top 10 Check-in Points in Khlong Phai' : 'จัดอันดับ 10 จุดเช็คอิน คลองไผ่'}
           </h1>
-          <p style={{ color: '#ccc', margin: 0, fontFamily: 'Prompt, sans-serif', fontSize: '0.95rem' }}>
+          
+          <p style={{ 
+            color: '#ccc', 
+            margin: '0 0 16px 0', 
+            fontFamily: 'Prompt, sans-serif', 
+            fontSize: '0.95rem',
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'opacity 0.8s ease 0.15s, transform 0.8s ease 0.15s'
+          }}>
             {isEn 
               ? 'Rankings update in real-time based on heart votes' 
               : 'อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ'}
           </p>
+
+          {/* ✅ Search Bar */}
+          <div style={{
+            maxWidth: '500px',
+            margin: '0 auto',
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s'
+          }}>
+            <div className="search-box" style={{ margin: 0 }}>
+              <input 
+                type="text" 
+                value={keyword}
+                onChange={(e) => {
+                  setKeyword(e.target.value);
+                  if (onSearchChange) onSearchChange(e.target.value);
+                }}
+                placeholder={isEn ? 'Search check-in points...' : 'ค้นหาจุดเช็คอิน...'} 
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  borderRadius: '30px',
+                  border: '2px solid rgba(255,255,255,0.25)',
+                  outline: 'none',
+                  fontSize: '16px',
+                  background: 'rgba(255,255,255,0.12)',
+                  color: '#fff',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#00a854';
+                  e.target.style.background = 'rgba(255,255,255,0.2)';
+                  e.target.style.boxShadow = '0 0 30px rgba(0,168,84,0.15)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(255,255,255,0.25)';
+                  e.target.style.background = 'rgba(255,255,255,0.12)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -449,13 +499,46 @@ export default function CheckInPoints({
         height: 'auto' 
       }}>
         
+        {/* ✅ Result count */}
+        {!loading && (
+          <div style={{
+            marginBottom: '20px',
+            color: '#888',
+            fontSize: '0.9rem',
+            fontFamily: 'Prompt, sans-serif',
+            opacity: isVisible ? 1 : 0,
+            transition: 'opacity 0.6s ease 0.5s',
+            textAlign: 'center'
+          }}>
+            {getResultText()}
+          </div>
+        )}
+        
         {loading ? (
-          <div style={{ color: '#aaa', textAlign: 'center', padding: '40px' }}>
-            {isEn ? 'Loading places...' : 'กำลังโหลดข้อมูล...'}
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '25px'
+          }}>
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} style={{ 
+                background: '#1e1e1e', 
+                borderRadius: '12px', 
+                padding: '12px',
+                border: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                <div className="skeleton skeleton-image" />
+                <div className="skeleton skeleton-title" />
+                <div className="skeleton skeleton-text" style={{ width: '90%' }} />
+                <div className="skeleton skeleton-text" style={{ width: '60%' }} />
+              </div>
+            ))}
           </div>
         ) : sortedPlaces.length === 0 ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px' }}>
-            {isEn ? 'No check-in places found.' : 'ยังไม่มีข้อมูลจุดเช็คอินในขณะนี้'}
+            {keyword.trim() !== '' 
+              ? (isEn ? `No results found for "${keyword}"` : `ไม่พบผลลัพธ์สำหรับ "${keyword}"`)
+              : (isEn ? 'No check-in places found.' : 'ยังไม่มีข้อมูลจุดเช็คอินในขณะนี้')}
           </div>
         ) : (
           <div className="results-grid" style={{ marginBottom: '60px' }}>
@@ -466,7 +549,15 @@ export default function CheckInPoints({
               const isAdded = safeSelected.some(p => (p.id || p.docId) === placeId);
 
               return (
-                <div key={placeId ? `checkin-${placeId}` : `checkin-idx-${index}`} style={{ position: 'relative' }}>
+                <div 
+                  key={placeId ? `checkin-${placeId}` : `checkin-idx-${index}`} 
+                  style={{ 
+                    position: 'relative',
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
+                    transition: `opacity 0.6s ease ${0.05 + index * 0.04}s, transform 0.6s ease ${0.05 + index * 0.04}s`
+                  }}
+                >
                   <div style={{
                     position: 'absolute', top: '-8px', left: '-8px',
                     background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#00a854',
@@ -508,7 +599,10 @@ export default function CheckInPoints({
           borderRadius: '16px', 
           color: '#eee', 
           maxWidth: '800px', 
-          margin: '0 auto' 
+          margin: '0 auto',
+          opacity: isVisible ? 1 : 0,
+          transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
+          transition: `opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s`
         }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -582,7 +676,10 @@ export default function CheckInPoints({
               </p>
               <button type="button" onClick={handleGoogleLogin} style={{ background: '#fff', color: '#222', padding: '10px 20px', border: 'none', borderRadius: '6px', fontFamily: 'Mitr, sans-serif', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.5-1.14 2.76-2.4 3.61v3h3.86c2.26-2.08 3.67-5.14 3.67-8.46z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.21v3.11C3.18 21.88 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.6H1.21A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.21 5.39l4.06-3.1z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.18 2.12 1.21 5.39l4.06 3.11c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.5-1.14 2.76-2.4 3.61v3h3.86c2.26-2.08 3.67-5.14 3.67-8.46z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.21v3.11C3.18 21.88 7.31 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.6H1.21A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.21 5.39l4.06-3.1z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.18 2.12 1.21 5.39l4.06 3.11c.95-2.85 3.6-4.96 6.73-4.96z"/>
                 </svg>
                 {isEn ? 'Sign in with Google' : 'เข้าสู่ระบบด้วย Google'}
               </button>
