@@ -18,7 +18,7 @@ const firebaseConfig = {
 // ✅ Debug: ตรวจสอบว่า env ทำงาน
 console.log("🔍 Env check:", {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? "✅ มีค่า" : "❌ ไม่มี"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? "มีค่า" : "ไม่มี"
 });
 
 const app = initializeApp(firebaseConfig);

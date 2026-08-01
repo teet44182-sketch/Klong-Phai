@@ -36,7 +36,7 @@ import Attractions from './pages/Attractions';
 import { ToastProvider, useToast } from './context/ToastContext';
 
 // ============================================================
-// ✅ Admin Emails
+// Admin Emails
 // ============================================================
 const ADMIN_EMAILS = [
   'teet44182@gmail.com',
@@ -45,7 +45,7 @@ const ADMIN_EMAILS = [
 ];
 
 // ============================================================
-// ✅ Page View Tracker
+// Page View Tracker
 // ============================================================
 function PageViewTracker() {
   const location = useLocation();
@@ -67,7 +67,7 @@ function PageViewTracker() {
 }
 
 // ============================================================
-// ✅ Compress Image
+// Compress Image
 // ============================================================
 const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   return new Promise((resolve, reject) => {
@@ -97,7 +97,7 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
 };
 
 // ============================================================
-// ✅ Sanitize Input
+// Sanitize Input
 // ============================================================
 export const sanitizeInput = (text) => {
   if (!text) return '';
@@ -112,7 +112,7 @@ export const sanitizeInput = (text) => {
 };
 
 // ============================================================
-// ✅ Parse iFrame URL - ดึงเฉพาะ src
+// Parse iFrame URL
 // ============================================================
 const parseIframeUrl = (input) => {
   if (!input) return '';
@@ -133,13 +133,12 @@ const parseIframeUrl = (input) => {
 };
 
 // ============================================================
-// ✅ ดึงพิกัดจาก URL - แก้ไขให้ตรงเหมือนของเก่า
+// Extract Coords From URL
 // ============================================================
 const extractCoordsFromUrl = (url) => {
   if (!url) return null;
   const cleanUrl = parseIframeUrl(url);
 
-  // 1. หา q=lat,lng
   const qMatch = cleanUrl.match(/[?&]q=([^&]+)/i);
   if (qMatch) {
     let q = decodeURIComponent(qMatch[1]).replace(/%2C/g, ',');
@@ -149,25 +148,21 @@ const extractCoordsFromUrl = (url) => {
     }
   }
 
-  // 2. หา !2d!3d
   const embedMatch = cleanUrl.match(/!2d([^!]+)!3d([^!]+)/i);
   if (embedMatch) {
     return [parseFloat(embedMatch[2]), parseFloat(embedMatch[1])];
   }
 
-  // 3. หา !3d!2d
   const embedMatch2 = cleanUrl.match(/!3d([^!]+)!2d([^!]+)/i);
   if (embedMatch2) {
     return [parseFloat(embedMatch2[1]), parseFloat(embedMatch2[2])];
   }
 
-  // 4. หา @lat,lng
   const atMatch = cleanUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/i);
   if (atMatch) {
     return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
   }
 
-  // 5. หา center=lat,lng
   const centerMatch = cleanUrl.match(/[?&]center=([^&]+)/i);
   if (centerMatch) {
     const center = decodeURIComponent(centerMatch[1]);
@@ -181,7 +176,7 @@ const extractCoordsFromUrl = (url) => {
 };
 
 // ============================================================
-// ✅ ดึงพิกัดจาก place
+// Get Place Coords
 // ============================================================
 const getPlaceCoords = (place) => {
   if (!place) return null;
@@ -204,7 +199,7 @@ const getPlaceCoords = (place) => {
 };
 
 // ============================================================
-// ✅ Main App
+// Main App
 // ============================================================
 function MainApp() {
   const { showToast } = useToast();
@@ -239,9 +234,13 @@ function MainApp() {
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // ===== Review States =====
   const [reviewText, setReviewText] = useState('');
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editReviewText, setEditReviewText] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [lastReviewSubmitTime, setLastReviewSubmitTime] = useState(0);
+  const REVIEW_COOLDOWN_MS = 5000;
 
   const [newPlace, setNewPlace] = useState({
     title: '', title_en: '', description: '', detailDescription: '',
@@ -255,10 +254,12 @@ function MainApp() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
+  // ===== Save to Local Storage =====
   useEffect(() => {
     localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
   }, [selectedPlaces]);
 
+  // ===== Auth =====
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -275,6 +276,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  // ===== Fetch Places =====
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "places"), (snapshot) => {
       setPlaces(snapshot.docs.map(d => ({ id: d.id, docId: d.id, ...d.data() })));
@@ -283,6 +285,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  // ===== Fetch Likes =====
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -292,6 +295,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  // ===== Fetch Reviews =====
   useEffect(() => {
     const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -306,6 +310,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  // ===== Fetch Analytics =====
   useEffect(() => {
     if (!isAdmin) return;
     const unsub = onSnapshot(doc(db, 'analytics', 'pageViews'), (snap) => {
@@ -315,7 +320,7 @@ function MainApp() {
   }, [isAdmin]);
 
   // ============================================================
-  // ✅ TRIP PLANNER FUNCTIONS
+  // TRIP PLANNER FUNCTIONS
   // ============================================================
   
   const isAddedToTrip = (place) => {
@@ -332,10 +337,10 @@ function MainApp() {
 
     if (exists) {
       setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
-      showToast(`${isEn ? 'Removed' : 'ลบ'} "${title}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
+      showToast(isEn ? 'Removed "' + title + '" from trip' : 'ลบ "' + title + '" ออกจากทริปแล้ว');
     } else {
       setSelectedPlaces(prev => [...prev, place]);
-      showToast(`${isEn ? 'Added' : 'เพิ่ม'} "${title}" ${isEn ? 'to trip' : 'ลงทริปแล้ว'}`);
+      showToast(isEn ? 'Added "' + title + '" to trip' : 'เพิ่ม "' + title + '" ลงทริปแล้ว');
     }
   };
 
@@ -344,7 +349,7 @@ function MainApp() {
     const placeId = place.id || place.docId;
     const title = sanitizeInput(place.title || place.name || 'สถานที่');
     setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
-    showToast(`${isEn ? 'Removed' : 'ลบ'} "${title}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
+    showToast(isEn ? 'Removed "' + title + '" from trip' : 'ลบ "' + title + '" ออกจากทริปแล้ว');
   };
 
   const generateMultiStopMapUrl = (placesList) => {
@@ -381,7 +386,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // ✅ Get Embed Map URL
+  // MAP FUNCTIONS
   // ============================================================
   const getEmbedMapUrl = (place) => {
     if (!place) return '';
@@ -399,16 +404,13 @@ function MainApp() {
     return '';
   };
 
-  // ============================================================
-  // ✅ Open Map (นำทาง)
-  // ============================================================
   const openMap = (place) => {
     if (!place) return;
     const coords = getPlaceCoords(place);
     if (coords) {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`, '_blank');
     } else {
-      showToast('ไม่พบพิกัดของสถานที่นี้');
+      showToast(isEn ? 'No location data found' : 'ไม่พบพิกัดของสถานที่นี้');
     }
   };
 
@@ -419,10 +421,11 @@ function MainApp() {
     setEmbedMapUrl('');
     setReviewText('');
     setEditingReviewId(null);
+    setEditReviewText('');
   };
 
   // ============================================================
-  // ✅ Login / Logout
+  // LOGIN / LOGOUT
   // ============================================================
   const handleLogin = async () => {
     try {
@@ -432,48 +435,48 @@ function MainApp() {
         e => e.toLowerCase() === email.toLowerCase()
       );
       if (isUserAdmin) {
-        showToast('เข้าสู่ระบบ Admin (เพิ่ม/แก้ไข/ลบสถานที่ + ดูยอดเข้าชมได้)');
+        showToast(isEn ? 'Admin login successful' : 'เข้าสู่ระบบ Admin สำเร็จ');
       } else {
-        showToast('เข้าสู่ระบบสำเร็จ');
+        showToast(isEn ? 'Login successful' : 'เข้าสู่ระบบสำเร็จ');
       }
     } catch (e) {
       console.error(e);
-      showToast('เข้าสู่ระบบไม่สำเร็จ');
+      showToast(isEn ? 'Login failed' : 'เข้าสู่ระบบไม่สำเร็จ');
     }
   };
 
   const handleLogout = async () => {
     try {
       await logout();
-      showToast('ออกจากระบบแล้ว');
+      showToast(isEn ? 'Logged out' : 'ออกจากระบบแล้ว');
     } catch (e) {
       console.error(e);
     }
   };
 
   // ============================================================
-  // ✅ Image Handlers
+  // IMAGE HANDLERS
   // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      showToast(isEn ? 'Please select an image file' : 'กรุณาเลือกไฟล์รูปภาพเท่านั้น');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      showToast('รูปใหญ่เกินไป (สูงสุด 5MB)');
+      showToast(isEn ? 'Image too large (max 5MB)' : 'รูปใหญ่เกินไป (สูงสุด 5MB)');
       return;
     }
     setImageFileName(file.name);
     try {
-      showToast('กำลังย่อรูป...');
+      showToast(isEn ? 'Compressing image...' : 'กำลังย่อรูป...');
       const compressed = await compressImage(file, 1200, 0.7);
       setNewPlace(prev => ({ ...prev, img: compressed }));
-      showToast('ย่อรูปสำเร็จ');
+      showToast(isEn ? 'Image compressed' : 'ย่อรูปสำเร็จ');
     } catch (err) {
       console.error(err);
-      showToast('ไม่สามารถประมวลผลรูปได้');
+      showToast(isEn ? 'Failed to process image' : 'ไม่สามารถประมวลผลรูปได้');
     }
   };
 
@@ -481,11 +484,11 @@ function MainApp() {
     const files = Array.from(e.target.files);
     for (const file of files) {
       if (!file.type.startsWith('image/')) {
-        showToast(`${file.name} ไม่ใช่ไฟล์รูป`);
+        showToast(`${file.name} ${isEn ? 'is not an image' : 'ไม่ใช่ไฟล์รูป'}`);
         continue;
       }
       if (file.size > 5 * 1024 * 1024) {
-        showToast(`${file.name} ใหญ่เกินไป`);
+        showToast(`${file.name} ${isEn ? 'is too large' : 'ใหญ่เกินไป'}`);
         continue;
       }
       try {
@@ -515,16 +518,16 @@ function MainApp() {
   };
 
   // ============================================================
-  // ✅ Add / Edit Place - Parse iFrame ก่อนบันทึก
+  // ADD / EDIT PLACE
   // ============================================================
   const handleAddPlaceSubmit = async (e) => {
     e.preventDefault();
     if (!newPlace.title) {
-      showToast('กรุณากรอกชื่อสถานที่');
+      showToast(isEn ? 'Please enter a place name' : 'กรุณากรอกชื่อสถานที่');
       return;
     }
     if (!newPlace.img) {
-      showToast('กรุณาเลือกรูปภาพหลัก');
+      showToast(isEn ? 'Please select a main image' : 'กรุณาเลือกรูปภาพหลัก');
       return;
     }
     try {
@@ -559,24 +562,24 @@ function MainApp() {
           ...payload,
           updatedAt: serverTimestamp()
         });
-        showToast('แก้ไขสถานที่เรียบร้อยแล้ว');
+        showToast(isEn ? 'Place updated' : 'แก้ไขสถานที่เรียบร้อยแล้ว');
       } else {
         await addDoc(collection(db, "places"), {
           ...payload,
           createdAt: serverTimestamp()
         });
-        showToast('เพิ่มสถานที่ใหม่เรียบร้อยแล้ว');
+        showToast(isEn ? 'Place added' : 'เพิ่มสถานที่ใหม่เรียบร้อยแล้ว');
       }
       setIsAddPlaceModalOpen(false);
       resetForm();
     } catch (error) {
       console.error("Error saving place:", error);
-      showToast(`ไม่สามารถบันทึกได้: ${error.code || error.message}`);
+      showToast(`${isEn ? 'Failed to save: ' : 'ไม่สามารถบันทึกได้: '}${error.code || error.message}`);
     }
   };
 
   // ============================================================
-  // ✅ Like
+  // LIKE
   // ============================================================
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
@@ -589,7 +592,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // ✅ Edit / Delete Place
+  // EDIT / DELETE PLACE
   // ============================================================
   const handleEditPlace = (place) => {
     const targetId = place.id || place.docId;
@@ -625,81 +628,115 @@ function MainApp() {
   const handleDeletePlace = async (place) => {
     const targetId = place.id || place.docId;
     if (!targetId) {
-      showToast('ไม่พบ ID ของสถานที่');
+      showToast(isEn ? 'Place ID not found' : 'ไม่พบ ID ของสถานที่');
       return;
     }
-    if (window.confirm(`🗑️ [Admin] ลบ "${place.title || place.name}" ใช่หรือไม่?`)) {
+    if (window.confirm(isEn ? `Delete "${place.title || place.name}"?` : `ลบ "${place.title || place.name}" ใช่หรือไม่?`)) {
       try {
         await deleteDoc(doc(db, "places", String(targetId)));
-        showToast('ลบเรียบร้อยแล้ว');
+        showToast(isEn ? 'Place deleted' : 'ลบเรียบร้อยแล้ว');
       } catch (error) {
         console.error(error);
-        showToast(`ไม่สามารถลบได้: ${error.code || error.message}`);
+        showToast(`${isEn ? 'Failed to delete: ' : 'ไม่สามารถลบได้: '}${error.code || error.message}`);
       }
     }
   };
 
   // ============================================================
-  // ✅ Language
+  // LANGUAGE
   // ============================================================
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
   // ============================================================
-  // ✅ Reviews
+  // REVIEW FUNCTIONS - With Cooldown 5 seconds
   // ============================================================
   const validateReviewText = (text) => {
     const clean = sanitizeInput(text.trim());
     if (clean.length < 2) {
-      showToast(isEn ? 'Review is too short (min 2 characters)' : 'ข้อความสั้นเกินไป');
+      showToast(isEn ? 'Review too short (min 2 characters)' : 'ข้อความสั้นเกินไป (ขั้นต่ำ 2 ตัวอักษร)');
       return false;
     }
     if (clean.length > 200) {
-      showToast(isEn ? 'Review is too long (max 200 characters)' : 'ไม่เกิน 200 ตัวอักษร');
+      showToast(isEn ? 'Max 200 characters' : 'ไม่เกิน 200 ตัวอักษร');
       return false;
     }
     const lower = clean.toLowerCase();
     if (bannedWords.some(w => lower.includes(w))) {
-      showToast(isEn ? 'Inappropriate language' : 'มีคำไม่เหมาะสม');
+      showToast(isEn ? 'Inappropriate language detected' : 'มีคำไม่เหมาะสม');
       return false;
     }
     return clean;
   };
 
+  // ✅ REVIEW SUBMIT - ส่งได้เรื่อยๆ (Cooldown 5s)
   const handleReviewSubmit = async (placeId) => {
     if (!user) {
-      showToast('กรุณาเข้าสู่ระบบก่อนรีวิว');
+      showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
       return;
     }
+
+    if (!placeId) {
+      showToast(isEn ? 'Place ID not found' : 'ไม่พบ ID ของสถานที่');
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastReviewSubmitTime < REVIEW_COOLDOWN_MS) {
+      const waitSeconds = Math.ceil((REVIEW_COOLDOWN_MS - (now - lastReviewSubmitTime)) / 1000);
+      showToast(isEn ? `Please wait ${waitSeconds}s before posting again` : `กรุณารอ ${waitSeconds} วินาทีก่อนส่งอีกครั้ง`);
+      return;
+    }
+
     const validated = validateReviewText(reviewText);
     if (!validated) return;
 
-    const reviewId = `${user.uid}_${placeId}`;
+    setIsSubmittingReview(true);
+
     try {
-      const ref = doc(db, 'reviews', reviewId);
-      const existing = await getDoc(ref);
-      if (existing.exists()) {
-        showToast('คุณเคยรีวิวสถานที่นี้แล้ว (สามารถแก้ไขได้)');
-        return;
-      }
-      await setDoc(ref, {
-        placeId,
+      await addDoc(collection(db, 'reviews'), {
+        placeId: placeId,
         name: user.displayName || 'Anonymous',
         userPhoto: user.photoURL || '',
         text: validated,
         userId: user.uid,
         createdAt: serverTimestamp()
       });
+      
       setReviewText('');
-      showToast('ส่งรีวิวเรียบร้อย');
+      setLastReviewSubmitTime(now);
+      showToast(isEn ? 'Review submitted!' : 'ส่งรีวิวเรียบร้อย!');
     } catch (err) {
-      console.error(err);
-      showToast(`ส่งรีวิวไม่สำเร็จ: ${err.code || err.message}`);
+      console.error('Submit error:', err);
+      showToast(`${isEn ? 'Failed: ' : 'ส่งไม่สำเร็จ: '}${err.message}`);
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
+  // ✅ UPDATE REVIEW
   const handleUpdateReview = async (review) => {
+    if (!review || !review.id) {
+      showToast(isEn ? 'Review ID not found' : 'ไม่พบ ID ของรีวิว');
+      return;
+    }
+
+    if (!user) {
+      showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
+      return;
+    }
+
+    // ✅ ตรวจสอบว่าเป็นเจ้าของหรือ Admin
+    const isOwner = review.userId === user.uid;
+    const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
+    
+    if (!isOwner && !isAdminUser) {
+      showToast(isEn ? 'You can only edit your own reviews' : 'คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ');
+      return;
+    }
+
     const validated = validateReviewText(editReviewText);
     if (!validated) return;
+
     try {
       await updateDoc(doc(db, 'reviews', review.id), {
         text: validated,
@@ -707,26 +744,47 @@ function MainApp() {
       });
       setEditingReviewId(null);
       setEditReviewText('');
-      showToast('แก้ไขรีวิวเรียบร้อย');
+      showToast(isEn ? 'Review updated!' : 'แก้ไขรีวิวเรียบร้อย!');
     } catch (err) {
-      console.error(err);
-      showToast('แก้ไขไม่สำเร็จ');
+      console.error('Update error:', err);
+      showToast(isEn ? 'Failed to update: ' + err.message : 'แก้ไขไม่สำเร็จ: ' + err.message);
     }
   };
 
+  // ✅ DELETE REVIEW
   const handleDeleteReview = async (review) => {
+    if (!review || !review.id) {
+      showToast(isEn ? 'Review ID not found' : 'ไม่พบ ID ของรีวิว');
+      return;
+    }
+
+    if (!user) {
+      showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
+      return;
+    }
+
+    // ✅ ตรวจสอบว่าเป็นเจ้าของหรือ Admin
+    const isOwner = review.userId === user.uid;
+    const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
+    
+    if (!isOwner && !isAdminUser) {
+      showToast(isEn ? 'You can only delete your own reviews' : 'คุณสามารถลบได้เฉพาะรีวิวของคุณ');
+      return;
+    }
+
     if (!window.confirm(isEn ? 'Delete this review?' : 'ลบรีวิวนี้?')) return;
+    
     try {
       await deleteDoc(doc(db, 'reviews', review.id));
-      showToast('ลบรีวิวแล้ว');
+      showToast(isEn ? 'Review deleted!' : 'ลบรีวิวแล้ว');
     } catch (err) {
-      console.error(err);
-      showToast('ลบไม่สำเร็จ');
+      console.error('Delete error:', err);
+      showToast(isEn ? 'Failed to delete: ' + err.message : 'ลบไม่สำเร็จ: ' + err.message);
     }
   };
 
   // ============================================================
-  // ✅ Open Planner
+  // OPEN PLANNER
   // ============================================================
   const handleOpenPlanner = () => {
     navigate('/planner');
@@ -770,7 +828,7 @@ function MainApp() {
   const currentReviews = currentPlaceId ? (reviewsData[currentPlaceId] || []) : [];
 
   // ============================================================
-  // ✅ Render
+  // RENDER
   // ============================================================
   return (
     <>
@@ -778,7 +836,7 @@ function MainApp() {
       
       <nav className="navbar">
         <Link to="/" className="nav-logo" onClick={closeMobileMenu}>
-          <span></span> {t('brand_title', 'คลองไผ่')}
+          <span>#</span> {t('brand_title', 'คลองไผ่')}
         </Link>
 
         <button
@@ -815,8 +873,8 @@ function MainApp() {
             </div>
           </div>
 
-          <Link to="/checkin" onClick={closeMobileMenu}> {t('nav_top10', '10 จุดเช็คอิน')}</Link>
-          <Link to="/map" onClick={closeMobileMenu}> {t('nav_map', 'แผนที่ชุมชน')}</Link>
+          <Link to="/checkin" onClick={closeMobileMenu}>{t('nav_top10', '10 จุดเช็คอิน')}</Link>
+          <Link to="/map" onClick={closeMobileMenu}>{t('nav_map', 'แผนที่ชุมชน')}</Link>
 
           {isAdmin && (
             <>
@@ -824,13 +882,13 @@ function MainApp() {
                 onClick={() => { resetForm(); setIsAddPlaceModalOpen(true); }}
                 style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
               >
-                เพิ่มสถานที่
+                {isEn ? 'Add Place' : 'เพิ่มสถานที่'}
               </button>
               <button
                 onClick={() => setShowAnalytics(true)}
                 style={{ background: '#7c4dff', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
               >
-                ยอดเข้าชม
+                {isEn ? 'Analytics' : 'ยอดเข้าชม'}
               </button>
             </>
           )}
@@ -851,31 +909,23 @@ function MainApp() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {user.photoURL && (
-                  <img src={user.photoURL} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
-                )}
+                {user.photoURL && <img src={user.photoURL} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
                 <span style={{ fontSize: '0.85rem', color: '#ddd', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.displayName?.split(' ')[0] || 'User'}
                 </span>
-                <button
-                  onClick={handleLogout}
-                  style={{ background: 'rgba(255,77,77,0.15)', color: '#ff6b6b', border: '1px solid rgba(255,77,77,0.3)', padding: '5px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
-                >
-                  ออกจากระบบ
+                <button onClick={handleLogout} style={{ background: 'rgba(255,77,77,0.15)', color: '#ff6b6b', border: '1px solid rgba(255,77,77,0.3)', padding: '5px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  {isEn ? 'Sign out' : 'ออกจากระบบ'}
                 </button>
               </div>
             ) : (
-              <button
-                onClick={handleLogin}
-                style={{ background: '#fff', color: '#222', border: 'none', padding: '7px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
+              <button onClick={handleLogin} style={{ background: '#fff', color: '#222', border: 'none', padding: '7px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.5-1.14 2.76-2.4 3.61v3h3.86c2.26-2.08 3.67-5.14 3.67-8.46z"/>
                   <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.21v3.11C3.18 21.88 7.31 24 12 24z"/>
                   <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.6H1.21A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.21 5.39l4.06-3.1z"/>
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.18 2.12 1.21 5.39l4.06 3.11c.95-2.85 3.6-4.96 6.73-4.96z"/>
                 </svg>
-                เข้าสู่ระบบ
+                {isEn ? 'Sign in' : 'เข้าสู่ระบบ'}
               </button>
             )}
           </div>
@@ -996,23 +1046,31 @@ function MainApp() {
         <div className="map-modal-overlay active" style={{ zIndex: 2300 }} onClick={() => setShowAnalytics(false)}>
           <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '480px', padding: '28px', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#7c4dff', marginBottom: '8px' }}>
-              ยอดเข้าชมเว็บไซต์
+              {isEn ? 'Website Analytics' : 'ยอดเข้าชมเว็บไซต์'}
             </h2>
-            <p style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '20px' }}>อัปเดตแบบเรียลไทม์</p>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '20px' }}>
+              {isEn ? 'Real-time updates' : 'อัปเดตแบบเรียลไทม์'}
+            </p>
             <div style={{ background: 'rgba(124,77,255,0.12)', border: '1px solid rgba(124,77,255,0.3)', borderRadius: '12px', padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.85rem', color: '#bbb' }}>ยอดรวมทั้งหมด</div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 'bold', fontFamily: 'Mitr, sans-serif' }}>{(pageViews.total || 0).toLocaleString()}</div>
+              <div style={{ fontSize: '0.85rem', color: '#bbb' }}>
+                {isEn ? 'Total Views' : 'ยอดรวมทั้งหมด'}
+              </div>
+              <div style={{ fontSize: '2.2rem', fontWeight: 'bold', fontFamily: 'Mitr, sans-serif' }}>
+                {(pageViews.total || 0).toLocaleString()}
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {Object.entries(pageViews).filter(([k]) => k !== 'total' && k !== 'lastUpdated').sort((a, b) => (b[1] || 0) - (a[1] || 0)).map(([path, count]) => (
                 <div key={path} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '10px 14px', borderRadius: '8px' }}>
                   <span>{pageNameMap[path] || path}</span>
-                  <span style={{ background: '#00a854', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>{(count || 0).toLocaleString()}</span>
+                  <span style={{ background: '#00a854', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                    {(count || 0).toLocaleString()}
+                  </span>
                 </div>
               ))}
             </div>
             <button onClick={() => setShowAnalytics(false)} style={{ marginTop: '24px', width: '100%', background: '#6c757d', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-              ปิด
+              {isEn ? 'Close' : 'ปิด'}
             </button>
           </div>
         </div>
@@ -1022,59 +1080,67 @@ function MainApp() {
         <div className="map-modal-overlay active" style={{ zIndex: 2200 }} onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }}>
           <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '560px', padding: '24px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '20px' }}>
-              {editingPlaceId ? 'แก้ไขสถานที่' : 'เพิ่มสถานที่ใหม่'}
+              {editingPlaceId ? (isEn ? 'Edit Place' : 'แก้ไขสถานที่') : (isEn ? 'Add New Place' : 'เพิ่มสถานที่ใหม่')}
             </h2>
             <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>ประเภท</label>
+                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                  {isEn ? 'Category' : 'ประเภท'}
+                </label>
                 <select value={newPlace.category} onChange={e => setNewPlace({ ...newPlace, category: e.target.value, type: e.target.value })} style={inputStyle}>
-                  <option value="travel">สถานที่ท่องเที่ยว (travel)</option>
-                  <option value="accommodation">ที่พัก (accommodation)</option>
-                  <option value="restaurant">ร้านอาหาร (restaurant)</option>
+                  <option value="travel">{isEn ? 'Attraction (travel)' : 'สถานที่ท่องเที่ยว (travel)'}</option>
+                  <option value="accommodation">{isEn ? 'Accommodation' : 'ที่พัก (accommodation)'}</option>
+                  <option value="restaurant">{isEn ? 'Restaurant' : 'ร้านอาหาร (restaurant)'}</option>
                 </select>
               </div>
-              <input type="text" placeholder="ชื่อสถานที่ (ไทย) *" value={newPlace.title} onChange={e => setNewPlace({ ...newPlace, title: e.target.value })} required style={inputStyle} />
-              <input type="text" placeholder="ชื่อสถานที่ (อังกฤษ)" value={newPlace.title_en} onChange={e => setNewPlace({ ...newPlace, title_en: e.target.value })} style={inputStyle} />
+              <input type="text" placeholder={isEn ? 'Place name (Thai) *' : 'ชื่อสถานที่ (ไทย) *'} value={newPlace.title} onChange={e => setNewPlace({ ...newPlace, title: e.target.value })} required style={inputStyle} />
+              <input type="text" placeholder={isEn ? 'Place name (English)' : 'ชื่อสถานที่ (อังกฤษ)'} value={newPlace.title_en} onChange={e => setNewPlace({ ...newPlace, title_en: e.target.value })} style={inputStyle} />
               <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>รูปหน้าปก</label>
+                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                  {isEn ? 'Main Image' : 'รูปหน้าปก'}
+                </label>
                 <input type="file" accept="image/*" onChange={handleImageBrowse} style={{ ...inputStyle, padding: 8 }} />
                 {newPlace.img && <img src={newPlace.img} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, marginTop: 8 }} />}
               </div>
               <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>รูปอื่นๆ</label>
+                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                  {isEn ? 'Additional Images' : 'รูปอื่นๆ'}
+                </label>
                 <input type="file" accept="image/*" multiple onChange={handleGalleryBrowse} style={{ ...inputStyle, padding: 8 }} />
                 {newPlace.gallery?.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                     {newPlace.gallery.map((img, idx) => (
                       <div key={idx} style={{ position: 'relative' }}>
                         <img src={img} alt="" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6 }} />
-                        <button type="button" onClick={() => handleRemoveGalleryImg(idx)} style={{ position: 'absolute', top: -6, right: -6, background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}>✕</button>
+                        <button type="button" onClick={() => handleRemoveGalleryImg(idx)} style={{ position: 'absolute', top: -6, right: -6, background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}>x</button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <textarea placeholder="คำอธิบายสั้น" value={newPlace.description} onChange={e => setNewPlace({ ...newPlace, description: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'none' }} />
-              <textarea placeholder="รายละเอียด" value={newPlace.detailDescription} onChange={e => setNewPlace({ ...newPlace, detailDescription: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'none' }} />
+              <textarea placeholder={isEn ? 'Short description' : 'คำอธิบายสั้น'} value={newPlace.description} onChange={e => setNewPlace({ ...newPlace, description: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'none' }} />
+              <textarea placeholder={isEn ? 'Full details' : 'รายละเอียด'} value={newPlace.detailDescription} onChange={e => setNewPlace({ ...newPlace, detailDescription: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'none' }} />
               <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 6 }}>พิกัด (สำคัญสำหรับการนำทาง)</label>
+                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 6 }}>
+                  {isEn ? 'Location (important for navigation)' : 'พิกัด (สำคัญสำหรับการนำทาง)'}
+                </label>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
                   <input type="text" placeholder="Latitude" value={newPlace.lat} onChange={e => setNewPlace({ ...newPlace, lat: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
                   <input type="text" placeholder="Longitude" value={newPlace.lng} onChange={e => setNewPlace({ ...newPlace, lng: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
                 </div>
                 <button type="button" onClick={() => window.open('https://www.google.com/maps', '_blank')} style={{ width: '100%', background: 'rgba(66,133,244,0.15)', border: '1px solid #4285F4', color: '#8ab4f8', padding: '10px', borderRadius: 8, cursor: 'pointer' }}>
-                  เปิด Google Maps
+                  {isEn ? 'Open Google Maps' : 'เปิด Google Maps'}
                 </button>
               </div>
-              <input type="text" placeholder="เวลาทำการ" value={newPlace.workingHours} onChange={e => setNewPlace({ ...newPlace, workingHours: e.target.value })} style={inputStyle} />
-              <input type="text" placeholder="เบอร์โทร" value={newPlace.phone} onChange={e => setNewPlace({ ...newPlace, phone: e.target.value })} style={inputStyle} />
-              <input type="text" placeholder="Google Maps URL หรือ Embed Code" value={newPlace.mapUrl} onChange={e => setNewPlace({ ...newPlace, mapUrl: e.target.value })} style={inputStyle} />
+              <input type="text" placeholder={isEn ? 'Opening hours' : 'เวลาทำการ'} value={newPlace.workingHours} onChange={e => setNewPlace({ ...newPlace, workingHours: e.target.value })} style={inputStyle} />
+              <input type="text" placeholder={isEn ? 'Phone number' : 'เบอร์โทร'} value={newPlace.phone} onChange={e => setNewPlace({ ...newPlace, phone: e.target.value })} style={inputStyle} />
+              <input type="text" placeholder={isEn ? 'Google Maps URL or Embed Code' : 'Google Maps URL หรือ Embed Code'} value={newPlace.mapUrl} onChange={e => setNewPlace({ ...newPlace, mapUrl: e.target.value })} style={inputStyle} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
                 <button type="button" onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
-                  ยกเลิก
+                  {isEn ? 'Cancel' : 'ยกเลิก'}
                 </button>
                 <button type="submit" style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
-                  {editingPlaceId ? 'บันทึก' : 'เพิ่มสถานที่'}
+                  {editingPlaceId ? (isEn ? 'Save' : 'บันทึก') : (isEn ? 'Add Place' : 'เพิ่มสถานที่')}
                 </button>
               </div>
             </form>
@@ -1200,8 +1266,8 @@ function MainApp() {
 
                   {(p.workingHours || p.phone) && (
                     <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '16px' }}>
-                      {p.workingHours && <div>{p.workingHours}</div>}
-                      {p.phone && <div>{p.phone}</div>}
+                      {p.workingHours && <div>{isEn ? 'Hours: ' : 'เวลาทำการ: '}{p.workingHours}</div>}
+                      {p.phone && <div>{isEn ? 'Phone: ' : 'เบอร์โทร: '}{p.phone}</div>}
                     </div>
                   )}
 
@@ -1231,7 +1297,7 @@ function MainApp() {
                         gap: '8px'
                       }}
                     >
-                      {showEmbedMap ? 'ซ่อนแผนที่' : 'ดูแผนที่'}
+                      {showEmbedMap ? (isEn ? 'Hide Map' : 'ซ่อนแผนที่') : (isEn ? 'View Map' : 'ดูแผนที่')}
                     </button>
                     
                     <button 
@@ -1240,7 +1306,7 @@ function MainApp() {
                         if (coords) {
                           window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`, '_blank');
                         } else {
-                          showToast('ไม่พบพิกัดของสถานที่นี้');
+                          showToast(isEn ? 'No location data found' : 'ไม่พบพิกัดของสถานที่นี้');
                         }
                       }} 
                       style={{ 
@@ -1290,7 +1356,7 @@ function MainApp() {
                             fontSize: '1.2rem'
                           }}
                         >
-                          ✕
+                          x
                         </button>
                       </div>
                       <div style={{ width: '100%', height: '320px', background: '#333' }}>
@@ -1308,6 +1374,7 @@ function MainApp() {
                     </div>
                   )}
 
+                  {/* ===== REVIEW SECTION ===== */}
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
                     <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '12px', fontSize: '1rem' }}>
                       {isEn ? 'Reviews' : 'รีวิว'} ({placeReviews.length})
@@ -1339,17 +1406,19 @@ function MainApp() {
                           <button 
                             onClick={() => handleReviewSubmit(placeId)} 
                             style={{ 
-                              background: '#00a854', 
+                              background: isSubmittingReview ? '#666' : '#00a854', 
                               color: '#fff', 
                               border: 'none', 
                               padding: '6px 18px', 
                               borderRadius: '20px', 
-                              cursor: 'pointer', 
+                              cursor: isSubmittingReview ? 'not-allowed' : 'pointer', 
                               fontWeight: 'bold',
-                              fontSize: '0.85rem'
+                              fontSize: '0.85rem',
+                              opacity: isSubmittingReview ? 0.6 : 1
                             }}
+                            disabled={isSubmittingReview}
                           >
-                            {isEn ? 'Submit' : 'ส่งรีวิว'}
+                            {isSubmittingReview ? (isEn ? 'Sending...' : 'กำลังส่ง...') : (isEn ? 'Submit' : 'ส่งรีวิว')}
                           </button>
                         </div>
                       </div>
@@ -1389,13 +1458,13 @@ function MainApp() {
                                       onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); }} 
                                       style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer' }}
                                     >
-                                      
+                                      {isEn ? 'Edit' : 'แก้ไข'}
                                     </button>
                                     <button 
                                       onClick={() => handleDeleteReview(review)} 
                                       style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer' }}
                                     >
-                                      
+                                      {isEn ? 'Delete' : 'ลบ'}
                                     </button>
                                   </div>
                                 )}
@@ -1453,6 +1522,9 @@ function MainApp() {
   );
 }
 
+// ============================================================
+// Export
+// ============================================================
 export default function App() {
   return (
     <Router>
