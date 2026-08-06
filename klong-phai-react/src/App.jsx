@@ -29,7 +29,7 @@ import {
 } from 'firebase/firestore';
 
 // ============================================================
-// ✅ Lazy Loading - โหลดเฉพาะหน้าที่เข้า
+// Lazy Loading
 // ============================================================
 const Home = lazy(() => import('./pages/Home'));
 const Restaurant = lazy(() => import('./pages/Restaurant'));
@@ -337,7 +337,7 @@ function MainApp() {
   }, [isAdmin]);
 
   // ============================================================
-  // TRIP PLANNER FUNCTIONS
+  // TRIP PLANNER FUNCTIONS - แก้ไขให้ป้องกันการเพิ่มซ้ำ
   // ============================================================
   
   const isAddedToTrip = (place) => {
@@ -350,13 +350,23 @@ function MainApp() {
     if (!place) return;
     const placeId = place.id || place.docId;
     const title = sanitizeInput(place.title || place.name || 'สถานที่');
+    
+    // ตรวจสอบซ้ำด้วยฟังก์ชัน
     const exists = selectedPlaces.some(item => (item.id || item.docId) === placeId);
 
     if (exists) {
       setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
       showToast(isEn ? 'Removed "' + title + '" from trip' : 'ลบ "' + title + '" ออกจากทริปแล้ว');
     } else {
-      setSelectedPlaces(prev => [...prev, place]);
+      // ใช้ callback form เพื่อป้องกัน race condition
+      setSelectedPlaces(prev => {
+        // เช็คซ้ำอีกครั้งใน callback
+        const stillExists = prev.some(item => (item.id || item.docId) === placeId);
+        if (stillExists) {
+          return prev;
+        }
+        return [...prev, place];
+      });
       showToast(isEn ? 'Added "' + title + '" to trip' : 'เพิ่ม "' + title + '" ลงทริปแล้ว');
     }
   };
@@ -965,10 +975,8 @@ function MainApp() {
         </div>
       </nav>
 
-      {/* ✅ Scroll Progress Bar */}
       <ScrollProgress />
 
-      {/* ✅ Cursor Glow */}
       <div 
         className="cursor-glow" 
         style={{ 
@@ -978,9 +986,6 @@ function MainApp() {
         }} 
       />
 
-      {/* ============================================================ */}
-      {/* ✅ Routes with Suspense */}
-      {/* ============================================================ */}
       <Suspense fallback={
         <div style={{ 
           paddingTop: '90px', 
@@ -1096,7 +1101,7 @@ function MainApp() {
           <Route path="/detail/:id" element={<Detail places={places} onOpenMap={openMap} lang={currentLang} />} />
         </Routes>
       </Suspense>
-             <Footer />
+      <Footer />
       <FloatingTripBasket
         selectedPlaces={selectedPlaces}
         onAddPlace={handleAddPlaceToTrip}

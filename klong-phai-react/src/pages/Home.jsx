@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 import MarqueeBanner from '../components/MarqueeBanner';
-import watKaoprickImg from '../assets/watkaoprick.jpg'; 
+import watKaoprickImg from '../assets/watkaoprick.jpg';
 
 export default function Home({ 
   places = [],        
@@ -26,6 +26,32 @@ export default function Home({
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
+  // ===== State สำหรับ Slider แต่ละอัน =====
+  const [slider1, setSlider1] = useState(0);
+  const [slider2, setSlider2] = useState(0);
+  const [slider3, setSlider3] = useState(0);
+
+  // ===== Auto-Slide แต่ละอันแยกกัน =====
+  useEffect(() => {
+    const interval1 = setInterval(() => {
+      setSlider1(prev => (prev + 1) % 3);
+    }, 5000);
+
+    const interval2 = setInterval(() => {
+      setSlider2(prev => (prev + 1) % 3);
+    }, 5000);
+
+    const interval3 = setInterval(() => {
+      setSlider3(prev => (prev + 1) % 3);
+    }, 5000);
+
+    return () => {
+      clearInterval(interval1);
+      clearInterval(interval2);
+      clearInterval(interval3);
+    };
+  }, []);
+
   useEffect(() => {
     const rows = document.querySelectorAll('.info-row');
     const observer = new IntersectionObserver(
@@ -44,7 +70,7 @@ export default function Home({
     return () => observer.disconnect();
   }, []);
 
-  // 🟢 ปัดขวา = เพิ่ม
+  // ===== Swipe Functions =====
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -59,7 +85,6 @@ export default function Home({
     }
   };
 
-  // 🔴 ปัดซ้าย = ลบ
   const handleSwipeLeftRemove = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -68,7 +93,6 @@ export default function Home({
     }
   };
 
-  // 🖱️ คลิกปุ่ม
   const handleToggleAddToPlan = (place) => {
     const placeId = place.id || place.docId;
     const exists = selectedPlaces.some(p => (p.id || p.docId) === placeId);
@@ -121,7 +145,6 @@ export default function Home({
         />
 
         <div className="search-container-inside">
-          {/* ✅ Gradient Text */}
           <h1 className="gradient-text">
             {t('hero_title', 'เที่ยวในเทศบาลตำบล คลองไผ่')}
           </h1>
@@ -213,38 +236,104 @@ export default function Home({
 
       {/* ===== INFO SECTIONS ===== */}
       <section className="info-sections">
+        {/* Slider 1 */}
         <div className="info-row">
           <div className="info-img">
-            <div className="placeholder-img"></div>
+            <div className="image-slider">
+              <img 
+                src="src/assets/cook_n_coff.jpg" 
+                alt="ชุมชนคลองไผ่"
+                className={`slide-image ${slider1 === 0 ? 'active' : ''}`}
+              />
+              <img 
+                src="src/assets/cook_n_coff_view.jpg" 
+                alt="ธรรมชาติคลองไผ่"
+                className={`slide-image ${slider1 === 1 ? 'active' : ''}`}
+              />
+              <img 
+                src="src/assets/cook_n_coff_view2.jpg" 
+                alt="วิวคลองไผ่"
+                className={`slide-image ${slider1 === 2 ? 'active' : ''}`}
+              />
+              <div className="slider-dots">
+                <span className={`dot ${slider1 === 0 ? 'active' : ''}`} onClick={() => setSlider1(0)}></span>
+                <span className={`dot ${slider1 === 1 ? 'active' : ''}`} onClick={() => setSlider1(1)}></span>
+                <span className={`dot ${slider1 === 2 ? 'active' : ''}`} onClick={() => setSlider1(2)}></span>
+              </div>
+            </div>
           </div>
           <div className="info-text">
-            <h2>{t('about_title', 'ชุมชนคลองไผ่คืออะไร?')}</h2>  
+            <h2>ชุมชนคลองไผ่คืออะไร?</h2>  
             <p>
-              {t('about_desc', 'ชุมชนคลองไผ่เป็นชุมชนท่องเที่ยวเชิงนิเวศที่มีความโดดเด่นด้านวัฒนธรรมท้องถิ่น ธรรมชาติที่สวยงาม และการต้อนรับที่อบอุ่น ตั้งอยู่ในพื้นที่อำเภอสีคิ้ว จังหวัดนครราชสีมา เป็นแหล่งท่องเที่ยวที่เหมาะสำหรับผู้ที่ต้องการพักผ่อนหย่อนใจ เรียนรู้วิถีชีวิตท้องถิ่น และสัมผัสกับธรรมชาติที่บริสุทธิ์')}
+              ชุมชนคลองไผ่เป็นชุมชนท่องเที่ยวเชิงนิเวศที่มีความโดดเด่นด้านวัฒนธรรมท้องถิ่น ธรรมชาติที่สวยงาม และการต้อนรับที่อบอุ่น ตั้งอยู่ในพื้นที่อำเภอสีคิ้ว จังหวัดนครราชสีมา เป็นแหล่งท่องเที่ยวที่เหมาะสำหรับผู้ที่ต้องการพักผ่อนหย่อนใจ เรียนรู้วิถีชีวิตท้องถิ่น และสัมผัสกับธรรมชาติที่บริสุทธิ์
             </p>
           </div>
         </div>
 
+        {/* Slider 2 */}
         <div className="info-row reverse">
           <div className="info-img">
-            <div className="placeholder-img"></div>
+            <div className="image-slider">
+              <img 
+                src="src/assets/Rpsg_Sut.jpg" 
+                alt="สถานที่น่าสนใจ"
+                className={`slide-image ${slider2 === 0 ? 'active' : ''}`}
+              />
+              <img 
+                src="https://images.unsplash.com/photo-1470071459604-7b8ec44ffd1b?w=600&h=400&fit=crop" 
+                alt="ธรรมชาติ"
+                className={`slide-image ${slider2 === 1 ? 'active' : ''}`}
+              />
+              <img 
+                src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop" 
+                alt="วิวเขา"
+                className={`slide-image ${slider2 === 2 ? 'active' : ''}`}
+              />
+              <div className="slider-dots">
+                <span className={`dot ${slider2 === 0 ? 'active' : ''}`} onClick={() => setSlider2(0)}></span>
+                <span className={`dot ${slider2 === 1 ? 'active' : ''}`} onClick={() => setSlider2(1)}></span>
+                <span className={`dot ${slider2 === 2 ? 'active' : ''}`} onClick={() => setSlider2(2)}></span>
+              </div>
+            </div>
           </div>
           <div className="info-text">
-            <h2>{t('attractions_title', 'สถานที่น่าสนใจ')}</h2>
+            <h2>สถานที่น่าสนใจ</h2>
             <p>
-              {t('attractions_desc', 'ภายในชุมชนคลองไผ่มีสถานที่ท่องเที่ยวที่น่าสนใจมากมาย ทั้งวัดเขาพริก จุดชมวิวเขื่อนลำตะคอง ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ')}
+              ภายในชุมชนคลองไผ่มีสถานที่ท่องเที่ยวที่น่าสนใจมากมาย ทั้งวัดเขาพริก จุดชมวิวเขื่อนลำตะคอง ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ
             </p>
           </div>
         </div>
 
+        {/* Slider 3 */}
         <div className="info-row">
           <div className="info-img">
-            <div className="placeholder-img"></div>
+            <div className="image-slider">
+              <img 
+                src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop" 
+                alt="กิจกรรมท่องเที่ยว"
+                className={`slide-image ${slider3 === 0 ? 'active' : ''}`}
+              />
+              <img 
+                src="https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop" 
+                alt="กิจกรรมกลางแจ้ง"
+                className={`slide-image ${slider3 === 1 ? 'active' : ''}`}
+              />
+              <img 
+                src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop" 
+                alt="วิวทะเล"
+                className={`slide-image ${slider3 === 2 ? 'active' : ''}`}
+              />
+              <div className="slider-dots">
+                <span className={`dot ${slider3 === 0 ? 'active' : ''}`} onClick={() => setSlider3(0)}></span>
+                <span className={`dot ${slider3 === 1 ? 'active' : ''}`} onClick={() => setSlider3(1)}></span>
+                <span className={`dot ${slider3 === 2 ? 'active' : ''}`} onClick={() => setSlider3(2)}></span>
+              </div>
+            </div>
           </div>
           <div className="info-text">
-            <h2>{t('activities_title', 'กิจกรรมท่องเที่ยว')}</h2>
+            <h2>กิจกรรมท่องเที่ยว</h2>
             <p>
-              {t('activities_desc', 'เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก')}
+              เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก
             </p>
           </div>
         </div>
