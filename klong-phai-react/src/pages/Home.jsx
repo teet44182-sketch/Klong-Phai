@@ -5,7 +5,10 @@ import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 import MarqueeBanner from '../components/MarqueeBanner';
 import watKaoprickImg from '../assets/watkaoprick.jpg';
-
+import cook_n_coff from '../assets/cook_n_coff.jpg';
+import cook_n_coff_view from '../assets/cook_n_coff_view.jpg';
+import cook_n_coff_view2 from '../assets/cook_n_coff_view2.jpg';
+import Rpsg_Sut from '../assets/Rpsg_Sut.jpg';
 export default function Home({ 
   places = [],        
   loading = false,    
@@ -241,17 +244,17 @@ export default function Home({
           <div className="info-img">
             <div className="image-slider">
               <img 
-                src="src/assets/cook_n_coff.jpg" 
+                src={cook_n_coff} 
                 alt="ชุมชนคลองไผ่"
                 className={`slide-image ${slider1 === 0 ? 'active' : ''}`}
               />
               <img 
-                src="src/assets/cook_n_coff_view.jpg" 
+                src={cook_n_coff_view} 
                 alt="ธรรมชาติคลองไผ่"
                 className={`slide-image ${slider1 === 1 ? 'active' : ''}`}
               />
               <img 
-                src="src/assets/cook_n_coff_view2.jpg" 
+                src={cook_n_coff_view2} 
                 alt="วิวคลองไผ่"
                 className={`slide-image ${slider1 === 2 ? 'active' : ''}`}
               />
@@ -275,7 +278,7 @@ export default function Home({
           <div className="info-img">
             <div className="image-slider">
               <img 
-                src="src/assets/Rpsg_Sut.jpg" 
+                src={Rpsg_Sut} 
                 alt="สถานที่น่าสนใจ"
                 className={`slide-image ${slider2 === 0 ? 'active' : ''}`}
               />

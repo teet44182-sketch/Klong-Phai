@@ -222,7 +222,7 @@ export default function Footer() {
         }
         <br />
         <span style={{ fontSize: '0.65rem', color: '#444' }}>
-          {isEn ? 'Made with ❤️ for Khlong Phai' : 'ทำด้วย ❤️ เพื่อคลองไผ่'}
+          
         </span>
       </div>
     </footer>
