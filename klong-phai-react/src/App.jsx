@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import './App.css';
 
-// Import Crop Library
-import ReactCrop from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+// ✅ นำเข้า Cropper ที่ถูกต้อง (สำคัญมาก! ไฟล์เดิมของคุณขาดบรรทัดนี้)
+import Cropper from 'react-cropper';
+// ✅ ลบบรรทัด import CSS ของ cropper ออกแล้ว เพราะไปไว้ใน main.jsx แล้ว
 
 import { bannedWords } from './utils/wordlist';
 import LangSwitcherText from './components/LangSwitcherText';
@@ -265,12 +265,10 @@ function MainApp() {
   // ===== Crop Related States =====
   const [cropModal, setCropModal] = useState({
     isOpen: false,
-    imageSrc: null,      // Base64 raw image
-    mode: 'main'         // 'main' หรือ 'gallery'
+    imageSrc: null,
+    mode: 'main'
   });
-  const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
+  const cropperRef = useRef(null);
 
   // ===== Cursor Glow Effect =====
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -487,7 +485,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // IMAGE HANDLERS (ปรับใหม่ให้เปิด Modal Crop)
+  // IMAGE HANDLERS
   // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
@@ -502,7 +500,6 @@ function MainApp() {
     }
     setImageFileName(file.name);
     
-    // อ่านไฟล์เป็น Base64 เพื่อส่งเข้า Modal Crop
     const reader = new FileReader();
     reader.onload = (ev) => {
       setCropModal({ isOpen: true, imageSrc: ev.target.result, mode: 'main' });
@@ -514,7 +511,6 @@ function MainApp() {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     
-    // ใช้ไฟล์แรกสำหรับ Crop
     const file = files[0];
     if (!file.type.startsWith('image/')) {
       showToast(`${file.name} ${isEn ? 'is not an image' : 'ไม่ใช่ไฟล์รูป'}`);
@@ -532,43 +528,34 @@ function MainApp() {
     reader.readAsDataURL(file);
   };
 
-  // ===== Crop Confirm / Cancel =====
+  // ===== Crop Confirm / Cancel (ใช้ Cropper.js สากล) =====
   const handleCropCancel = () => {
     setCropModal({ isOpen: false, imageSrc: null, mode: 'main' });
     setImageFileName('');
-    // Reset file input
     const fileInputs = document.querySelectorAll('input[type="file"]');
     fileInputs.forEach(inp => inp.value = '');
   };
 
   const handleCropConfirm = async () => {
-    if (!imgRef.current || !completedCrop) {
-      showToast(isEn ? 'Please select an area to crop' : 'กรุณาเลือกพื้นที่ที่ต้องการครอบตัด');
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) {
+      showToast(isEn ? 'Cropper not ready' : 'ระบบ Crop ยังไม่พร้อม');
       return;
     }
 
-    const image = imgRef.current;
-    const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    
-    canvas.width = completedCrop.width;
-    canvas.height = completedCrop.height;
-    const ctx = canvas.getContext('2d');
+    // ดึงภาพที่ Crop ออกมาเป็น Canvas
+    const canvas = cropper.getCroppedCanvas();
+    if (!canvas) {
+      showToast(isEn ? 'Failed to crop image' : 'ไม่สามารถตัดรูปได้');
+      return;
+    }
 
-    ctx.drawImage(
-      image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      completedCrop.width,
-      completedCrop.height
-    );
-
+    // แปลง Canvas เป็น Blob
     canvas.toBlob(async (blob) => {
+      if (!blob) {
+        showToast(isEn ? 'Failed to process image' : 'ไม่สามารถประมวลผลรูปได้');
+        return;
+      }
       const croppedFile = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
       try {
         // บีบอัดภาพต่อหลังจาก Crop
@@ -1188,33 +1175,97 @@ function MainApp() {
         </div>
       )}
 
-      {/* ===== CROP MODAL (ใหม่) ===== */}
+      {/* ===== CROP MODAL สากล (Cropper.js) ===== */}
       {cropModal.isOpen && (
-        <div className="map-modal-overlay active" style={{ zIndex: 2500 }} onClick={handleCropCancel}>
-          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '80vw', maxHeight: '90vh', padding: '24px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '12px' }}>
+        <div 
+          className="map-modal-overlay active" 
+          style={{ zIndex: 2500, padding: '20px', alignItems: 'center', justifyContent: 'center' }} 
+          onClick={handleCropCancel}
+        >
+          <div 
+            className="map-modal-content" 
+            style={{ 
+              backgroundColor: '#1e1e1e', 
+              color: '#fff', 
+              maxWidth: '90vw', 
+              maxHeight: '90vh', 
+              width: '100%', 
+              padding: '20px', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              display: 'flex', 
+              flexDirection: 'column',
+              borderRadius: '16px'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '16px', fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}>
               {isEn ? 'Crop Image' : 'ครอบตัดรูปภาพ'}
             </h2>
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#111', borderRadius: '8px', padding: '8px', maxHeight: '60vh', overflow: 'hidden' }}>
-              <ReactCrop
-                crop={crop}
-                onChange={(c) => setCrop(c)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={4/3}
-              >
-                <img
-                  ref={imgRef}
-                  src={cropModal.imageSrc}
-                  alt="Crop preview"
-                  style={{ maxHeight: '60vh', maxWidth: '100%', objectFit: 'contain' }}
-                />
-              </ReactCrop>
+            
+            <div style={{ 
+              flex: 1, 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              background: '#111', 
+              borderRadius: '12px', 
+              padding: '8px', 
+              minHeight: '300px',
+              maxHeight: '60vh',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              <Cropper
+                ref={cropperRef}
+                src={cropModal.imageSrc}
+                style={{ height: '100%', width: '100%' }}
+                // รองรับการใช้งานแบบสากล (Mouse / Touch / Pinch)
+                aspectRatio={4 / 3}
+                guides={true}
+                viewMode={1}
+                autoCropArea={0.8}
+                background={false}
+                responsive={true}
+                checkOrientation={false}
+                toggleDragModeOnDblclick={false}
+              />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-              <button type="button" onClick={handleCropCancel} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
+              <button 
+                type="button" 
+                onClick={handleCropCancel} 
+                style={{ 
+                  background: '#6c757d', 
+                  color: '#fff', 
+                  border: 'none', 
+                  padding: '12px 24px', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  flex: 1,
+                  minWidth: '80px',
+                  fontSize: '0.9rem'
+                }}
+              >
                 {isEn ? 'Cancel' : 'ยกเลิก'}
               </button>
-              <button type="button" onClick={handleCropConfirm} style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+              <button 
+                type="button" 
+                onClick={handleCropConfirm} 
+                style={{ 
+                  background: '#00a854', 
+                  color: '#fff', 
+                  border: 'none', 
+                  padding: '12px 24px', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  flex: 1,
+                  minWidth: '80px',
+                  fontSize: '0.9rem'
+                }}
+              >
                 {isEn ? 'Crop & Confirm' : 'ตัดและยืนยัน'}
               </button>
             </div>

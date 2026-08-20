@@ -1,8 +1,10 @@
 // src/main.jsx
-import React from 'react';  // ✅ เพิ่มบรรทัดนี้
+import React from 'react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+// ✅ ย้าย Import CSS ของ Cropper มาไว้ที่นี่ (สำคัญ!)
+import 'cropperjs/dist/cropper.css';
 import './i18n';
 import App from './App.jsx';
 
