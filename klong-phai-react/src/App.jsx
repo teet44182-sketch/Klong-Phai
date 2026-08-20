@@ -48,7 +48,9 @@ import { ToastProvider, useToast } from './context/ToastContext';
 const ADMIN_EMAILS = [
   'teet44182@gmail.com',
   'เทศบาล@gmail.com',
-  'admin2@gmail.com'
+  'admin2@gmail.com',
+  'adisonbb2@gmail.com'
+  
 ];
 
 // ============================================================
