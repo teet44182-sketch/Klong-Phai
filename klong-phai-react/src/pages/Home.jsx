@@ -9,6 +9,7 @@ import cook_n_coff from '../assets/cook_n_coff.jpg';
 import cook_n_coff_view from '../assets/cook_n_coff_view.jpg';
 import cook_n_coff_view2 from '../assets/cook_n_coff_view2.jpg';
 import Rpsg_Sut from '../assets/Rpsg_Sut.jpg';
+
 export default function Home({ 
   places = [],        
   loading = false,    
@@ -237,7 +238,7 @@ export default function Home({
         )}
       </div>
 
-      {/* ===== INFO SECTIONS ===== */}
+      {/* ===== INFO SECTIONS (แก้ไขให้ใช้คีย์จาก i18n.js ของคุณ) ===== */}
       <section className="info-sections">
         {/* Slider 1 */}
         <div className="info-row">
@@ -245,17 +246,17 @@ export default function Home({
             <div className="image-slider">
               <img 
                 src={cook_n_coff} 
-                alt="ชุมชนคลองไผ่"
+                alt={t('alt_about_1', 'ชุมชนคลองไผ่')}
                 className={`slide-image ${slider1 === 0 ? 'active' : ''}`}
               />
               <img 
                 src={cook_n_coff_view} 
-                alt="ธรรมชาติคลองไผ่"
+                alt={t('alt_about_2', 'ธรรมชาติคลองไผ่')}
                 className={`slide-image ${slider1 === 1 ? 'active' : ''}`}
               />
               <img 
                 src={cook_n_coff_view2} 
-                alt="วิวคลองไผ่"
+                alt={t('alt_about_3', 'วิวคลองไผ่')}
                 className={`slide-image ${slider1 === 2 ? 'active' : ''}`}
               />
               <div className="slider-dots">
@@ -266,10 +267,8 @@ export default function Home({
             </div>
           </div>
           <div className="info-text">
-            <h2>ชุมชนคลองไผ่คืออะไร?</h2>  
-            <p>
-              ชุมชนคลองไผ่เป็นชุมชนท่องเที่ยวเชิงนิเวศที่มีความโดดเด่นด้านวัฒนธรรมท้องถิ่น ธรรมชาติที่สวยงาม และการต้อนรับที่อบอุ่น ตั้งอยู่ในพื้นที่อำเภอสีคิ้ว จังหวัดนครราชสีมา เป็นแหล่งท่องเที่ยวที่เหมาะสำหรับผู้ที่ต้องการพักผ่อนหย่อนใจ เรียนรู้วิถีชีวิตท้องถิ่น และสัมผัสกับธรรมชาติที่บริสุทธิ์
-            </p>
+            <h2>{t('about_title')}</h2>  
+            <p>{t('about_desc')}</p>
           </div>
         </div>
 
@@ -279,17 +278,17 @@ export default function Home({
             <div className="image-slider">
               <img 
                 src={Rpsg_Sut} 
-                alt="สถานที่น่าสนใจ"
+                alt={t('alt_attractions_1', 'สถานที่น่าสนใจ')}
                 className={`slide-image ${slider2 === 0 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1470071459604-7b8ec44ffd1b?w=600&h=400&fit=crop" 
-                alt="ธรรมชาติ"
+                alt={t('alt_attractions_2', 'ธรรมชาติ')}
                 className={`slide-image ${slider2 === 1 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop" 
-                alt="วิวเขา"
+                alt={t('alt_attractions_3', 'วิวเขา')}
                 className={`slide-image ${slider2 === 2 ? 'active' : ''}`}
               />
               <div className="slider-dots">
@@ -300,10 +299,8 @@ export default function Home({
             </div>
           </div>
           <div className="info-text">
-            <h2>สถานที่น่าสนใจ</h2>
-            <p>
-              ภายในชุมชนคลองไผ่มีสถานที่ท่องเที่ยวที่น่าสนใจมากมาย ทั้งวัดเขาพริก จุดชมวิวเขื่อนลำตะคอง ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ
-            </p>
+            <h2>{t('attractions_title')}</h2>
+            <p>{t('attractions_desc')}</p>
           </div>
         </div>
 
@@ -313,17 +310,17 @@ export default function Home({
             <div className="image-slider">
               <img 
                 src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop" 
-                alt="กิจกรรมท่องเที่ยว"
+                alt={t('alt_activities_1', 'กิจกรรมท่องเที่ยว')}
                 className={`slide-image ${slider3 === 0 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop" 
-                alt="กิจกรรมกลางแจ้ง"
+                alt={t('alt_activities_2', 'กิจกรรมกลางแจ้ง')}
                 className={`slide-image ${slider3 === 1 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop" 
-                alt="วิวทะเล"
+                alt={t('alt_activities_3', 'วิวทะเล')}
                 className={`slide-image ${slider3 === 2 ? 'active' : ''}`}
               />
               <div className="slider-dots">
@@ -334,10 +331,8 @@ export default function Home({
             </div>
           </div>
           <div className="info-text">
-            <h2>กิจกรรมท่องเที่ยว</h2>
-            <p>
-              เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก
-            </p>
+            <h2>{t('activities_title')}</h2>
+            <p>{t('activities_desc')}</p>
           </div>
         </div>
       </section>

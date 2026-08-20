@@ -209,7 +209,18 @@ const resources = {
       attractions_title: "สถานที่น่าสนใจ",
       attractions_desc: "ภายในชุมชนคลองไผ่มีสถานที่ท่องเที่ยวที่น่าสนใจมากมาย ทั้งวัดเขาพริก จุดชมวิวเขื่อนลำตะคอง ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ",
       activities_title: "กิจกรรมท่องเที่ยว",
-      activities_desc: "เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก"
+      activities_desc: "เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก",
+
+      // ===== Image Alt Text (เพิ่มเติมเพื่อให้ Home.jsx ทำงานสมบูรณ์) =====
+      alt_about_1: "ชุมชนคลองไผ่",
+      alt_about_2: "ธรรมชาติคลองไผ่",
+      alt_about_3: "วิวคลองไผ่",
+      alt_attractions_1: "สถานที่น่าสนใจ",
+      alt_attractions_2: "ธรรมชาติ",
+      alt_attractions_3: "วิวเขา",
+      alt_activities_1: "กิจกรรมท่องเที่ยว",
+      alt_activities_2: "กิจกรรมกลางแจ้ง",
+      alt_activities_3: "วิวทะเล"
     }
   },
   en: {
@@ -418,7 +429,18 @@ const resources = {
       attractions_title: "Interesting Places",
       attractions_desc: "Khlong Phai community has many interesting tourist attractions including Wat Khao Phrik, Lam Takhong Dam viewpoint, Plant Genetic Conservation Center, and SUP Board activities on the ancient river (Lam Takhong). There are also restaurants and accommodations ready to serve tourists.",
       activities_title: "Tourist Activities",
-      activities_desc: "Visit temples, enjoy nature, hike to the mountain peak, rafting, SUP Board, take photos at viewpoints, taste local food, and relax in cozy homestays. All activities are designed to suit tourists of all ages, with experienced local guides to facilitate your journey."
+      activities_desc: "Visit temples, enjoy nature, hike to the mountain peak, rafting, SUP Board, take photos at viewpoints, taste local food, and relax in cozy homestays. All activities are designed to suit tourists of all ages, with experienced local guides to facilitate your journey.",
+
+      // ===== Image Alt Text (เพิ่มเติมเพื่อให้ Home.jsx ทำงานสมบูรณ์) =====
+      alt_about_1: "Khlong Phai Community",
+      alt_about_2: "Khlong Phai Nature",
+      alt_about_3: "Khlong Phai View",
+      alt_attractions_1: "Interesting Places",
+      alt_attractions_2: "Nature",
+      alt_attractions_3: "Mountain View",
+      alt_activities_1: "Tourist Activities",
+      alt_activities_2: "Outdoor Activities",
+      alt_activities_3: "Sea View"
     }
   }
 };

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
+import restaurant from '../assets/restaurant.jpg'
 
 export default function Restaurant({ 
   places = [],
@@ -116,7 +117,7 @@ export default function Restaurant({
         zIndex: 10
       }}>
         <img 
-          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200" 
+          src={restaurant} 
           alt="Restaurant Background"
           style={{
             position: 'absolute',

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
+import rimnam from '../assets/rimnam.jpg';
 
 export default function Accommodation({ 
   places = [],
@@ -119,7 +120,7 @@ export default function Accommodation({
         zIndex: 10
       }}>
         <img 
-          src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200" 
+          src={rimnam}
           alt={t('nav_accommodation', isEn ? 'Accommodation' : 'ที่พัก')}
           style={{
             position: 'absolute',

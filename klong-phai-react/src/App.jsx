@@ -1,9 +1,13 @@
 // src/App.jsx
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import './App.css';
+
+// Import Crop Library
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 import { bannedWords } from './utils/wordlist';
 import LangSwitcherText from './components/LangSwitcherText';
@@ -24,8 +28,7 @@ import {
   setDoc,
   increment,
   deleteDoc,
-  updateDoc,
-  getDoc
+  updateDoc
 } from 'firebase/firestore';
 
 // ============================================================
@@ -50,7 +53,6 @@ const ADMIN_EMAILS = [
   'เทศบาล@gmail.com',
   'admin2@gmail.com',
   'adisonbb2@gmail.com'
-  
 ];
 
 // ============================================================
@@ -260,6 +262,16 @@ function MainApp() {
   const [likes, setLikes] = useState({});
   const [reviewsData, setReviewsData] = useState({});
 
+  // ===== Crop Related States =====
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,      // Base64 raw image
+    mode: 'main'         // 'main' หรือ 'gallery'
+  });
+  const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
+
   // ===== Cursor Glow Effect =====
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -339,9 +351,8 @@ function MainApp() {
   }, [isAdmin]);
 
   // ============================================================
-  // TRIP PLANNER FUNCTIONS - แก้ไขให้ป้องกันการเพิ่มซ้ำ
+  // TRIP PLANNER FUNCTIONS
   // ============================================================
-  
   const isAddedToTrip = (place) => {
     if (!place) return false;
     const placeId = place.id || place.docId;
@@ -353,20 +364,15 @@ function MainApp() {
     const placeId = place.id || place.docId;
     const title = sanitizeInput(place.title || place.name || 'สถานที่');
     
-    // ตรวจสอบซ้ำด้วยฟังก์ชัน
     const exists = selectedPlaces.some(item => (item.id || item.docId) === placeId);
 
     if (exists) {
       setSelectedPlaces(prev => prev.filter(p => (p.id || p.docId) !== placeId));
       showToast(isEn ? 'Removed "' + title + '" from trip' : 'ลบ "' + title + '" ออกจากทริปแล้ว');
     } else {
-      // ใช้ callback form เพื่อป้องกัน race condition
       setSelectedPlaces(prev => {
-        // เช็คซ้ำอีกครั้งใน callback
         const stillExists = prev.some(item => (item.id || item.docId) === placeId);
-        if (stillExists) {
-          return prev;
-        }
+        if (stillExists) return prev;
         return [...prev, place];
       });
       showToast(isEn ? 'Added "' + title + '" to trip' : 'เพิ่ม "' + title + '" ลงทริปแล้ว');
@@ -419,17 +425,14 @@ function MainApp() {
   // ============================================================
   const getEmbedMapUrl = (place) => {
     if (!place) return '';
-
     if (place.mapUrl) {
       const parsed = parseIframeUrl(place.mapUrl);
       if (parsed) return parsed;
     }
-
     const coords = getPlaceCoords(place);
     if (coords) {
       return `https://www.google.com/maps?q=${coords[0]},${coords[1]}&z=15&output=embed`;
     }
-
     return '';
   };
 
@@ -484,7 +487,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // IMAGE HANDLERS
+  // IMAGE HANDLERS (ปรับใหม่ให้เปิด Modal Crop)
   // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
@@ -498,38 +501,95 @@ function MainApp() {
       return;
     }
     setImageFileName(file.name);
-    try {
-      showToast(isEn ? 'Compressing image...' : 'กำลังย่อรูป...');
-      const compressed = await compressImage(file, 1200, 0.7);
-      setNewPlace(prev => ({ ...prev, img: compressed }));
-      showToast(isEn ? 'Image compressed' : 'ย่อรูปสำเร็จ');
-    } catch (err) {
-      console.error(err);
-      showToast(isEn ? 'Failed to process image' : 'ไม่สามารถประมวลผลรูปได้');
-    }
+    
+    // อ่านไฟล์เป็น Base64 เพื่อส่งเข้า Modal Crop
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCropModal({ isOpen: true, imageSrc: ev.target.result, mode: 'main' });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleGalleryBrowse = async (e) => {
     const files = Array.from(e.target.files);
-    for (const file of files) {
-      if (!file.type.startsWith('image/')) {
-        showToast(`${file.name} ${isEn ? 'is not an image' : 'ไม่ใช่ไฟล์รูป'}`);
-        continue;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        showToast(`${file.name} ${isEn ? 'is too large' : 'ใหญ่เกินไป'}`);
-        continue;
-      }
+    if (files.length === 0) return;
+    
+    // ใช้ไฟล์แรกสำหรับ Crop
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      showToast(`${file.name} ${isEn ? 'is not an image' : 'ไม่ใช่ไฟล์รูป'}`);
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast(`${file.name} ${isEn ? 'is too large' : 'ใหญ่เกินไป'}`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCropModal({ isOpen: true, imageSrc: ev.target.result, mode: 'gallery' });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ===== Crop Confirm / Cancel =====
+  const handleCropCancel = () => {
+    setCropModal({ isOpen: false, imageSrc: null, mode: 'main' });
+    setImageFileName('');
+    // Reset file input
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(inp => inp.value = '');
+  };
+
+  const handleCropConfirm = async () => {
+    if (!imgRef.current || !completedCrop) {
+      showToast(isEn ? 'Please select an area to crop' : 'กรุณาเลือกพื้นที่ที่ต้องการครอบตัด');
+      return;
+    }
+
+    const image = imgRef.current;
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    
+    canvas.width = completedCrop.width;
+    canvas.height = completedCrop.height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      completedCrop.width,
+      completedCrop.height
+    );
+
+    canvas.toBlob(async (blob) => {
+      const croppedFile = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
       try {
-        const compressed = await compressImage(file, 1000, 0.65);
-        setNewPlace(prev => ({
-          ...prev,
-          gallery: [...(prev.gallery || []), compressed]
-        }));
+        // บีบอัดภาพต่อหลังจาก Crop
+        const compressed = await compressImage(croppedFile, 1200, 0.7);
+        
+        if (cropModal.mode === 'main') {
+          setNewPlace(prev => ({ ...prev, img: compressed }));
+        } else if (cropModal.mode === 'gallery') {
+          setNewPlace(prev => ({
+            ...prev,
+            gallery: [...(prev.gallery || []), compressed]
+          }));
+        }
+        
+        setCropModal({ isOpen: false, imageSrc: null, mode: 'main' });
+        showToast(isEn ? 'Cropped and compressed successfully!' : 'ครอบตัดและย่อรูปสำเร็จ!');
       } catch (err) {
         console.error(err);
+        showToast(isEn ? 'Failed to process cropped image' : 'ไม่สามารถประมวลผลรูปที่ Crop ได้');
       }
-    }
+    }, 'image/jpeg');
   };
 
   const handleRemoveGalleryImg = (idx) => {
@@ -677,7 +737,7 @@ function MainApp() {
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
   // ============================================================
-  // REVIEW FUNCTIONS - With Cooldown 5 seconds
+  // REVIEW FUNCTIONS
   // ============================================================
   const validateReviewText = (text) => {
     const clean = sanitizeInput(text.trim());
@@ -702,24 +762,19 @@ function MainApp() {
       showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
       return;
     }
-
     if (!placeId) {
       showToast(isEn ? 'Place ID not found' : 'ไม่พบ ID ของสถานที่');
       return;
     }
-
     const now = Date.now();
     if (now - lastReviewSubmitTime < REVIEW_COOLDOWN_MS) {
       const waitSeconds = Math.ceil((REVIEW_COOLDOWN_MS - (now - lastReviewSubmitTime)) / 1000);
       showToast(isEn ? `Please wait ${waitSeconds}s before posting again` : `กรุณารอ ${waitSeconds} วินาทีก่อนส่งอีกครั้ง`);
       return;
     }
-
     const validated = validateReviewText(reviewText);
     if (!validated) return;
-
     setIsSubmittingReview(true);
-
     try {
       await addDoc(collection(db, 'reviews'), {
         placeId: placeId,
@@ -729,7 +784,6 @@ function MainApp() {
         userId: user.uid,
         createdAt: serverTimestamp()
       });
-      
       setReviewText('');
       setLastReviewSubmitTime(now);
       showToast(isEn ? 'Review submitted!' : 'ส่งรีวิวเรียบร้อย!');
@@ -746,23 +800,18 @@ function MainApp() {
       showToast(isEn ? 'Review ID not found' : 'ไม่พบ ID ของรีวิว');
       return;
     }
-
     if (!user) {
       showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
       return;
     }
-
     const isOwner = review.userId === user.uid;
     const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
-    
     if (!isOwner && !isAdminUser) {
       showToast(isEn ? 'You can only edit your own reviews' : 'คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ');
       return;
     }
-
     const validated = validateReviewText(editReviewText);
     if (!validated) return;
-
     try {
       await updateDoc(doc(db, 'reviews', review.id), {
         text: validated,
@@ -782,22 +831,17 @@ function MainApp() {
       showToast(isEn ? 'Review ID not found' : 'ไม่พบ ID ของรีวิว');
       return;
     }
-
     if (!user) {
       showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
       return;
     }
-
     const isOwner = review.userId === user.uid;
     const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
-    
     if (!isOwner && !isAdminUser) {
       showToast(isEn ? 'You can only delete your own reviews' : 'คุณสามารถลบได้เฉพาะรีวิวของคุณ');
       return;
     }
-
     if (!window.confirm(isEn ? 'Delete this review?' : 'ลบรีวิวนี้?')) return;
-    
     try {
       await deleteDoc(doc(db, 'reviews', review.id));
       showToast(isEn ? 'Review deleted!' : 'ลบรีวิวแล้ว');
@@ -1140,6 +1184,40 @@ function MainApp() {
             <button onClick={() => setShowAnalytics(false)} style={{ marginTop: '24px', width: '100%', background: '#6c757d', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
               {isEn ? 'Close' : 'ปิด'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== CROP MODAL (ใหม่) ===== */}
+      {cropModal.isOpen && (
+        <div className="map-modal-overlay active" style={{ zIndex: 2500 }} onClick={handleCropCancel}>
+          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '80vw', maxHeight: '90vh', padding: '24px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '12px' }}>
+              {isEn ? 'Crop Image' : 'ครอบตัดรูปภาพ'}
+            </h2>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#111', borderRadius: '8px', padding: '8px', maxHeight: '60vh', overflow: 'hidden' }}>
+              <ReactCrop
+                crop={crop}
+                onChange={(c) => setCrop(c)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={4/3}
+              >
+                <img
+                  ref={imgRef}
+                  src={cropModal.imageSrc}
+                  alt="Crop preview"
+                  style={{ maxHeight: '60vh', maxWidth: '100%', objectFit: 'contain' }}
+                />
+              </ReactCrop>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+              <button type="button" onClick={handleCropCancel} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {isEn ? 'Cancel' : 'ยกเลิก'}
+              </button>
+              <button type="button" onClick={handleCropConfirm} style={{ background: '#00a854', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {isEn ? 'Crop & Confirm' : 'ตัดและยืนยัน'}
+              </button>
+            </div>
           </div>
         </div>
       )}

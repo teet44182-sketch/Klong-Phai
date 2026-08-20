@@ -511,7 +511,7 @@ body {
 }
 
 /* ==========================================
-   6. CARD SYSTEM
+   6. CARD SYSTEM (แบบทั่วไป)
    ========================================== */
 .card {
   background: #fff;
@@ -584,84 +584,7 @@ body {
 }
 
 /* ==========================================
-   CARD INTERACTIVE ANIMATION (เอฟเฟกต์ตอนชี้และตอนกดการ์ด)
-   ========================================== */
-.card-interactive {
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease !important;
-}
-
-/* 1. เมื่อนำเมาส์ไปวาง (Hover): การ์ดจะขยายใหญ่ขึ้นเล็กน้อยและเงาเข้มขึ้นดูมีมิติ */
-.card-interactive:hover {
-  transform: translateY(-4px) scale(1.03);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* 2. เมื่อทำการคลิกกดเมาส์ลงไป (Active): การ์ดจะยุบตัวลงไปเหมือนสปริงปุ่มกด */
-.card-interactive:active {
-  transform: translateY(-1px) scale(0.97);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
-  transition: transform 0.05s ease !important; 
-}
-
-/* ==========================================
-   7. MAP MODAL SYSTEM (หน้าต่างป๊อปอัปแผนที่)
-   ========================================== */
-.map-modal-overlay { 
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
-.map-modal-overlay.active { 
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.map-modal-content { 
-  background-color: white;
-  padding: 20px;
-  border-radius: 15px;
-  width: 90%;
-  max-width: 600px;
-  position: relative;
-  transform: scale(0.7);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.map-modal-overlay.active .map-modal-content { 
-  transform: scale(1);
-}
-
-.map-modal-close { 
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  font-size: 28px;
-  color: #aaa;
-  cursor: pointer;
-}
-
-.map-iframe-container { 
-  width: 100%;
-  height: 400px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #eee;
-}
-
-/* ==========================================
-   8. PAGE UTILITIES (หน้าเพจย่อยเพิ่มเติม)
+   7. PAGE UTILITIES (หน้าเพจย่อยเพิ่มเติม)
    ========================================== */
 .page-title {
   font-family: 'Mitr', sans-serif;
@@ -671,7 +594,7 @@ body {
 }
 
 /* ==========================================
-   9. INFO SECTIONS (สลับซ้ายขวา image + text)
+   8. INFO SECTIONS (สลับซ้ายขวา image + text)
    ========================================== */
 .info-sections {
   width: 100%;
@@ -810,10 +733,10 @@ body {
 }
 
 /* ==========================================
-   10. MODERN UPGRADE PACK 2025 🚀
+   9. MODERN UPGRADE PACK 2025 🚀
    ========================================== */
 
-/* ===== 10.1 Smooth Scroll & Selection ===== */
+/* ===== 9.1 Smooth Scroll & Selection ===== */
 html {
   scroll-behavior: smooth;
 }
@@ -842,14 +765,14 @@ html {
   background: #00d4a8;
 }
 
-/* ===== 10.2 Better Focus Outline ===== */
+/* ===== 9.2 Better Focus Outline ===== */
 *:focus-visible {
   outline: 2px solid #00a854;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* ===== 10.3 Premium Button Micro-interactions ===== */
+/* ===== 9.3 Premium Button Micro-interactions ===== */
 button,
 .nav-links a,
 .btn-green,
@@ -879,7 +802,7 @@ button:active,
   transform: scale(0.92) !important;
 }
 
-/* ===== 10.4 Premium Hover Effects ===== */
+/* ===== 9.4 Premium Hover Effects ===== */
 .nav-links a {
   position: relative;
   transition: color 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -904,7 +827,7 @@ button:active,
   width: 100%;
 }
 
-/* ===== 10.5 Premium Button Glow ===== */
+/* ===== 9.5 Premium Button Glow ===== */
 .btn-green {
   position: relative;
   overflow: hidden;
@@ -920,7 +843,7 @@ button:active,
   transform: scale(0.95) !important;
 }
 
-/* ===== 10.6 Gradient Text (Trending) ===== */
+/* ===== 9.6 Gradient Text (Trending) ===== */
 .gradient-text {
   background: linear-gradient(135deg, #00a854 0%, #00d4a8 50%, #00ffcc 100%);
   -webkit-background-clip: text;
@@ -945,7 +868,7 @@ button:active,
   display: inline-block;
 }
 
-/* ===== 10.7 Premium Glassmorphism ===== */
+/* ===== 9.7 Premium Glassmorphism ===== */
 .glass-premium {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(20px);
@@ -965,7 +888,7 @@ button:active,
   border-radius: 16px;
 }
 
-/* ===== 10.8 Floating Animation ===== */
+/* ===== 9.8 Floating Animation ===== */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
@@ -984,7 +907,7 @@ button:active,
   animation: floatSlow 4s ease-in-out infinite;
 }
 
-/* ===== 10.9 Pulse Ring Animation ===== */
+/* ===== 9.9 Pulse Ring Animation ===== */
 @keyframes pulseRing {
   0% { transform: scale(1); opacity: 0.6; }
   100% { transform: scale(1.8); opacity: 0; }
@@ -1007,7 +930,7 @@ button:active,
   pointer-events: none;
 }
 
-/* ===== 10.10 Shimmer / Skeleton Loading ===== */
+/* ===== 9.10 Shimmer / Skeleton Loading ===== */
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
@@ -1040,7 +963,7 @@ button:active,
   margin-bottom: 12px;
 }
 
-/* ===== 10.11 Marquee / Scrolling Text ===== */
+/* ===== 9.11 Marquee / Scrolling Text ===== */
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-33.33%); }
@@ -1070,7 +993,7 @@ button:active,
   gap: 8px;
 }
 
-/* ===== 10.12 Scroll Progress Bar ===== */
+/* ===== 9.12 Scroll Progress Bar ===== */
 .scroll-progress {
   position: fixed;
   top: 70px;
@@ -1082,13 +1005,13 @@ button:active,
   box-shadow: 0 0 20px rgba(0, 168, 84, 0.3);
 }
 
-/* ===== 10.13 Magnetic Button Effect ===== */
+/* ===== 9.13 Magnetic Button Effect ===== */
 .magnetic-btn {
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
 }
 
-/* ===== 10.14 Cursor Glow (Desktop only) ===== */
+/* ===== 9.14 Cursor Glow (Desktop only) ===== */
 @media (hover: hover) {
   .cursor-glow {
     position: fixed;
@@ -1103,7 +1026,7 @@ button:active,
   }
 }
 
-/* ===== 10.15 Page Transitions ===== */
+/* ===== 9.15 Page Transitions ===== */
 .page-enter {
   opacity: 0;
   transform: translateY(20px);
@@ -1115,8 +1038,9 @@ button:active,
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-/* ===== 10.16 Card Hover Premium ===== */
+/* ===== 9.16 Card Interactive Premium (Hover & Click) ===== */
 .card-interactive {
+  cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.3s ease !important;
 }
@@ -1131,7 +1055,7 @@ button:active,
   transition: transform 0.05s ease !important;
 }
 
-/* ===== 10.17 Like Button Animation ===== */
+/* ===== 9.17 Like Button Animation ===== */
 @keyframes heartBounce {
   0% { transform: scale(1); }
   25% { transform: scale(1.3); }
@@ -1144,7 +1068,7 @@ button:active,
   animation: heartBounce 0.4s ease;
 }
 
-/* ===== 10.18 Toast Premium ===== */
+/* ===== 9.18 Toast Premium ===== */
 .toast-premium {
   background: rgba(18, 18, 18, 0.85);
   backdrop-filter: blur(24px);
@@ -1155,22 +1079,73 @@ button:active,
   padding: 14px 28px;
 }
 
-/* ===== 10.19 Modal Premium ===== */
+/* ===== 9.19 Modal Premium (Map Modal) ===== */
+.map-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.map-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .map-modal-content {
   background: rgba(30, 30, 30, 0.95);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+  padding: 20px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 600px;
+  position: relative;
+  transform: scale(0.7);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.map-modal-overlay {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.map-modal-overlay.active .map-modal-content {
+  transform: scale(1);
 }
 
-/* ===== 10.20 Input Focus Glow ===== */
+.map-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 28px;
+  color: #aaa;
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.map-modal-close:hover {
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+.map-iframe-container {
+  width: 100%;
+  height: 400px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #eee;
+}
+
+/* ===== 9.20 Input Focus Glow ===== */
 input:focus,
 textarea:focus,
 select:focus {
@@ -1179,7 +1154,7 @@ select:focus {
   transition: all 0.3s ease;
 }
 
-/* ===== 10.21 Responsive Typography ===== */
+/* ===== 9.21 Responsive Typography ===== */
 @media (max-width: 768px) {
   h1 { font-size: 2rem; }
   h2 { font-size: 1.5rem; }
@@ -1193,7 +1168,7 @@ select:focus {
   .page-title { font-size: 1.1rem; }
 }
 
-/* ===== 10.22 Loading Spinner Premium ===== */
+/* ===== 9.22 Loading Spinner Premium ===== */
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -1217,7 +1192,7 @@ select:focus {
   animation: spin 0.7s linear infinite;
 }
 
-/* ===== 10.23 Badge / Tag Styles ===== */
+/* ===== 9.23 Badge / Tag Styles ===== */
 .badge {
   display: inline-block;
   padding: 2px 12px;
@@ -1247,7 +1222,7 @@ select:focus {
   color: #ff4d4d;
 }
 
-/* ===== 10.24 Divider Styles ===== */
+/* ===== 9.24 Divider Styles ===== */
 .divider {
   width: 60px;
   height: 3px;
@@ -1264,7 +1239,7 @@ select:focus {
   margin: 8px auto 16px;
 }
 
-/* ===== 10.25 Image Hover Zoom ===== */
+/* ===== 9.25 Image Hover Zoom ===== */
 .img-zoom {
   overflow: hidden;
   border-radius: 12px;
@@ -1278,7 +1253,7 @@ select:focus {
   transform: scale(1.05);
 }
 
-/* ===== 10.26 Status Dot ===== */
+/* ===== 9.26 Status Dot ===== */
 .status-dot {
   display: inline-block;
   width: 8px;
@@ -1302,7 +1277,7 @@ select:focus {
 }
 
 /* ==========================================
-   11. LINE CLAMP - ตัดข้อความ
+   10. LINE CLAMP - ตัดข้อความ
    ========================================== */
 
 /* ✅ Fallback สำหรับ Browser ที่ไม่รองรับ */
@@ -1333,7 +1308,7 @@ select:focus {
 }
 
 /* ==========================================
-   12. DARK MODE ENHANCEMENTS
+   11. DARK MODE ENHANCEMENTS
    ========================================== */
 .bg-premium-dark {
   background: #1a1a1a;
@@ -1343,7 +1318,7 @@ select:focus {
 }
 
 /* ==========================================
-   13. UTILITY CLASSES (ใช้ได้ทุกที่)
+   12. UTILITY CLASSES (ใช้ได้ทุกที่)
    ========================================== */
 .text-center { text-align: center; }
 .text-left { text-align: left; }
@@ -1430,7 +1405,7 @@ select:focus {
 }
 
 /* ==========================================
-   14. PRINT STYLES
+   13. PRINT STYLES
    ========================================== */
 @media print {
   .navbar,
@@ -1449,6 +1424,7 @@ select:focus {
     color: #000 !important;
   }
 }
+
 /* ✅ แก้ไขตัวอักษรตัด */
 * {
   text-rendering: optimizeLegibility;

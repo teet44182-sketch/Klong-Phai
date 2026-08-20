@@ -44,7 +44,7 @@ class ErrorBoundary extends React.Component {
           textAlign: 'center',
           fontFamily: 'Prompt, sans-serif'
         }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>😵</div>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}></div>
           <h1 style={{ fontFamily: 'Mitr, sans-serif', color: '#ff6b6b' }}>
             มีบางอย่างผิดพลาด
           </h1>
@@ -67,7 +67,7 @@ class ErrorBoundary extends React.Component {
             onMouseOver={(e) => e.target.style.background = '#008743'}
             onMouseOut={(e) => e.target.style.background = '#00a854'}
           >
-            🔄 รีเฟรชหน้า
+            รีเฟรชหน้า
           </button>
         </div>
       );

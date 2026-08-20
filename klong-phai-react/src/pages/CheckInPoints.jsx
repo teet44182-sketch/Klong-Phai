@@ -5,6 +5,7 @@ import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 import { bannedWords } from '../utils/wordlist';
 import { useToast } from '../context/ToastContext';
+import checkin from '../assets/checkin.jpg';
 
 import { db } from '../firebase';
 import { 
@@ -388,7 +389,7 @@ export default function CheckInPoints({
         zIndex: 10
       }}>
         <img 
-          src="src/assets/cf.jpg" 
+          src={checkin} 
           alt="Check-in Points Background"
           style={{
             position: 'absolute',
@@ -422,13 +423,13 @@ export default function CheckInPoints({
           <h1 className="gradient-text" style={{ 
             fontSize: '2.2rem', 
             marginBottom: '8px',
-            textShadow: '2px 2px 10px rgba(0,0,0,0.6)',
+            textShadow: '2px 2px 10px rgba(0, 0, 0, 0.6)',
             fontFamily: 'Mitr, sans-serif',
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease'
           }}>
-            {isEn ? 'Top 10 Check-in Points in Khlong Phai' : 'จัดอันดับ 10 จุดเช็คอิน คลองไผ่'}
+            {isEn ? 'Top 10 Check-in Points in Khlong Phai Subdistrict Municipality' : 'จัดอันดับ 10 จุดเช็คอิน เทศบาลตำบลคลองไผ่'}
           </h1>
           
           <p style={{ 

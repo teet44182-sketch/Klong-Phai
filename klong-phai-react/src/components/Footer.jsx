@@ -34,7 +34,7 @@ export default function Footer() {
             alignItems: 'center',
             gap: '8px'
           }}>
-            🏛️ {isEn ? 'Khlong Phai' : 'เทศบาลคลองไผ่'}
+            {isEn ? 'Khlong Phai Subdistrict Municipality' : 'เทศบาลตำบลคลองไผ่'}
           </h3>
           <p style={{
             fontSize: '0.85rem',
@@ -119,12 +119,12 @@ export default function Footer() {
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span>📞</span>
+              <span>Tel :</span>
               <span>044-XXX-XXXX</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>✉️</span>
-              <span>info@khlongphai.go.th</span>
+              <span>Gmail :</span>
+              <span>klongpaitravel@gmail.com</span>
             </div>
           </div>
         </div>
