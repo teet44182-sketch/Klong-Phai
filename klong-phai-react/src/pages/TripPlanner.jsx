@@ -1,5 +1,5 @@
 // src/pages/TripPlanner.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -183,7 +183,12 @@ export default function TripPlanner({
   const setActiveSelected = setSelectedPlaces || setInternalSelected;
 
   const [swipeQueue, setSwipeQueue] = useState(places);
-  const [queueSearchKeyword, setQueueSearchKeyword] = useState(''); // ✅ state สำหรับค้นหา
+  const [queueSearchKeyword, setQueueSearchKeyword] = useState('');
+
+  // Drag state
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [draggingIndex, setDraggingIndex] = useState(null);
+  const dragItemRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -249,7 +254,6 @@ export default function TripPlanner({
       return;
     }
     setActiveSelected(prev => [...prev, place]);
-    // นำออกจากคิว
     setSwipeQueue(prev => prev.filter(p => (p.id || p.docId) !== targetId));
     showToast(`${isEn ? 'Added' : 'เพิ่ม'} "${placeTitle}" ${isEn ? 'to trip' : 'ลงทริปแล้ว'}`);
   };
@@ -264,7 +268,6 @@ export default function TripPlanner({
       setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
       showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     }
-    // กลับไปคิว
     setSwipeQueue(prev => {
       if (prev.some(p => (p.id || p.docId) === targetId)) return prev;
       return [...prev, place];
@@ -289,7 +292,6 @@ export default function TripPlanner({
       setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
       showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     }
-    // กลับไปคิว
     setSwipeQueue(prev => {
       if (prev.some(p => (p.id || p.docId) === targetId)) return prev;
       return [...prev, place];
@@ -340,10 +342,72 @@ export default function TripPlanner({
     }
 
     setActiveSelected(prev => [...prev, ...newOnes]);
-    // ลบออกจากคิว
     const newIds = newOnes.map(p => p.id || p.docId);
     setSwipeQueue(prev => prev.filter(p => !newIds.includes(p.id || p.docId)));
     showToast(`เพิ่ม Combo "${isEn ? combo.titleEn : combo.title}" (${newOnes.length} ที่)`);
+  };
+
+  // ============================================================
+  // ✅ Drag & Drop Handlers (พร้อม Animation)
+  // ============================================================
+  const handleDragStart = (e, index) => {
+    setDraggingIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+    
+    // เก็บ ref ของ element ที่กำลังลาก
+    dragItemRef.current = e.currentTarget;
+    
+    // เพิ่ม delay เพื่อให้ animation ทำงาน
+    setTimeout(() => {
+      if (e.currentTarget) {
+        e.currentTarget.style.opacity = '0.5';
+        e.currentTarget.style.transform = 'scale(0.95)';
+        e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
+        e.currentTarget.style.zIndex = '100';
+      }
+    }, 0);
+  };
+
+  const handleDragEnd = (e) => {
+    setDraggingIndex(null);
+    setDragOverIndex(null);
+    
+    if (dragItemRef.current) {
+      dragItemRef.current.style.opacity = '1';
+      dragItemRef.current.style.transform = 'scale(1)';
+      dragItemRef.current.style.boxShadow = 'none';
+      dragItemRef.current.style.zIndex = 'auto';
+    }
+    dragItemRef.current = null;
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e, toIndex) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+    if (isNaN(fromIndex) || fromIndex === toIndex) return;
+
+    // เปลี่ยนลำดับแบบมี Animation
+    const updated = [...activeSelected];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    setActiveSelected(updated);
+
+    // แสดง Toast แจ้งเตือน
+    showToast(isEn ? `Reordered: #${fromIndex+1} → #${toIndex+1}` : `เปลี่ยนลำดับ: #${fromIndex+1} → #${toIndex+1}`);
   };
 
   // ============================================================
@@ -478,52 +542,64 @@ export default function TripPlanner({
                   {activeSelected.map((place, index) => {
                     const placeId = place.id || place.docId;
                     const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
+                    const isDragging = draggingIndex === index;
+                    const isDragOver = dragOverIndex === index && !isDragging;
 
                     return (
                       <div
                         key={placeId || index}
                         draggable={true}
-                        onDragStart={(e) => {
-                          e.stopPropagation();
-                          e.dataTransfer.effectAllowed = 'move';
-                          e.dataTransfer.setData('text/plain', String(index));
-                          e.currentTarget.style.opacity = '0.45';
-                        }}
-                        onDragEnd={(e) => {
-                          e.currentTarget.style.opacity = '1';
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = 'move';
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const fromIndex = Number(e.dataTransfer.getData('text/plain'));
-                          const toIndex = index;
-                          if (isNaN(fromIndex) || fromIndex === toIndex) return;
-
-                          const updated = [...activeSelected];
-                          const [moved] = updated.splice(fromIndex, 1);
-                          updated.splice(toIndex, 0, moved);
-                          setActiveSelected(updated);
-                        }}
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, index)}
                         onClick={(e) => e.stopPropagation()}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          background: 'rgba(255,255,255,0.06)',
+                          background: isDragOver 
+                            ? 'rgba(0, 168, 84, 0.25)' 
+                            : isDragging 
+                              ? 'rgba(0, 168, 84, 0.15)' 
+                              : 'rgba(255,255,255,0.06)',
                           padding: '10px 14px',
                           borderRadius: '10px',
                           cursor: 'grab',
                           userSelect: 'none',
-                          transition: 'background 0.15s, opacity 0.15s'
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          transform: isDragOver ? 'scale(1.02)' : isDragging ? 'scale(0.95)' : 'scale(1)',
+                          opacity: isDragging ? 0.6 : 1,
+                          boxShadow: isDragOver 
+                            ? '0 0 20px rgba(0,168,84,0.2), inset 0 0 20px rgba(0,168,84,0.05)' 
+                            : isDragging 
+                              ? '0 20px 60px rgba(0,0,0,0.5)' 
+                              : 'none',
+                          border: isDragOver 
+                            ? '2px dashed #00a854' 
+                            : '2px solid transparent',
+                          zIndex: isDragging ? 100 : 1,
+                          position: 'relative'
                         }}
                       >
+                        {/* Drag Indicator Line (อนิเมชัน) */}
+                        {isDragOver && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '-2px',
+                            left: '0',
+                            right: '0',
+                            height: '3px',
+                            background: 'linear-gradient(90deg, #00a854, #00e676)',
+                            borderRadius: '2px',
+                            animation: 'pulseLine 0.8s ease-in-out infinite'
+                          }} />
+                        )}
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
                           <span style={{
-                            background: '#00a854',
+                            background: isDragOver ? '#00a854' : '#00a854',
                             color: '#fff',
                             width: '26px',
                             height: '26px',
@@ -533,14 +609,24 @@ export default function TripPlanner({
                             justifyContent: 'center',
                             fontWeight: 'bold',
                             fontSize: '0.8rem',
-                            flexShrink: 0
+                            flexShrink: 0,
+                            transition: 'all 0.3s ease',
+                            transform: isDragOver ? 'scale(1.15)' : 'scale(1)'
                           }}>
                             {index + 1}
                           </span>
                           <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
+                          <span style={{ 
+                            color: '#555', 
+                            fontSize: '1.2rem', 
+                            cursor: 'grab',
+                            transition: 'all 0.3s ease',
+                            transform: isDragOver ? 'scale(1.2)' : 'scale(1)'
+                          }}>
+                            
+                          </span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -553,12 +639,33 @@ export default function TripPlanner({
                               borderRadius: '6px',
                               padding: '5px 10px',
                               cursor: 'pointer',
-                              fontSize: '0.85rem'
+                              fontSize: '0.85rem',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.background = 'rgba(255,77,77,0.4)';
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.background = 'rgba(255,77,77,0.2)';
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                           >
                             ✕
                           </button>
                         </div>
+
+                        {/* Global CSS Animation Keyframes (ใส่ในหัวข้อ) */}
+                        <style>{`
+                          @keyframes pulseLine {
+                            0%, 100% { opacity: 1; transform: scaleX(1); }
+                            50% { opacity: 0.5; transform: scaleX(0.8); }
+                          }
+                          @keyframes glowPulse {
+                            0%, 100% { box-shadow: 0 0 20px rgba(0,168,84,0.2); }
+                            50% { box-shadow: 0 0 40px rgba(0,168,84,0.4); }
+                          }
+                        `}</style>
                       </div>
                     );
                   })}
@@ -675,6 +782,7 @@ export default function TripPlanner({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        transition: 'all 0.3s ease',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {imgUrl && <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />}
@@ -695,7 +803,16 @@ export default function TripPlanner({
                             borderRadius: '20px',
                             fontWeight: 'bold',
                             cursor: 'pointer',
-                            fontSize: '0.85rem'
+                            fontSize: '0.85rem',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.boxShadow = 'none';
                           }}
                         >
                           {isAdded ? (isEn ? 'Remove' : 'ลบออก') : (isEn ? 'Add' : 'เพิ่ม')}

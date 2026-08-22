@@ -71,7 +71,7 @@ const CATEGORY_OPTIONS = [
     value: 'government_training', 
     label: 'ราชการและฝึกอบรม', 
     labelEn: 'Government & Training',
-    color: '#1F3A5F' // ส้ม
+    color: '#307fef' // ส้ม
   },
   { 
     value: 'conservation', 

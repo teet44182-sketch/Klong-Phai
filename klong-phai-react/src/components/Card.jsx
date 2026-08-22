@@ -105,7 +105,7 @@ export default function Card({
           )}
           {onDelete && (
             <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(place); }} style={{ background: 'none', border: 'none', color: '#ff4b4b', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', padding: '2px 4px' }}>
-              {isEn ? 'Delete' : 'ลบ'}
+              {isEn ? 'Delete' : 'ลบออกจากทริป'}
             </button>
           )}
         </div>
@@ -135,9 +135,31 @@ export default function Card({
             {t('btn_map_view', isEn ? 'Details & Map' : 'ดูรายละเอียดและแผนที่')}
           </span>
 
-          <span style={{ background: isAddedToPlan ? '#ff6b6b' : '#00a854', color: '#fff', padding: '5px 14px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold', opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: '4px', pointerEvents: 'none', userSelect: 'none', boxShadow: isAddedToPlan ? 'none' : '0 2px 10px rgba(0,168,84,0.3)' }}>
-            {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add' : 'เพิ่ม')}
-          </span>
+          {/* ✅ เปลี่ยนจาก span เป็นปุ่มกดที่คลิกได้ */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (onAddToPlan) onAddToPlan(place);
+            }}
+            style={{
+              background: isAddedToPlan ? '#ff6b6b' : '#00a854',
+              color: '#fff',
+              padding: '5px 14px',
+              borderRadius: '20px',
+              fontSize: '0.78rem',
+              fontWeight: 'bold',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              boxShadow: isAddedToPlan ? 'none' : '0 2px 10px rgba(0,168,84,0.3)'
+            }}
+          >
+            {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add' : 'เพิ่มลงทริป')}
+          </button>
         </div>
       </div>
     </div>
