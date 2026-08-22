@@ -5,16 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import './App.css';
 
-// ✅ นำเข้า Cropper ที่ถูกต้อง (สำคัญมาก! ไฟล์เดิมของคุณขาดบรรทัดนี้)
 import Cropper from 'react-cropper';
-// ✅ ลบบรรทัด import CSS ของ cropper ออกแล้ว เพราะไปไว้ใน main.jsx แล้ว
-
 import { bannedWords } from './utils/wordlist';
 import LangSwitcherText from './components/LangSwitcherText';
 import FloatingTripBasket from './components/FloatingTripBasket';
 import ScrollProgress from './components/ScrollProgress';
 import SkeletonCard from './components/SkeletonCard';
 import Footer from './components/Footer';
+import Card from './components/Card';
 import { auth, db, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -31,9 +29,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 
-// ============================================================
 // Lazy Loading
-// ============================================================
 const Home = lazy(() => import('./pages/Home'));
 const Restaurant = lazy(() => import('./pages/Restaurant'));
 const Accommodation = lazy(() => import('./pages/Accommodation'));
@@ -45,9 +41,6 @@ const Attractions = lazy(() => import('./pages/Attractions'));
 
 import { ToastProvider, useToast } from './context/ToastContext';
 
-// ============================================================
-// Admin Emails
-// ============================================================
 const ADMIN_EMAILS = [
   'teet44182@gmail.com',
   'klongpaitravel@gmail.com',
@@ -58,9 +51,6 @@ const ADMIN_EMAILS = [
   'khunyoi16@gmail.com'
 ];
 
-// ============================================================
-// Page View Tracker
-// ============================================================
 function PageViewTracker() {
   const location = useLocation();
   useEffect(() => {
@@ -80,9 +70,6 @@ function PageViewTracker() {
   return null;
 }
 
-// ============================================================
-// Compress Image
-// ============================================================
 const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -110,9 +97,6 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   });
 };
 
-// ============================================================
-// Sanitize Input
-// ============================================================
 export const sanitizeInput = (text) => {
   if (!text) return '';
   return String(text)
@@ -124,9 +108,6 @@ export const sanitizeInput = (text) => {
     .trim();
 };
 
-// ============================================================
-// Parse iFrame URL
-// ============================================================
 const parseIframeUrl = (input) => {
   if (!input) return '';
   if (typeof input !== 'string') return '';
@@ -145,9 +126,6 @@ const parseIframeUrl = (input) => {
   return input;
 };
 
-// ============================================================
-// Extract Coords From URL
-// ============================================================
 const extractCoordsFromUrl = (url) => {
   if (!url) return null;
   const cleanUrl = parseIframeUrl(url);
@@ -188,9 +166,6 @@ const extractCoordsFromUrl = (url) => {
   return null;
 };
 
-// ============================================================
-// Get Place Coords
-// ============================================================
 const getPlaceCoords = (place) => {
   if (!place) return null;
 
@@ -211,9 +186,34 @@ const getPlaceCoords = (place) => {
   return null;
 };
 
-// ============================================================
-// Main App
-// ============================================================
+// ✅ ฟังก์ชันตรวจจับ Genre จากชื่อ (ใช้เมื่อ subCategory ไม่มีหรือเป็น 'other')
+const detectGenreFromName = (name) => {
+  if (!name) return 'other';
+  const n = name.toLowerCase().trim();
+
+  if (n.includes('cook & coff') || n.includes('coff') || n.includes('คาเฟ่') || n.includes('กาแฟ')) return 'cafe';
+  if (n.includes('วัด') || n.includes('ที่พักสงฆ์') || n.includes('พระพุทธบาท') || n.includes('temple')) return 'temple';
+  if (n.includes('sup') || n.includes('ล่อง') || n.includes('พิชิต') || n.includes('ปีน') || n.includes('เดินป่า') || n.includes('ยอดเขา') || n.includes('nature')) return 'nature_activity';
+  if (n.includes('ทัณฑสถาน') || n.includes('เรือนจำ') || n.includes('ราชทัณฑ์') || n.includes('ฝึกอบรม') || n.includes('prison') || n.includes('training')) return 'government_training';
+  if (n.includes('อนุรักษ์') || n.includes('ศูนย์') || n.includes('conservation') || n.includes('learning')) return 'conservation';
+  if (n.includes('สถานีรถไฟ') || n.includes('สถานี') || n.includes('station')) return 'transport';
+  if (n.includes('เรือนจำท่องเที่ยว') || n.includes('tourist prison') || n.includes('new')) return 'new_attraction';
+  
+  return 'other';
+};
+
+// Genre Options
+const GENRE_OPTIONS = [
+  { value: 'other', label: 'อื่นๆ' },
+  { value: 'cafe', label: 'คาเฟ่และร้านอาหาร' },
+  { value: 'temple', label: 'วัดและศาสนสถาน' },
+  { value: 'nature_activity', label: 'ธรรมชาติและกิจกรรม' },
+  { value: 'government_training', label: 'ราชการและฝึกอบรม' },
+  { value: 'conservation', label: 'ศูนย์อนุรักษ์และศึกษา' },
+  { value: 'transport', label: 'การคมนาคม' },
+  { value: 'new_attraction', label: 'ท่องเที่ยวแนวใหม่' },
+];
+
 function MainApp() {
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
@@ -221,7 +221,6 @@ function MainApp() {
   const currentLang = (i18n.language || 'th').startsWith('th') ? 'th' : 'en';
   const isEn = currentLang === 'en';
 
-  // ===== State =====
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [places, setPlaces] = useState([]);
@@ -247,7 +246,6 @@ function MainApp() {
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ===== Review States =====
   const [reviewText, setReviewText] = useState('');
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editReviewText, setEditReviewText] = useState('');
@@ -258,6 +256,7 @@ function MainApp() {
   const [newPlace, setNewPlace] = useState({
     title: '', title_en: '', description: '', detailDescription: '',
     img: '', gallery: [], category: 'travel', type: 'travel',
+    subCategory: 'other',
     mapUrl: '', workingHours: '', phone: '', lat: '', lng: ''
   });
 
@@ -265,16 +264,11 @@ function MainApp() {
   const [likes, setLikes] = useState({});
   const [reviewsData, setReviewsData] = useState({});
 
-  // ===== Crop Related States =====
-  const [cropModal, setCropModal] = useState({
-    isOpen: false,
-    imageSrc: null,
-    mode: 'main'
-  });
+  const [cropModal, setCropModal] = useState({ isOpen: false, imageSrc: null, mode: 'main' });
   const cropperRef = useRef(null);
 
-  // ===== Cursor Glow Effect =====
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [previewLang, setPreviewLang] = useState('th');
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -286,20 +280,16 @@ function MainApp() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // ===== Save to Local Storage =====
   useEffect(() => {
     localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
   }, [selectedPlaces]);
 
-  // ===== Auth =====
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser && currentUser.email) {
         setIsAdmin(
-          ADMIN_EMAILS.some(
-            email => email.toLowerCase() === currentUser.email.toLowerCase()
-          )
+          ADMIN_EMAILS.some(email => email.toLowerCase() === currentUser.email.toLowerCase())
         );
       } else {
         setIsAdmin(false);
@@ -308,7 +298,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Places =====
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "places"), (snapshot) => {
       setPlaces(snapshot.docs.map(d => ({ id: d.id, docId: d.id, ...d.data() })));
@@ -317,7 +306,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Likes =====
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -327,7 +315,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Reviews =====
   useEffect(() => {
     const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -342,7 +329,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Analytics =====
   useEffect(() => {
     if (!isAdmin) return;
     const unsub = onSnapshot(doc(db, 'analytics', 'pageViews'), (snap) => {
@@ -351,20 +337,10 @@ function MainApp() {
     return () => unsub();
   }, [isAdmin]);
 
-  // ============================================================
-  // TRIP PLANNER FUNCTIONS
-  // ============================================================
-  const isAddedToTrip = (place) => {
-    if (!place) return false;
-    const placeId = place.id || place.docId;
-    return selectedPlaces.some(item => (item.id || item.docId) === placeId);
-  };
-
   const handleAddPlaceToTrip = (place) => {
     if (!place) return;
     const placeId = place.id || place.docId;
     const title = sanitizeInput(place.title || place.name || 'สถานที่');
-    
     const exists = selectedPlaces.some(item => (item.id || item.docId) === placeId);
 
     if (exists) {
@@ -390,18 +366,14 @@ function MainApp() {
 
   const generateMultiStopMapUrl = (placesList) => {
     if (!placesList || placesList.length === 0) return '#';
-
     const coordsList = placesList.map(p => getPlaceCoords(p)).filter(Boolean);
     if (coordsList.length === 0) return '#';
-
     if (coordsList.length === 1) {
       return `https://www.google.com/maps/dir/?api=1&destination=${coordsList[0][0]},${coordsList[0][1]}`;
     }
-
     const origin = `${coordsList[0][0]},${coordsList[0][1]}`;
     const destination = `${coordsList[coordsList.length - 1][0]},${coordsList[coordsList.length - 1][1]}`;
     const waypoints = coordsList.slice(1, -1).map(c => `${c[0]},${c[1]}`).join('|');
-
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
     if (waypoints) url += `&waypoints=${waypoints}`;
     return url;
@@ -421,9 +393,6 @@ function MainApp() {
     return `~${hours} ${isEn ? 'hr' : 'ชม.'} ${remain} ${isEn ? 'min' : 'นาที'}`;
   };
 
-  // ============================================================
-  // MAP FUNCTIONS
-  // ============================================================
   const getEmbedMapUrl = (place) => {
     if (!place) return '';
     if (place.mapUrl) {
@@ -457,16 +426,11 @@ function MainApp() {
     setEditReviewText('');
   };
 
-  // ============================================================
-  // LOGIN / LOGOUT
-  // ============================================================
   const handleLogin = async () => {
     try {
       const result = await loginWithGoogle();
       const email = result?.email || auth.currentUser?.email || '';
-      const isUserAdmin = ADMIN_EMAILS.some(
-        e => e.toLowerCase() === email.toLowerCase()
-      );
+      const isUserAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === email.toLowerCase());
       if (isUserAdmin) {
         showToast(isEn ? 'Admin login successful' : 'เข้าสู่ระบบ Admin สำเร็จ');
       } else {
@@ -487,9 +451,6 @@ function MainApp() {
     }
   };
 
-  // ============================================================
-  // IMAGE HANDLERS
-  // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -502,7 +463,6 @@ function MainApp() {
       return;
     }
     setImageFileName(file.name);
-    
     const reader = new FileReader();
     reader.onload = (ev) => {
       setCropModal({ isOpen: true, imageSrc: ev.target.result, mode: 'main' });
@@ -513,7 +473,6 @@ function MainApp() {
   const handleGalleryBrowse = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
     const file = files[0];
     if (!file.type.startsWith('image/')) {
       showToast(`${file.name} ${isEn ? 'is not an image' : 'ไม่ใช่ไฟล์รูป'}`);
@@ -523,7 +482,6 @@ function MainApp() {
       showToast(`${file.name} ${isEn ? 'is too large' : 'ใหญ่เกินไป'}`);
       return;
     }
-
     const reader = new FileReader();
     reader.onload = (ev) => {
       setCropModal({ isOpen: true, imageSrc: ev.target.result, mode: 'gallery' });
@@ -531,7 +489,6 @@ function MainApp() {
     reader.readAsDataURL(file);
   };
 
-  // ===== Crop Confirm / Cancel (ใช้ Cropper.js สากล) =====
   const handleCropCancel = () => {
     setCropModal({ isOpen: false, imageSrc: null, mode: 'main' });
     setImageFileName('');
@@ -545,15 +502,11 @@ function MainApp() {
       showToast(isEn ? 'Cropper not ready' : 'ระบบ Crop ยังไม่พร้อม');
       return;
     }
-
-    // ดึงภาพที่ Crop ออกมาเป็น Canvas
     const canvas = cropper.getCroppedCanvas();
     if (!canvas) {
       showToast(isEn ? 'Failed to crop image' : 'ไม่สามารถตัดรูปได้');
       return;
     }
-
-    // แปลง Canvas เป็น Blob
     canvas.toBlob(async (blob) => {
       if (!blob) {
         showToast(isEn ? 'Failed to process image' : 'ไม่สามารถประมวลผลรูปได้');
@@ -561,18 +514,12 @@ function MainApp() {
       }
       const croppedFile = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
       try {
-        // บีบอัดภาพต่อหลังจาก Crop
         const compressed = await compressImage(croppedFile, 1200, 0.7);
-        
         if (cropModal.mode === 'main') {
           setNewPlace(prev => ({ ...prev, img: compressed }));
         } else if (cropModal.mode === 'gallery') {
-          setNewPlace(prev => ({
-            ...prev,
-            gallery: [...(prev.gallery || []), compressed]
-          }));
+          setNewPlace(prev => ({ ...prev, gallery: [...(prev.gallery || []), compressed] }));
         }
-        
         setCropModal({ isOpen: false, imageSrc: null, mode: 'main' });
         showToast(isEn ? 'Cropped and compressed successfully!' : 'ครอบตัดและย่อรูปสำเร็จ!');
       } catch (err) {
@@ -592,13 +539,23 @@ function MainApp() {
     setNewPlace({
       title: '', title_en: '', description: '', detailDescription: '',
       img: '', gallery: [], category: 'travel', type: 'travel',
+      subCategory: 'other',
       mapUrl: '', workingHours: '', phone: '', lat: '', lng: ''
     });
   };
 
-  // ============================================================
-  // ADD / EDIT PLACE
-  // ============================================================
+  const handleCategoryChange = (value) => {
+    let subCat = newPlace.subCategory || 'other';
+    if (value === 'accommodation' || value === 'restaurant') {
+      subCat = 'other';
+    }
+    setNewPlace(prev => ({ ...prev, category: value, type: value, subCategory: subCat }));
+  };
+
+  const handleSubCategoryChange = (value) => {
+    setNewPlace(prev => ({ ...prev, subCategory: value, category: 'travel', type: 'travel' }));
+  };
+
   const handleAddPlaceSubmit = async (e) => {
     e.preventDefault();
     if (!newPlace.title) {
@@ -621,6 +578,7 @@ function MainApp() {
 
       const payload = {
         ...newPlace,
+        subCategory: selectedType === 'travel' ? (newPlace.subCategory || 'other') : 'other',
         type: selectedType,
         category: selectedType,
         gallery: newPlace.gallery || []
@@ -657,9 +615,6 @@ function MainApp() {
     }
   };
 
-  // ============================================================
-  // LIKE
-  // ============================================================
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
     try {
@@ -670,9 +625,6 @@ function MainApp() {
     }
   };
 
-  // ============================================================
-  // EDIT / DELETE PLACE
-  // ============================================================
   const handleEditPlace = (place) => {
     const targetId = place.id || place.docId;
     setEditingPlaceId(targetId);
@@ -694,6 +646,9 @@ function MainApp() {
       gallery: Array.isArray(place.gallery) ? place.gallery : [],
       category: rawType,
       type: rawType,
+      subCategory: place.subCategory && place.subCategory !== 'other' 
+        ? place.subCategory 
+        : detectGenreFromName(place.title || place.name || ''),
       mapUrl: place.mapUrl || place.googleMap || place.map || '',
       workingHours: place.workingHours || '',
       phone: place.phone || '',
@@ -721,14 +676,8 @@ function MainApp() {
     }
   };
 
-  // ============================================================
-  // LANGUAGE
-  // ============================================================
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
-  // ============================================================
-  // REVIEW FUNCTIONS
-  // ============================================================
   const validateReviewText = (text) => {
     const clean = sanitizeInput(text.trim());
     if (clean.length < 2) {
@@ -841,9 +790,6 @@ function MainApp() {
     }
   };
 
-  // ============================================================
-  // OPEN PLANNER
-  // ============================================================
   const handleOpenPlanner = () => {
     navigate('/planner');
     setTimeout(() => {
@@ -885,9 +831,24 @@ function MainApp() {
   const currentPlaceId = detailModal.placeData?.id || detailModal.placeData?.docId;
   const currentReviews = currentPlaceId ? (reviewsData[currentPlaceId] || []) : [];
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  // ✅ LIVE PREVIEW DATA
+  const previewPlace = {
+    id: 'preview',
+    title: newPlace.title || 'ชื่อสถานที่',
+    name: newPlace.title || 'ชื่อสถานที่',
+    title_en: newPlace.title_en || 'Place Name EN',
+    nameEn: newPlace.title_en || 'Place Name EN',
+    description: newPlace.description || 'คำอธิบายสั้น',
+    descriptionEn: newPlace.description_en || 'Short description',
+    detail: newPlace.detailDescription || 'รายละเอียด',
+    detailEn: newPlace.detailDescription_en || 'Details',
+    img: newPlace.img || '',
+    category: newPlace.category || 'travel',
+    type: newPlace.type || 'travel',
+    subCategory: newPlace.subCategory || 'other',
+    likesCount: 0
+  };
+
   return (
     <HelmetProvider>
       <Helmet>
@@ -1222,7 +1183,6 @@ function MainApp() {
                 ref={cropperRef}
                 src={cropModal.imageSrc}
                 style={{ height: '100%', width: '100%' }}
-                // รองรับการใช้งานแบบสากล (Mouse / Touch / Pinch)
                 aspectRatio={4 / 3}
                 guides={true}
                 viewMode={1}
@@ -1276,74 +1236,214 @@ function MainApp() {
         </div>
       )}
 
+      {/* ===== ADD/EDIT PLACE MODAL ===== */}
       {isAddPlaceModalOpen && (
         <div className="map-modal-overlay active" style={{ zIndex: 2200 }} onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }}>
-          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '560px', padding: '24px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '700px', padding: '24px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '20px' }}>
               {editingPlaceId ? (isEn ? 'Edit Place' : 'แก้ไขสถานที่') : (isEn ? 'Add New Place' : 'เพิ่มสถานที่ใหม่')}
             </h2>
-            <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
-                  {isEn ? 'Category' : 'ประเภท'}
-                </label>
-                <select value={newPlace.category} onChange={e => setNewPlace({ ...newPlace, category: e.target.value, type: e.target.value })} style={inputStyle}>
-                  <option value="travel">{isEn ? 'Attraction (travel)' : 'สถานที่ท่องเที่ยว (travel)'}</option>
-                  <option value="accommodation">{isEn ? 'Accommodation' : 'ที่พัก (accommodation)'}</option>
-                  <option value="restaurant">{isEn ? 'Restaurant' : 'ร้านอาหาร (restaurant)'}</option>
-                </select>
-              </div>
-              <input type="text" placeholder={isEn ? 'Place name (Thai) *' : 'ชื่อสถานที่ (ไทย) *'} value={newPlace.title} onChange={e => setNewPlace({ ...newPlace, title: e.target.value })} required style={inputStyle} />
-              <input type="text" placeholder={isEn ? 'Place name (English)' : 'ชื่อสถานที่ (อังกฤษ)'} value={newPlace.title_en} onChange={e => setNewPlace({ ...newPlace, title_en: e.target.value })} style={inputStyle} />
-              <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
-                  {isEn ? 'Main Image' : 'รูปหน้าปก'}
-                </label>
-                <input type="file" accept="image/*" onChange={handleImageBrowse} style={{ ...inputStyle, padding: 8 }} />
-                {newPlace.img && <img src={newPlace.img} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, marginTop: 8 }} />}
-              </div>
-              <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
-                  {isEn ? 'Additional Images' : 'รูปอื่นๆ'}
-                </label>
-                <input type="file" accept="image/*" multiple onChange={handleGalleryBrowse} style={{ ...inputStyle, padding: 8 }} />
-                {newPlace.gallery?.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                    {newPlace.gallery.map((img, idx) => (
-                      <div key={idx} style={{ position: 'relative' }}>
-                        <img src={img} alt="" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6 }} />
-                        <button type="button" onClick={() => handleRemoveGalleryImg(idx)} style={{ position: 'absolute', top: -6, right: -6, background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}>x</button>
-                      </div>
-                    ))}
+            
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+              {/* ✅ ฟอร์มซ้าย */}
+              <div style={{ flex: 1, minWidth: '300px' }}>
+                <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  
+                  <input type="text" placeholder={isEn ? 'Place name (Thai) *' : 'ชื่อสถานที่ (ไทย) *'} value={newPlace.title} onChange={e => setNewPlace({ ...newPlace, title: e.target.value })} required style={inputStyle} />
+                  <input type="text" placeholder={isEn ? 'Place name (English)' : 'ชื่อสถานที่ (อังกฤษ)'} value={newPlace.title_en} onChange={e => setNewPlace({ ...newPlace, title_en: e.target.value })} style={inputStyle} />
+                  
+                  {/* ✅ เลือกประเภทหลัก */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                      {isEn ? 'Category' : 'ประเภทหลัก'}
+                    </label>
+                    <select value={newPlace.category} onChange={e => handleCategoryChange(e.target.value)} style={inputStyle}>
+                      <option value="travel">{isEn ? 'Attraction (travel)' : 'สถานที่ท่องเที่ยว (travel)'}</option>
+                      <option value="accommodation">{isEn ? 'Accommodation' : 'ที่พัก (accommodation)'}</option>
+                      <option value="restaurant">{isEn ? 'Restaurant' : 'ร้านอาหาร (restaurant)'}</option>
+                    </select>
                   </div>
-                )}
+
+                  {/* ✅ เลือก Genre (หมวดหมู่ย่อย) - แสดงเฉพาะเมื่อเป็น Travel */}
+                  {newPlace.category === 'travel' && (
+                    <div>
+                      <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                        {isEn ? 'Genre' : 'หมวดหมู่ย่อย (Genre)'}
+                      </label>
+                      <select value={newPlace.subCategory} onChange={e => handleSubCategoryChange(e.target.value)} style={inputStyle}>
+                        {GENRE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
+                  {/* ✅ รูปหน้าปกพร้อมปุ่มลบ */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                      {isEn ? 'Main Image' : 'รูปหน้าปก'}
+                    </label>
+                    <input type="file" accept="image/*" onChange={handleImageBrowse} style={{ ...inputStyle, padding: 8 }} />
+                    {newPlace.img && (
+                      <div style={{ position: 'relative', marginTop: 8 }}>
+                        <img src={newPlace.img} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8 }} />
+                        <button
+                          type="button"
+                          onClick={() => setNewPlace({ ...newPlace, img: '' })}
+                          style={{ position: 'absolute', top: 5, right: 5, background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ✅ อัปโหลดรูปเพิ่มเติม */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                      {isEn ? 'Additional Images' : 'รูปอื่นๆ'}
+                    </label>
+                    <input type="file" accept="image/*" multiple onChange={handleGalleryBrowse} style={{ ...inputStyle, padding: 8 }} />
+                    {newPlace.gallery?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                        {newPlace.gallery.map((img, idx) => (
+                          <div key={idx} style={{ position: 'relative' }}>
+                            <img src={img} alt="" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6 }} />
+                            <button type="button" onClick={() => handleRemoveGalleryImg(idx)} style={{ position: 'absolute', top: -6, right: -6, background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}>x</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ✅ Slider เลือกรูปหลักจาก Gallery */}
+                  {newPlace.gallery?.length > 0 && (
+                    <div>
+                      <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 4 }}>
+                        {isEn ? 'Select Main Image from Gallery' : 'เลือกรูปหลักจากแกลเลอรี'}
+                      </label>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto' }}>
+                        {newPlace.gallery.map((img, idx) => (
+                          <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
+                            <img
+                              src={img}
+                              alt=""
+                              onClick={() => setNewPlace({ ...newPlace, img: img })}
+                              style={{
+                                width: 70,
+                                height: 70,
+                                objectFit: 'cover',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                border: newPlace.img === img ? '3px solid #00a854' : '2px solid transparent',
+                                opacity: newPlace.img === img ? 1 : 0.7
+                              }}
+                            />
+                            {newPlace.img === img && (
+                              <div style={{ position: 'absolute', top: 2, left: 2, background: '#00a854', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>✓</div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGalleryImg(idx)}
+                              style={{ position: 'absolute', top: -6, right: -6, background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}
+                            >
+                              x
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <textarea placeholder={isEn ? 'Short description' : 'คำอธิบายสั้น'} value={newPlace.description} onChange={e => setNewPlace({ ...newPlace, description: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'none' }} />
+                  <textarea placeholder={isEn ? 'Full details' : 'รายละเอียด'} value={newPlace.detailDescription} onChange={e => setNewPlace({ ...newPlace, detailDescription: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'none' }} />
+                  
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 6 }}>
+                      {isEn ? 'Location (important for navigation)' : 'พิกัด (สำคัญสำหรับการนำทาง)'}
+                    </label>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                      <input type="text" placeholder="Latitude" value={newPlace.lat} onChange={e => setNewPlace({ ...newPlace, lat: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+                      <input type="text" placeholder="Longitude" value={newPlace.lng} onChange={e => setNewPlace({ ...newPlace, lng: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+                    </div>
+                    <button type="button" onClick={() => window.open('https://www.google.com/maps', '_blank')} style={{ width: '100%', background: 'rgba(66,133,244,0.15)', border: '1px solid #4285F4', color: '#8ab4f8', padding: '10px', borderRadius: 8, cursor: 'pointer' }}>
+                      {isEn ? 'Open Google Maps' : 'เปิด Google Maps'}
+                    </button>
+                  </div>
+                  <input type="text" placeholder={isEn ? 'Opening hours' : 'เวลาทำการ'} value={newPlace.workingHours} onChange={e => setNewPlace({ ...newPlace, workingHours: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder={isEn ? 'Phone number' : 'เบอร์โทร'} value={newPlace.phone} onChange={e => setNewPlace({ ...newPlace, phone: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder={isEn ? 'Google Maps URL or Embed Code' : 'Google Maps URL หรือ Embed Code'} value={newPlace.mapUrl} onChange={e => setNewPlace({ ...newPlace, mapUrl: e.target.value })} style={inputStyle} />
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
+                    <button type="button" onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
+                      {isEn ? 'Cancel' : 'ยกเลิก'}
+                    </button>
+                    <button type="submit" style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
+                      {editingPlaceId ? (isEn ? 'Save' : 'บันทึก') : (isEn ? 'Add Place' : 'เพิ่มสถานที่')}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <textarea placeholder={isEn ? 'Short description' : 'คำอธิบายสั้น'} value={newPlace.description} onChange={e => setNewPlace({ ...newPlace, description: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'none' }} />
-              <textarea placeholder={isEn ? 'Full details' : 'รายละเอียด'} value={newPlace.detailDescription} onChange={e => setNewPlace({ ...newPlace, detailDescription: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'none' }} />
-              <div>
-                <label style={{ fontSize: '0.85rem', color: '#aaa', display: 'block', marginBottom: 6 }}>
-                  {isEn ? 'Location (important for navigation)' : 'พิกัด (สำคัญสำหรับการนำทาง)'}
-                </label>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                  <input type="text" placeholder="Latitude" value={newPlace.lat} onChange={e => setNewPlace({ ...newPlace, lat: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
-                  <input type="text" placeholder="Longitude" value={newPlace.lng} onChange={e => setNewPlace({ ...newPlace, lng: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+
+              {/* ✅ Live Preview ด้านขวา */}
+              <div style={{ flex: 1, minWidth: '280px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#fff', marginBottom: '16px', fontSize: '1rem', textAlign: 'center' }}>
+                  {isEn ? 'Live Preview' : 'ตัวอย่างการ์ด'}
+                </h3>
+                
+                {/* ✅ ปุ่มสลับภาษา Preview */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <button
+                    onClick={() => setPreviewLang('th')}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: '20px',
+                      border: previewLang === 'th' ? '2px solid #00a854' : '1px solid rgba(255,255,255,0.2)',
+                      background: previewLang === 'th' ? 'rgba(0,168,84,0.2)' : 'transparent',
+                      color: previewLang === 'th' ? '#00a854' : '#ccc',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    ไทย
+                  </button>
+                  <button
+                    onClick={() => setPreviewLang('en')}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: '20px',
+                      border: previewLang === 'en' ? '2px solid #00a854' : '1px solid rgba(255,255,255,0.2)',
+                      background: previewLang === 'en' ? 'rgba(0,168,84,0.2)' : 'transparent',
+                      color: previewLang === 'en' ? '#00a854' : '#ccc',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    English
+                  </button>
                 </div>
-                <button type="button" onClick={() => window.open('https://www.google.com/maps', '_blank')} style={{ width: '100%', background: 'rgba(66,133,244,0.15)', border: '1px solid #4285F4', color: '#8ab4f8', padding: '10px', borderRadius: 8, cursor: 'pointer' }}>
-                  {isEn ? 'Open Google Maps' : 'เปิด Google Maps'}
-                </button>
+
+                <div style={{ maxWidth: '350px', margin: '0 auto' }}>
+                  <Card 
+                    place={previewPlace}
+                    onOpenMap={() => {}}
+                    likesCount={0}
+                    onLike={() => {}}
+                    lang={previewLang}
+                    isAdmin={isAdmin}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                    onAddToPlan={() => {}}
+                    isAddedToPlan={false}
+                  />
+                </div>
+                <p style={{ textAlign: 'center', color: '#777', fontSize: '0.8rem', marginTop: '16px' }}>
+                  {isEn ? 'This is how the card will look like' : 'นี่คือลักษณะการ์ดที่จะแสดงผล'}
+                </p>
               </div>
-              <input type="text" placeholder={isEn ? 'Opening hours' : 'เวลาทำการ'} value={newPlace.workingHours} onChange={e => setNewPlace({ ...newPlace, workingHours: e.target.value })} style={inputStyle} />
-              <input type="text" placeholder={isEn ? 'Phone number' : 'เบอร์โทร'} value={newPlace.phone} onChange={e => setNewPlace({ ...newPlace, phone: e.target.value })} style={inputStyle} />
-              <input type="text" placeholder={isEn ? 'Google Maps URL or Embed Code' : 'Google Maps URL หรือ Embed Code'} value={newPlace.mapUrl} onChange={e => setNewPlace({ ...newPlace, mapUrl: e.target.value })} style={inputStyle} />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
-                <button type="button" onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
-                  {isEn ? 'Cancel' : 'ยกเลิก'}
-                </button>
-                <button type="submit" style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>
-                  {editingPlaceId ? (isEn ? 'Save' : 'บันทึก') : (isEn ? 'Add Place' : 'เพิ่มสถานที่')}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -1722,9 +1822,6 @@ function MainApp() {
   );
 }
 
-// ============================================================
-// Export
-// ============================================================
 export default function App() {
   return (
     <Router>

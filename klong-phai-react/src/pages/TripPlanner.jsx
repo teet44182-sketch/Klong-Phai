@@ -59,13 +59,12 @@ const parseIframeUrl = (input) => {
 };
 
 // ============================================================
-// ✅ ดึงพิกัดจาก URL - แก้ไขให้ตรง
+// ✅ ดึงพิกัดจาก URL
 // ============================================================
 const extractCoordsFromUrl = (url) => {
   if (!url) return null;
   const cleanUrl = parseIframeUrl(url);
 
-  // 1. หา q=lat,lng
   const qMatch = cleanUrl.match(/[?&]q=([^&]+)/i);
   if (qMatch) {
     let q = decodeURIComponent(qMatch[1]).replace(/%2C/g, ',');
@@ -75,25 +74,21 @@ const extractCoordsFromUrl = (url) => {
     }
   }
 
-  // 2. หา !2d!3d
   const embedMatch = cleanUrl.match(/!2d([^!]+)!3d([^!]+)/i);
   if (embedMatch) {
     return [parseFloat(embedMatch[2]), parseFloat(embedMatch[1])];
   }
 
-  // 3. หา !3d!2d
   const embedMatch2 = cleanUrl.match(/!3d([^!]+)!2d([^!]+)/i);
   if (embedMatch2) {
     return [parseFloat(embedMatch2[1]), parseFloat(embedMatch2[2])];
   }
 
-  // 4. หา @lat,lng
   const atMatch = cleanUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/i);
   if (atMatch) {
     return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
   }
 
-  // 5. หา center=lat,lng
   const centerMatch = cleanUrl.match(/[?&]center=([^&]+)/i);
   if (centerMatch) {
     const center = decodeURIComponent(centerMatch[1]);
@@ -107,24 +102,21 @@ const extractCoordsFromUrl = (url) => {
 };
 
 // ============================================================
-// ✅ ดึงพิกัดจาก place - ใช้ฟังก์ชันเดียวกับ App.jsx
+// ✅ ดึงพิกัดจาก place
 // ============================================================
 const getPlaceCoords = (place) => {
   if (!place) return null;
 
-  // 1. coords array
   if (Array.isArray(place.coords) && place.coords.length === 2) {
     return [parseFloat(place.coords[0]), parseFloat(place.coords[1])];
   }
 
-  // 2. lat/lng
   const lat = parseFloat(place.lat || place.latitude);
   const lng = parseFloat(place.lng || place.longitude);
   if (!isNaN(lat) && !isNaN(lng)) {
     return [lat, lng];
   }
 
-  // 3. mapUrl (iFrame หรือ URL)
   if (place.mapUrl) {
     const fromUrl = extractCoordsFromUrl(place.mapUrl);
     if (fromUrl) return fromUrl;
@@ -191,6 +183,7 @@ export default function TripPlanner({
   const setActiveSelected = setSelectedPlaces || setInternalSelected;
 
   const [swipeQueue, setSwipeQueue] = useState(places);
+  const [queueSearchKeyword, setQueueSearchKeyword] = useState(''); // ✅ state สำหรับค้นหา
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -201,7 +194,27 @@ export default function TripPlanner({
   }, [places]);
 
   // ============================================================
-  // ✅ สร้าง Google Maps URL - ใช้ destination= แทน q=
+  // ✅ กรองคิวตามคำค้นหา
+  // ============================================================
+  const filteredQueue = swipeQueue.filter(place => {
+    const keyword = queueSearchKeyword.trim().toLowerCase();
+    if (!keyword) return true;
+    
+    const name = (place.title || place.name || '').toLowerCase();
+    const nameEn = (place.title_en || place.nameEn || '').toLowerCase();
+    const desc = (place.description || '').toLowerCase();
+    const descEn = (place.description_en || '').toLowerCase();
+    const category = (place.category || '').toLowerCase();
+    
+    return name.includes(keyword) || 
+           nameEn.includes(keyword) || 
+           desc.includes(keyword) || 
+           descEn.includes(keyword) ||
+           category.includes(keyword);
+  });
+
+  // ============================================================
+  // ✅ สร้าง Google Maps URL
   // ============================================================
   const generateGoogleMapsUrl = (placesList) => {
     if (!placesList || placesList.length === 0) return '';
@@ -213,12 +226,10 @@ export default function TripPlanner({
       return '';
     }
 
-    // 1 ที่
     if (coordsList.length === 1) {
       return `https://www.google.com/maps/dir/?api=1&destination=${coordsList[0][0]},${coordsList[0][1]}`;
     }
 
-    // หลายที่
     const origin = `${coordsList[0][0]},${coordsList[0][1]}`;
     const destination = `${coordsList[coordsList.length - 1][0]},${coordsList[coordsList.length - 1][1]}`;
     const waypoints = coordsList.slice(1, -1).map(c => `${c[0]},${c[1]}`).join('|');
@@ -238,6 +249,8 @@ export default function TripPlanner({
       return;
     }
     setActiveSelected(prev => [...prev, place]);
+    // นำออกจากคิว
+    setSwipeQueue(prev => prev.filter(p => (p.id || p.docId) !== targetId));
     showToast(`${isEn ? 'Added' : 'เพิ่ม'} "${placeTitle}" ${isEn ? 'to trip' : 'ลงทริปแล้ว'}`);
   };
 
@@ -251,7 +264,11 @@ export default function TripPlanner({
       setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
       showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     }
-    setSwipeQueue(prev => prev.filter(p => (p.id || p.docId) !== targetId));
+    // กลับไปคิว
+    setSwipeQueue(prev => {
+      if (prev.some(p => (p.id || p.docId) === targetId)) return prev;
+      return [...prev, place];
+    });
   };
 
   const handleButtonClick = (place, isAdded) => {
@@ -272,27 +289,19 @@ export default function TripPlanner({
       setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
       showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     }
+    // กลับไปคิว
+    setSwipeQueue(prev => {
+      if (prev.some(p => (p.id || p.docId) === targetId)) return prev;
+      return [...prev, place];
+    });
   };
 
-  const handleMove = (index, direction) => {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= activeSelected.length) return;
-    const updated = [...activeSelected];
-    const [movedItem] = updated.splice(index, 1);
-    updated.splice(targetIndex, 0, movedItem);
-    setActiveSelected(updated);
-  };
-
-  // ============================================================
-  // ✅ นำทาง - เปิด Google Maps
-  // ============================================================
   const handleNavigate = () => {
     if (activeSelected.length === 0) {
       showToast('กรุณาเลือกสถานที่ก่อน');
       return;
     }
 
-    // ใช้จาก props ถ้ามี
     if (typeof propsGenerateMultiStopMapUrl === 'function') {
       const url = propsGenerateMultiStopMapUrl(activeSelected);
       if (url && url !== '#') {
@@ -331,6 +340,9 @@ export default function TripPlanner({
     }
 
     setActiveSelected(prev => [...prev, ...newOnes]);
+    // ลบออกจากคิว
+    const newIds = newOnes.map(p => p.id || p.docId);
+    setSwipeQueue(prev => prev.filter(p => !newIds.includes(p.id || p.docId)));
     showToast(`เพิ่ม Combo "${isEn ? combo.titleEn : combo.title}" (${newOnes.length} ที่)`);
   };
 
@@ -362,10 +374,11 @@ export default function TripPlanner({
   // ============================================================
   return (
     <div style={{ paddingTop: '80px', minHeight: '100vh', background: '#1a1a1a', color: '#fff', fontFamily: 'Prompt, sans-serif' }}>
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px 60px' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 60px' }}>
 
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <h1 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.8rem', marginBottom: '8px' }}>
+        {/* หัวข้อหลัก */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.8rem', marginBottom: '4px' }}>
             {isEn ? 'Trip Planner' : 'วางแผนเส้นทางท่องเที่ยว'}
           </h1>
           <p style={{ color: '#aaa', fontSize: '0.85rem' }}>
@@ -373,271 +386,329 @@ export default function TripPlanner({
           </p>
         </div>
 
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.05rem', marginBottom: 12 }}>
-            {isEn ? 'Recommended Combos' : 'Combo แนะนำ'}
-          </h3>
-          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
-            {COMBO_LIST.map(combo => (
-              <button
-                key={combo.id}
-                onClick={() => applyCombo(combo)}
-                style={{
-                  minWidth: 200,
-                  textAlign: 'left',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 14,
-                  padding: '14px 16px',
-                  cursor: 'pointer',
-                  color: '#fff',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={e => e.currentTarget.style.background = 'rgba(0,168,84,0.15)'}
-                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-              >
-                <div style={{ fontFamily: 'Mitr, sans-serif', fontWeight: 'bold', marginBottom: 4, fontSize: '0.95rem' }}>
-                  {isEn ? combo.titleEn : combo.title}
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{combo.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* === GRID 2 คอลัมน์ === */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '30px',
+          alignItems: 'start'
+        }}>
+          {/* ===== COLUMN LEFT: แผนที่ + จุดแวะ + คอมโบ ===== */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-        <div
-          style={{
-            background: activeSelected.length > 0 ? 'rgba(0, 168, 84, 0.12)' : 'rgba(255,255,255,0.03)',
-            padding: '20px',
-            borderRadius: '16px',
-            border: activeSelected.length > 0 ? '2px dashed #00a854' : '2px dashed rgba(255,255,255,0.2)',
-            marginBottom: '24px',
-            textAlign: 'center'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            {/* Combo แนะนำ */}
             <div>
-              <h3 style={{ fontFamily: 'Mitr, sans-serif', margin: 0, color: '#00a854', fontSize: '1.1rem' }}>
-                {isEn ? `Selected (${activeSelected.length})` : `จุดแวะในทริป (${activeSelected.length} สถานที่)`}
+              <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.05rem', marginBottom: '12px' }}>
+                {isEn ? 'Recommended Combos' : 'Combo แนะนำ'}
               </h3>
-              {activeSelected.length > 0 && (
-                <p style={{ margin: '4px 0 0', color: '#aaa', fontSize: '0.85rem' }}>
-                  {isEn ? 'Est. time' : 'เวลาโดยประมาณ'}: <strong style={{ color: '#fff' }}>{totalTimeText}</strong>
-                </p>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {COMBO_LIST.map(combo => (
+                  <button
+                    key={combo.id}
+                    onClick={() => applyCombo(combo)}
+                    style={{
+                      flex: '1 0 180px',
+                      textAlign: 'left',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '14px',
+                      padding: '14px 16px',
+                      cursor: 'pointer',
+                      color: '#fff',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(0,168,84,0.15)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    <div style={{ fontFamily: 'Mitr, sans-serif', fontWeight: 'bold', marginBottom: 4, fontSize: '0.95rem' }}>
+                      {isEn ? combo.titleEn : combo.title}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{combo.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* จุดแวะในทริป + ปุ่มนำทาง */}
+            <div style={{
+              background: activeSelected.length > 0 ? 'rgba(0, 168, 84, 0.12)' : 'rgba(255,255,255,0.03)',
+              padding: '16px 20px',
+              borderRadius: '16px',
+              border: activeSelected.length > 0 ? '2px dashed #00a854' : '2px dashed rgba(255,255,255,0.2)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h3 style={{ fontFamily: 'Mitr, sans-serif', margin: 0, color: '#00a854', fontSize: '1.1rem' }}>
+                    {isEn ? `Selected (${activeSelected.length})` : `จุดแวะในทริป (${activeSelected.length} สถานที่)`}
+                  </h3>
+                  {activeSelected.length > 0 && (
+                    <p style={{ margin: '4px 0 0', color: '#aaa', fontSize: '0.85rem' }}>
+                      {isEn ? 'Est. time' : 'เวลาโดยประมาณ'}: <strong style={{ color: '#fff' }}>{totalTimeText}</strong>
+                    </p>
+                  )}
+                </div>
+                {activeSelected.length > 0 && (
+                  <button
+                    onClick={handleNavigate}
+                    style={{
+                      background: '#4285F4',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '8px 20px',
+                      borderRadius: '25px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {isEn ? 'Navigate' : 'นำทาง'}
+                  </button>
+                )}
+              </div>
+
+              {activeSelected.length === 0 ? (
+                <div style={{ padding: '20px 10px', color: '#888', textAlign: 'center' }}>
+                  {isEn ? 'No places selected yet' : 'ยังไม่มีสถานที่ในทริป'}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px', maxHeight: '300px', overflowY: 'auto' }}>
+                  {activeSelected.map((place, index) => {
+                    const placeId = place.id || place.docId;
+                    const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
+
+                    return (
+                      <div
+                        key={placeId || index}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', String(index));
+                          e.currentTarget.style.opacity = '0.45';
+                        }}
+                        onDragEnd={(e) => {
+                          e.currentTarget.style.opacity = '1';
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+                          const toIndex = index;
+                          if (isNaN(fromIndex) || fromIndex === toIndex) return;
+
+                          const updated = [...activeSelected];
+                          const [moved] = updated.splice(fromIndex, 1);
+                          updated.splice(toIndex, 0, moved);
+                          setActiveSelected(updated);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: 'rgba(255,255,255,0.06)',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          cursor: 'grab',
+                          userSelect: 'none',
+                          transition: 'background 0.15s, opacity 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
+                          <span style={{
+                            background: '#00a854',
+                            color: '#fff',
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '0.8rem',
+                            flexShrink: 0
+                          }}>
+                            {index + 1}
+                          </span>
+                          <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemove(place);
+                            }}
+                            style={{
+                              background: 'rgba(255,77,77,0.2)',
+                              color: '#ff4d4d',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '5px 10px',
+                              cursor: 'pointer',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
-            {activeSelected.length > 0 && (
-              <button
-                onClick={handleNavigate}
-                style={{
-                  background: '#4285F4',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '8px 20px',
-                  borderRadius: '25px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '0.85rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                {isEn ? 'Navigate' : 'นำทาง'}
-              </button>
-            )}
-          </div>
-
-          {activeSelected.length === 0 ? (
-            <div style={{ padding: '30px 10px', color: '#888' }}>
-              {isEn ? 'No places selected yet' : 'ยังไม่มีสถานที่ในทริป'}
+            {/* แผนที่ */}
+            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <MapContainer center={mapCenter} zoom={13} style={{ height: '340px', width: '100%' }}>
+                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <MapController coordsList={routePolyline} />
+                {routePolyline.length > 1 && (
+                  <Polyline positions={routePolyline} color="#00a854" weight={3} dashArray="6, 6" />
+                )}
+                {activeSelected.map((place, idx) => {
+                  const coords = getPlaceCoords(place);
+                  if (!coords) return null;
+                  const placeTitle = place.title || place.name || 'สถานที่';
+                  return (
+                    <Marker key={place.id || place.docId || idx} position={coords} icon={createNumberedIcon(idx + 1)}>
+                      <Tooltip permanent direction="top" offset={[0, -18]}>
+                        <strong>#{idx + 1} {placeTitle}</strong>
+                      </Tooltip>
+                      <Popup>
+                        <div style={{ color: '#000' }}>
+                          <strong>#{idx + 1} {placeTitle}</strong>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MapContainer>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
-              {activeSelected.map((place, index) => {
-                const placeId = place.id || place.docId;
-                const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
 
-                return (
-                  <div
-                    key={placeId || index}
-                    draggable={true}
-                    onDragStart={(e) => {
-                      e.stopPropagation();
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', String(index));
-                      e.currentTarget.style.opacity = '0.45';
-                    }}
-                    onDragEnd={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'move';
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const fromIndex = Number(e.dataTransfer.getData('text/plain'));
-                      const toIndex = index;
-                      if (isNaN(fromIndex) || fromIndex === toIndex) return;
+          </div> {/* end col left */}
 
-                      const updated = [...activeSelected];
-                      const [moved] = updated.splice(fromIndex, 1);
-                      updated.splice(toIndex, 0, moved);
-                      setActiveSelected(updated);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: 'rgba(255,255,255,0.06)',
-                      padding: '12px 14px',
-                      borderRadius: '10px',
-                      cursor: 'grab',
-                      userSelect: 'none',
-                      transition: 'background 0.15s, opacity 0.15s'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
-                      <span style={{
-                        background: '#00a854',
-                        color: '#fff',
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '50%',
+          {/* ===== COLUMN RIGHT: สถานที่แนะนำ (คิว) พร้อม Search Bar ===== */}
+          <div>
+            {/* ✅ Search Bar สำหรับค้นหาในคิว */}
+            <div style={{ marginBottom: '16px' }}>
+              <input
+                type="text"
+                value={queueSearchKeyword}
+                onChange={(e) => setQueueSearchKeyword(e.target.value)}
+                placeholder={isEn ? 'Search places...' : 'ค้นหาสถานที่...'}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  borderRadius: '30px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'rgba(255,255,255,0.06)',
+                  color: '#fff',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                  fontFamily: 'Prompt, sans-serif',
+                  transition: 'all 0.3s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#00a854';
+                  e.target.style.background = 'rgba(255,255,255,0.1)';
+                  e.target.style.boxShadow = '0 0 20px rgba(0,168,84,0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(255,255,255,0.15)';
+                  e.target.style.background = 'rgba(255,255,255,0.06)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+
+            <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.1rem', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>
+                {isEn ? `Suggested Places` : `สถานที่แนะนำ`}
+                {queueSearchKeyword.trim() !== '' && (
+                  <span style={{ fontSize: '0.8rem', color: '#aaa', marginLeft: '8px', fontWeight: 'normal' }}>
+                    ({filteredQueue.length} {isEn ? 'results' : 'ผลลัพธ์'})
+                  </span>
+                )}
+              </span>
+              <span style={{ fontSize: '0.85rem', color: '#888', fontWeight: 'normal' }}>
+                {swipeQueue.length} {isEn ? 'total' : 'ทั้งหมด'}
+              </span>
+            </h3>
+
+            {filteredQueue.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#777', background: '#222', borderRadius: '12px' }}>
+                {queueSearchKeyword.trim() !== '' 
+                  ? (isEn ? `No results found for "${queueSearchKeyword}"` : `ไม่พบผลลัพธ์สำหรับ "${queueSearchKeyword}"`)
+                  : (isEn ? 'All places selected!' : 'คุณเลือกครบทุกสถานที่ในคิวแล้ว!')
+                }
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '4px' }}>
+                {filteredQueue.map((place, index) => {
+                  const placeId = place.id || place.docId;
+                  const isAdded = activeSelected.some(p => (p.id || p.docId) === placeId);
+                  const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
+                  const imgUrl = place.img || place.imageUrl || place.image;
+
+                  return (
+                    <SwipeCard
+                      key={placeId ? `queue-${placeId}` : `queue-idx-${index}`}
+                      isAdded={isAdded}
+                      onSwipeRight={() => handleSwipeRight(place)}
+                      onSwipeLeft={() => handleSwipeLeft(place)}
+                    >
+                      <div style={{
+                        background: '#252525',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        border: '1px solid #333',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 'bold',
-                        fontSize: '0.8rem',
-                        flexShrink: 0
+                        justifyContent: 'space-between',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                       }}>
-                        {index + 1}
-                      </span>
-                      <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemove(place);
-                        }}
-                        style={{
-                          background: 'rgba(255,77,77,0.2)',
-                          color: '#ff4d4d',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '5px 10px',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem'
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <MapContainer center={mapCenter} zoom={13} style={{ height: '320px', width: '100%' }}>
-            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapController coordsList={routePolyline} />
-            {routePolyline.length > 1 && (
-              <Polyline positions={routePolyline} color="#00a854" weight={3} dashArray="6, 6" />
-            )}
-            {activeSelected.map((place, idx) => {
-              const coords = getPlaceCoords(place);
-              if (!coords) return null;
-              const placeTitle = place.title || place.name || 'สถานที่';
-              return (
-                <Marker key={place.id || place.docId || idx} position={coords} icon={createNumberedIcon(idx + 1)}>
-                  <Tooltip permanent direction="top" offset={[0, -18]}>
-                    <strong>#{idx + 1} {placeTitle}</strong>
-                  </Tooltip>
-                  <Popup>
-                    <div style={{ color: '#000' }}>
-                      <strong>#{idx + 1} {placeTitle}</strong>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
-        </div>
-
-        <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.1rem', marginBottom: '12px' }}>
-          {isEn ? `Queue (${swipeQueue.length})` : `คิวสถานที่แนะนำ (${swipeQueue.length})`}
-        </h3>
-
-        {swipeQueue.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#777', background: '#222', borderRadius: '12px' }}>
-            {isEn ? 'All places selected!' : 'คุณเลือกครบทุกสถานที่ในคิวแล้ว!'}
-          </div>
-        ) : (
-          <div>
-            {swipeQueue.map((place, index) => {
-              const placeId = place.id || place.docId;
-              const isAdded = activeSelected.some(p => (p.id || p.docId) === placeId);
-              const title = place.title || place.name || 'ไม่มีชื่อสถานที่';
-              const imgUrl = place.img || place.imageUrl || place.image;
-
-              return (
-                <SwipeCard
-                  key={placeId ? `queue-${placeId}` : `queue-idx-${index}`}
-                  isAdded={isAdded}
-                  onSwipeRight={() => handleSwipeRight(place)}
-                  onSwipeLeft={() => handleSwipeLeft(place)}
-                >
-                  <div style={{
-                    background: '#252525',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: '1px solid #333',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    marginBottom: '10px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {imgUrl && <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />}
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '2px' }}>
-                          {place.category || 'สถานที่ท่องเที่ยว'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {imgUrl && <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />}
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{title}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '2px' }}>
+                              {place.category || 'สถานที่ท่องเที่ยว'}
+                            </div>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => handleButtonClick(place, isAdded)}
+                          style={{
+                            background: isAdded ? '#ff4d4d' : '#00a854',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '8px 14px',
+                            borderRadius: '20px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          {isAdded ? (isEn ? 'Remove' : 'ลบออก') : (isEn ? 'Add' : 'เพิ่ม')}
+                        </button>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => handleButtonClick(place, isAdded)}
-                      style={{
-                        background: isAdded ? '#ff4d4d' : '#00a854',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '8px 14px',
-                        borderRadius: '20px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {isAdded ? (isEn ? 'Remove' : 'ลบออก') : (isEn ? 'Add' : 'เพิ่ม')}
-                    </button>
-                  </div>
-                </SwipeCard>
-              );
-            })}
-          </div>
-        )}
+                    </SwipeCard>
+                  );
+                })}
+              </div>
+            )}
+          </div> {/* end col right */}
+
+        </div> {/* end grid */}
       </div>
     </div>
   );
