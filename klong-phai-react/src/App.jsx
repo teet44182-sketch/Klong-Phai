@@ -53,7 +53,9 @@ const ADMIN_EMAILS = [
   'klongpaitravel@gmail.com',
   'admin2@gmail.com',
   'adisonbb2@gmail.com',
-  'pppurpg@gmail.com'
+  'pppurpg@gmail.com',
+  'monsichasungsanit@gmail.com',
+  'khunyoi16@gmail.com'
 ];
 
 // ============================================================
