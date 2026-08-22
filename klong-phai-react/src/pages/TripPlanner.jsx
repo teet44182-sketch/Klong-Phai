@@ -324,7 +324,7 @@ export default function TripPlanner({
     const [moved] = updated.splice(fromIndex, 1);
     updated.splice(toIndex, 0, moved);
     setActiveSelected(updated);
-    showToast(isEn ? `Reordered: #${fromIndex+1} → #${toIndex+1}` : `เปลี่ยนลำดับ: #${fromIndex+1} → #${toIndex+1}`);
+    // ✅ ไม่มี showToast ที่นี่ (ลบออกแล้ว)
   };
 
   const routePolyline = activeSelected.map(p => getPlaceCoords(p)).filter(Boolean);
