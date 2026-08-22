@@ -1,4 +1,5 @@
 // src/pages/CheckInPoints.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
@@ -50,6 +51,7 @@ export default function CheckInPoints({
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editText, setEditText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
   const COOLDOWN_MS = 5000;
 
@@ -61,11 +63,12 @@ export default function CheckInPoints({
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  useEffect(() => {
-    if (onSearchChange) {
-      onSearchChange(keyword);
-    }
-  }, [keyword, onSearchChange]);
+  // ❌ ลบ useEffect ที่เกี่ยวกับ search
+  // useEffect(() => {
+  //   if (onSearchChange) {
+  //     onSearchChange(keyword);
+  //   }
+  // }, [keyword, onSearchChange]);
 
   const sanitizeInput = (text) => {
     if (!text) return '';
@@ -168,14 +171,13 @@ export default function CheckInPoints({
       workingHours: p.workingHours || p.time || '',
       workingHoursEn: p.workingHours_en || p.workingHoursEn || p.workingHours || '',
       phone: p.phone || '-',
-      category: p.category || p.type || 'travel',
+      category: p.category || p.type || 'checkin',
       coords: p.coords || null,
       lat: lat || null,
       lng: lng || null
     };
   };
 
-  // ✅ กรอง places ที่เกี่ยวข้องกับ check-in (หรือทั้งหมด) และ map ข้อมูล
   const filteredPlaces = (places || [])
     .filter(p => {
       if (!p) return false;
@@ -191,42 +193,48 @@ export default function CheckInPoints({
     ? filteredPlaces 
     : (places || []).map(mapPlaceData).filter(Boolean);
 
-  // ✅ ค้นหาตาม keyword
-  const searchFilteredPlaces = finalPlaces.filter(place => {
-    const searchKey = keyword.trim().toLowerCase();
-    if (!searchKey) return true;
-    const name = (place.name || '').toLowerCase();
-    const nameEn = (place.nameEn || '').toLowerCase();
-    const desc = (place.description || '').toLowerCase();
-    const descEn = (place.descriptionEn || '').toLowerCase();
-    return name.includes(searchKey) || nameEn.includes(searchKey) || 
-           desc.includes(searchKey) || descEn.includes(searchKey);
-  });
+  // ❌ ลบ filter การค้นหา
+  // const searchFilteredPlaces = finalPlaces.filter(place => {
+  //   const searchKey = keyword.trim().toLowerCase();
+  //   if (!searchKey) return true;
+  //   const name = (place.name || '').toLowerCase();
+  //   const nameEn = (place.nameEn || '').toLowerCase();
+  //   const desc = (place.description || '').toLowerCase();
+  //   const descEn = (place.descriptionEn || '').toLowerCase();
+  //   return name.includes(searchKey) || nameEn.includes(searchKey) || 
+  //          desc.includes(searchKey) || descEn.includes(searchKey);
+  // });
+
+  // ✅ ใช้ finalPlaces โดยตรง (ไม่ต้อง filter)
+  const searchFilteredPlaces = finalPlaces;
 
   const validateReviewText = (text) => {
     const cleanText = sanitizeInput(text);
+    
     if (cleanText.length < 2) {
-      showToast(isEn ? "Review is too short (min 2 characters)" : "ข้อความสั้นเกินไป (ขั้นต่ำ 2 ตัวอักษร)");
+      showToast(isEn ? " Review is too short (min 2 characters)" : "ข้อความสั้นเกินไป (ขั้นต่ำ 2 ตัวอักษร)");
       return false;
     }
     if (cleanText.length > 200) {
       showToast(isEn ? "Review is too long (max 200 characters)" : "ข้อความต้องไม่เกิน 200 ตัวอักษร");
       return false;
     }
+    
     const textLower = cleanText.toLowerCase();
     const hasBannedWord = bannedWords.some(word => textLower.includes(word.toLowerCase()));
     if (hasBannedWord) {
       showToast(isEn ? "Inappropriate language detected" : "พบคำไม่เหมาะสม กรุณาแก้ไข");
       return false;
     }
+    
     if (detectScriptInjection(cleanText)) {
       showToast(isEn ? "Invalid characters detected" : "พบอักขระที่ไม่ถูกต้อง");
       return false;
     }
+    
     return cleanText;
   };
 
-  // ✅ เรียงตามไลค์ (สำหรับ Top 10)
   const sortedPlaces = [...searchFilteredPlaces].sort((a, b) => {
     const scoreA = likes[a.id || a.docId] || 0;
     const scoreB = likes[b.id || b.docId] || 0;
@@ -243,93 +251,129 @@ export default function CheckInPoints({
     };
   };
 
-  // ✅ แสดงผลลัพธ์การค้นหา
-  const getResultText = () => {
-    const count = sortedPlaces.length;
-    if (keyword.trim() !== '') {
-      return isEn 
-        ? `Found ${count} results for "${keyword}"`
-        : `พบ ${count} ผลลัพธ์สำหรับ "${keyword}"`;
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    
+    const now = Date.now();
+    if (now - lastSubmitTime < COOLDOWN_MS) {
+      const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
+      showToast(isEn ? `Please wait ${waitSeconds}s` : `กรุณารอ ${waitSeconds} วินาที`);
+      return;
     }
-    return isEn 
-      ? `Showing top ${count} check-in points`
-      : `แสดงจุดเช็คอินทั้งหมด ${count} แห่ง`;
-  };
-
-  // ✅ ฟังก์ชันรีวิว
-  const handleSubmitReview = async () => {
+    
+    if (!inputText.trim()) {
+      showToast(isEn ? "Please write a review" : "กรุณาเขียนรีวิวก่อนส่ง");
+      return;
+    }
+    
     if (!googleUser) {
       showToast(isEn ? "Please sign in first" : "กรุณาเข้าสู่ระบบก่อน");
       return;
     }
-    const now = Date.now();
-    if (now - lastSubmitTime < COOLDOWN_MS) {
-      showToast(isEn ? "Please wait a few seconds" : "กรุณารอสักครู่");
+
+    if (isSubmitting) {
+      showToast(isEn ? "Please wait..." : "กรุณารอสักครู่...");
       return;
     }
-    const cleanText = validateReviewText(inputText);
-    if (!cleanText) return;
+
+    const validatedText = validateReviewText(inputText);
+    if (!validatedText) return;
 
     setIsSubmitting(true);
+
     try {
-      await addDoc(collection(db, 'reviews'), {
+      const reviewsRef = collection(db, "reviews");
+      
+      await addDoc(reviewsRef, {
         placeId: pageId,
-        name: googleUser.displayName || 'Anonymous',
+        name: sanitizeInput(googleUser.displayName || 'Anonymous'),
         userPhoto: googleUser.photoURL || '',
-        text: cleanText,
+        text: validatedText,
         userId: googleUser.uid,
         createdAt: serverTimestamp()
       });
+      
       setInputText('');
       setLastSubmitTime(now);
-      showToast(isEn ? "Review submitted!" : "ส่งรีวิวเรียบร้อย");
-    } catch (err) {
-      console.error(err);
-      showToast(isEn ? "Failed to submit review" : "ส่งรีวิวไม่สำเร็จ");
+      showToast(isEn ? "Review submitted!" : "ส่งรีวิวเรียบร้อย!");
+      
+    } catch (error) {
+      console.error("Error saving review:", error);
+      showToast(isEn ? " Failed to submit: " + error.message : " ไม่สามารถส่งรีวิวได้: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleUpdateReview = async (review) => {
-    if (!googleUser) return;
-    if (googleUser.uid !== review.userId) {
-      showToast(isEn ? "You can only edit your own reviews" : "คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ");
+    const targetId = review.id || review.docId;
+    if (!targetId) {
+      showToast(isEn ? " Document ID not found" : " ไม่พบ ID");
       return;
     }
-    const cleanText = validateReviewText(editText);
-    if (!cleanText) return;
+    if (!editText.trim()) {
+      showToast(isEn ? "Please write something" : "กรุณาเขียนข้อความ");
+      return;
+    }
+
+    if (googleUser && review.userId !== googleUser.uid) {
+      showToast(isEn ? " You can only edit your own reviews" : " คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ");
+      return;
+    }
+
+    const validatedText = validateReviewText(editText);
+    if (!validatedText) return;
+
     try {
-      await updateDoc(doc(db, 'reviews', review.id), {
-        text: cleanText,
+      await updateDoc(doc(db, "reviews", targetId), {
+        text: validatedText,
         updatedAt: serverTimestamp()
       });
       setEditingReviewId(null);
       setEditText('');
-      showToast(isEn ? "Review updated!" : "แก้ไขรีวิวเรียบร้อย");
-    } catch (err) {
-      console.error(err);
-      showToast(isEn ? "Failed to update review" : "แก้ไขรีวิวไม่สำเร็จ");
+      showToast(isEn ? "Review updated!" : "แก้ไขรีวิวเรียบร้อย!");
+    } catch (error) {
+      console.error("Error updating review:", error);
+      showToast(isEn ? " Failed to update: " + error.message : " ไม่สามารถแก้ไขได้: " + error.message);
     }
   };
 
   const handleDeleteReview = async (review) => {
-    if (!googleUser) return;
-    if (googleUser.uid !== review.userId) {
-      showToast(isEn ? "You can only delete your own reviews" : "คุณสามารถลบได้เฉพาะรีวิวของคุณ");
+    const targetId = review.id || review.docId || review._id;
+    
+    if (!targetId) {
+      showToast(isEn ? " Comment ID not found" : " ไม่พบ ID");
       return;
     }
-    if (!window.confirm(isEn ? "Delete this review?" : "ลบรีวิวนี้?")) return;
+    
+    if (googleUser && review.userId !== googleUser.uid) {
+      showToast(isEn ? " You can only delete your own reviews" : " คุณสามารถลบได้เฉพาะรีวิวของคุณ");
+      return;
+    }
+    
+    if (!window.confirm(isEn ? "Delete this comment?" : "ลบคอมเมนต์นี้?")) return;
+    
     try {
-      await deleteDoc(doc(db, 'reviews', review.id));
-      showToast(isEn ? "Review deleted!" : "ลบรีวิวเรียบร้อย");
-    } catch (err) {
-      console.error(err);
-      showToast(isEn ? "Failed to delete review" : "ลบรีวิวไม่สำเร็จ");
+      await deleteDoc(doc(db, "reviews", targetId));
+      showToast(isEn ? "Review deleted!" : "ลบรีวิวเรียบร้อย!");
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      showToast(isEn ? "Failed to delete" : "ไม่สามารถลบได้");
     }
   };
 
-  // เริ่ม Render
+  const renderReviewText = (text) => {
+    if (!text) return '';
+    return escapeHtml(text);
+  };
+
+  // ✅ แสดงผลลัพธ์
+  const getResultText = () => {
+    return isEn 
+      ? `Showing top ${sortedPlaces.length} check-in points`
+      : `แสดงจุดเช็คอินทั้งหมด ${sortedPlaces.length} แห่ง`;
+  };
+
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
       
@@ -375,11 +419,13 @@ export default function CheckInPoints({
         }} />
 
         <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px', width: '100%' }}>
-          <h1 className="gradient-text" style={{ 
+          {/* ✅ เปลี่ยนเป็นสีขาว */}
+          <h1 className="page-title" style={{ 
             fontSize: '2.2rem', 
             marginBottom: '8px',
             textShadow: '2px 2px 10px rgba(0, 0, 0, 0.6)',
             fontFamily: 'Mitr, sans-serif',
+            color: '#ffffff',  // ✅ เปลี่ยนเป็นสีขาว
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease'
@@ -401,7 +447,8 @@ export default function CheckInPoints({
               : 'อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ'}
           </p>
 
-          <div style={{
+          {/* ❌ ลบ Search Bar */}
+          {/* <div style={{
             maxWidth: '500px',
             margin: '0 auto',
             opacity: isVisible ? 1 : 0,
@@ -441,7 +488,7 @@ export default function CheckInPoints({
                 }}
               />
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -454,6 +501,7 @@ export default function CheckInPoints({
         height: 'auto' 
       }}>
         
+        {/* ✅ แสดงจำนวนผลลัพธ์ (ไม่แสดงคำค้นหา) */}
         {!loading && (
           <div style={{
             marginBottom: '20px',
@@ -490,9 +538,7 @@ export default function CheckInPoints({
           </div>
         ) : sortedPlaces.length === 0 ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px' }}>
-            {keyword.trim() !== '' 
-              ? (isEn ? `No results found for "${keyword}"` : `ไม่พบผลลัพธ์สำหรับ "${keyword}"`)
-              : (isEn ? 'No check-in places found.' : 'ยังไม่มีข้อมูลจุดเช็คอินในขณะนี้')}
+            {isEn ? 'No check-in places found.' : 'ยังไม่มีข้อมูลจุดเช็คอินในขณะนี้'}
           </div>
         ) : (
           <div className="results-grid" style={{ marginBottom: '60px' }}>
@@ -544,7 +590,7 @@ export default function CheckInPoints({
           </div>
         )}
 
-        {/* REVIEW SECTION - แสดงผลจริง */}
+        {/* REVIEW SECTION - ส่วนนี้คงเดิม */}
         <div style={{ 
           background: 'rgba(255, 255, 255, 0.04)', 
           backdropFilter: 'blur(10px)', 
@@ -558,73 +604,78 @@ export default function CheckInPoints({
           transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
           transition: `opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s`
         }}>
-          <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '20px', fontSize: '1.2rem' }}>
-            {isEn ? 'Discuss these 10 Check-in Points' : 'พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้'}
-          </h3>
-
-          {googleUser ? (
-            <div style={{ marginBottom: '20px' }}>
-              <textarea
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                placeholder={isEn ? "Write a review or recommendation..." : "เขียนรีวิวหรือแนะนำสิ่งที่น่าสนใจ..."}
-                maxLength={200}
-                rows="3"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.9rem',
-                  resize: 'none',
-                  fontFamily: 'Prompt, sans-serif',
-                  outline: 'none'
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                <span style={{ fontSize: '0.75rem', color: '#666' }}>{inputText.length}/200</span>
-                <button 
-                  onClick={handleSubmitReview}
-                  disabled={isSubmitting}
-                  style={{
-                    background: isSubmitting ? '#666' : '#00a854',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '8px 20px',
-                    borderRadius: '20px',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  {isSubmitting ? (isEn ? 'Sending...' : 'กำลังส่ง...') : (isEn ? 'Submit' : 'ส่งรีวิว')}
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.3rem' }}>
+              {isEn ? 'Discuss these 10 Check-in Points' : 'พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้'}
+            </h3>
+            {googleUser && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#aaa' }}>
+                  {googleUser.photoURL && <img src={googleUser.photoURL} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />}
+                  <span>{escapeHtml(googleUser.displayName)}</span>
+                </div>
+                <button type="button" onClick={handleGoogleLogout} style={{ background: 'none', border: 'none', color: '#ff4d4d', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'Prompt, sans-serif' }}>
+                  {isEn ? 'Sign out' : 'ออกจากระบบ'}
                 </button>
               </div>
-            </div>
+            )}
+          </div>
+
+          {googleUser ? (
+            <form onSubmit={handleReviewSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' }}>
+              <textarea 
+                placeholder={isEn ? "Write a review about these check-in points... (2-200 chars)" : "เขียนรีวิวเกี่ยวกับ 10 จุดเช็คอินนี้... (2-200 ตัวอักษร)"} 
+                value={inputText} 
+                onChange={(e) => setInputText(e.target.value)} 
+                required 
+                maxLength={200} 
+                rows="3" 
+                disabled={isSubmitting}
+                style={{ 
+                  padding: '14px 16px', 
+                  background: 'rgba(255, 255, 255, 0.06)', 
+                  border: '1px solid rgba(255, 255, 255, 0.1)', 
+                  borderRadius: '8px', 
+                  color: '#fff', 
+                  fontSize: '0.95rem', 
+                  outline: 'none', 
+                  resize: 'none', 
+                  lineHeight: '1.5', 
+                  fontFamily: 'Prompt, sans-serif',
+                  opacity: isSubmitting ? 0.5 : 1
+                }} 
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                  {inputText.length}/200 {isEn ? 'chars' : 'ตัวอักษร'}
+                </span>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  style={{ 
+                    background: isSubmitting ? '#666' : '#00a854', 
+                    color: '#fff', 
+                    padding: '10px 28px', 
+                    border: 'none', 
+                    borderRadius: '50px', 
+                    fontFamily: 'Mitr, sans-serif', 
+                    fontSize: '0.95rem', 
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    opacity: isSubmitting ? 0.6 : 1
+                  }}
+                >
+                  {isSubmitting ? (isEn ? 'Sending...' : 'กำลังส่ง...') : (isEn ? 'Submit' : 'ส่งความเห็น')}
+                </button>
+              </div>
+            </form>
           ) : (
-            <div style={{ textAlign: 'center', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', marginBottom: '20px' }}>
-              <p style={{ color: '#aaa', marginBottom: '12px' }}>
-                {isEn ? 'Please sign in to join the discussion.' : 'กรุณาเข้าสู่ระบบด้วย Google เพื่อร่วมแสดงความคิดเห็น'}
+            <div style={{ textAlign: 'center', padding: '30px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', marginBottom: '30px' }}>
+              <p style={{ color: '#aaa', fontSize: '0.9rem', margin: '0 0 16px 0' }}>
+                {isEn ? 'Please sign in to join the discussion.' : 'กรุณาเข้าสู่ระบบเพื่อร่วมแสดงความคิดเห็น'}
               </p>
-              <button
-                onClick={handleGoogleLogin}
-                style={{
-                  background: '#fff',
-                  color: '#333',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.9rem'
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24">
+              <button type="button" onClick={handleGoogleLogin} style={{ background: '#fff', color: '#222', padding: '10px 20px', border: 'none', borderRadius: '6px', fontFamily: 'Mitr, sans-serif', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.5-1.14 2.76-2.4 3.61v3h3.86c2.26-2.08 3.67-5.14 3.67-8.46z"/>
                   <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.21v3.11C3.18 21.88 7.31 24 12 24z"/>
                   <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.6H1.21A11.94 11.94 0 0 0 0 12c0 1.92.45 3.74 1.21 5.39l4.06-3.1z"/>
@@ -635,86 +686,101 @@ export default function CheckInPoints({
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             {pageReviews.length === 0 ? (
-              <p style={{ color: '#777', textAlign: 'center', fontStyle: 'italic' }}>
-                {isEn ? 'No comments yet. Be the first to share!' : 'ยังไม่มีคอมเมนต์ มาร่วมแชร์ความเห็นเป็นคนแรกกัน!'}
+              <p style={{ color: '#666', textAlign: 'center', fontSize: '0.9rem', fontStyle: 'italic', padding: '10px 0' }}>
+                {isEn ? 'No comments yet. Be the first!' : 'ยังไม่มีคอมเมนต์'}
               </p>
             ) : (
-              pageReviews.map((review) => {
-                const isOwner = googleUser && review.userId === googleUser.uid;
+              pageReviews.map((review, rIdx) => {
+                const currentUserId = googleUser ? String(googleUser.uid).trim() : null;
+                const reviewOwnerId = review.userId ? String(review.userId).trim() : null;
+                const isOwner = currentUserId && reviewOwnerId && currentUserId === reviewOwnerId;
+                const reviewId = review.id || review.docId;
+
+                const reviewDate = review.createdAt && review.createdAt.seconds 
+                  ? new Date(review.createdAt.seconds * 1000).toLocaleDateString(isEn ? 'en-US' : 'th-TH')
+                  : isEn ? 'Sending...' : 'กำลังส่ง...';
+
+                const safeReviewText = renderReviewText(review.text);
+                const safeReviewName = renderReviewText(review.name);
+
                 return (
-                  <div key={review.id} style={{ 
-                    padding: '12px 16px', 
-                    background: 'rgba(255,255,255,0.03)', 
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.06)'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div key={reviewId ? `rev-${reviewId}` : `rev-idx-${rIdx}`} style={{ padding: '15px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {review.userPhoto && (
-                          <img src={review.userPhoto} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />
-                        )}
-                        <strong style={{ fontSize: '0.9rem', color: '#ddd' }}>{review.name}</strong>
+                        {review.userPhoto && <img src={review.userPhoto} alt="" style={{ width: 26, height: 26, borderRadius: '50%' }} />}
+                        <strong style={{ color: '#fff', fontSize: '1rem', fontFamily: 'Prompt, sans-serif' }}>
+                          {safeReviewName}
+                        </strong>
                       </div>
-                      {isOwner && editingReviewId !== review.id && (
-                        <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem' }}>
-                          <button 
-                            onClick={() => { setEditingReviewId(review.id); setEditText(review.text); }}
-                            style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer' }}
-                          >
-                            {isEn ? 'Edit' : 'แก้ไข'}
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteReview(review)}
-                            style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer' }}
-                          >
-                            {isEn ? 'Delete' : 'ลบ'}
-                          </button>
-                        </div>
-                      )}
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {isOwner && editingReviewId !== reviewId && (
+                          <div style={{ display: 'flex', gap: '10px', fontSize: '0.85rem' }}>
+                            <button 
+                              onClick={() => { setEditingReviewId(reviewId); setEditText(review.text); }} 
+                              style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                            >
+                              {isEn ? 'Edit' : 'แก้ไข'}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteReview(review)} 
+                              style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                            >
+                              {isEn ? 'Delete' : 'ลบ'}
+                            </button>
+                          </div>
+                        )}
+                        <span style={{ color: '#666', fontSize: '0.8rem' }}>
+                          {reviewDate}
+                        </span>
+                      </div>
                     </div>
-                    {editingReviewId === review.id ? (
-                      <div>
+
+                    {editingReviewId === reviewId ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '5px' }}>
                         <textarea 
                           value={editText} 
-                          onChange={e => setEditText(e.target.value)} 
+                          onChange={(e) => setEditText(e.target.value)} 
                           maxLength={200} 
-                          rows="2"
-                          style={{ 
-                            width: '100%', 
-                            padding: '8px 12px', 
-                            background: '#333', 
-                            border: '1px solid #555', 
-                            borderRadius: '6px', 
-                            color: '#fff', 
-                            resize: 'none',
-                            fontSize: '0.85rem',
-                            fontFamily: 'Prompt, sans-serif'
-                          }}
+                          rows="2" 
+                          style={{ padding: '10px', background: '#333', border: '1px solid #555', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', fontFamily: 'Prompt, sans-serif', outline: 'none', resize: 'none' }} 
                         />
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
-                          <button 
-                            onClick={() => setEditingReviewId(null)}
-                            style={{ background: '#555', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-                          >
-                            {isEn ? 'Cancel' : 'ยกเลิก'}
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateReview(review)}
-                            style={{ background: '#00a854', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-                          >
-                            {isEn ? 'Save' : 'บันทึก'}
-                          </button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#666' }}>{editText.length}/200 {isEn ? 'chars' : 'ตัวอักษร'}</span>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                              onClick={() => setEditingReviewId(null)} 
+                              style={{ background: '#555', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}
+                            >
+                               {isEn ? 'Cancel' : 'ยกเลิก'}
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateReview(review)} 
+                              style={{ background: '#00a854', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                              {isEn ? 'Save' : 'บันทึก'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <p style={{ margin: 0, color: '#ccc', fontSize: '0.9rem', whiteSpace: 'pre-line' }}>{review.text}</p>
+                      <p 
+                        style={{ margin: 0, color: '#ccc', fontSize: '0.95rem', whiteSpace: 'pre-line', lineHeight: '1.6', paddingLeft: review.userPhoto ? '34px' : '0' }}
+                        dangerouslySetInnerHTML={{ __html: safeReviewText }}
+                      />
                     )}
                   </div>
                 );
               })
             )}
+          </div>
+          
+          <div style={{ marginTop: '15px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
+            <span style={{ color: '#555', fontSize: '0.8rem' }}>
+              {isEn ? `Total ${pageReviews.length} reviews` : `ทั้งหมด ${pageReviews.length} รีวิว`}
+            </span>
           </div>
         </div>
       </div>

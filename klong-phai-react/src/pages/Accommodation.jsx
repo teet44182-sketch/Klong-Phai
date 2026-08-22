@@ -1,4 +1,5 @@
 // src/pages/Accommodation.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
@@ -33,11 +34,12 @@ export default function Accommodation({
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  useEffect(() => {
-    if (onSearchChange) {
-      onSearchChange(keyword);
-    }
-  }, [keyword, onSearchChange]);
+  // ❌ ลบ useEffect ที่เกี่ยวกับ search
+  // useEffect(() => {
+  //   if (onSearchChange) {
+  //     onSearchChange(keyword);
+  //   }
+  // }, [keyword, onSearchChange]);
 
   const accommodations = (places || [])
     .filter(place => {
@@ -71,16 +73,20 @@ export default function Accommodation({
       lng: p.lng
     }));
 
-  const filteredAccommodations = accommodations.filter(place => {
-    const searchKey = keyword.trim().toLowerCase();
-    if (!searchKey) return true;
-    const name = (place.name || '').toLowerCase();
-    const nameEn = (place.nameEn || '').toLowerCase();
-    const desc = (place.description || '').toLowerCase();
-    const descEn = (place.descriptionEn || '').toLowerCase();
-    return name.includes(searchKey) || nameEn.includes(searchKey) || 
-           desc.includes(searchKey) || descEn.includes(searchKey);
-  });
+  // ❌ ลบ filter การค้นหา
+  // const filteredAccommodations = accommodations.filter(place => {
+  //   const searchKey = keyword.trim().toLowerCase();
+  //   if (!searchKey) return true;
+  //   const name = (place.name || '').toLowerCase();
+  //   const nameEn = (place.nameEn || '').toLowerCase();
+  //   const desc = (place.description || '').toLowerCase();
+  //   const descEn = (place.descriptionEn || '').toLowerCase();
+  //   return name.includes(searchKey) || nameEn.includes(searchKey) || 
+  //          desc.includes(searchKey) || descEn.includes(searchKey);
+  // });
+
+  // ✅ ใช้ accommodations โดยตรง (ไม่ต้อง filter)
+  const filteredAccommodations = accommodations;
 
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
@@ -163,7 +169,8 @@ export default function Accommodation({
             {t('nav_accommodation', isEn ? 'Accommodation' : 'ที่พัก')}
           </h2>
           
-          <div style={{
+          {/* ❌ ลบ Search Bar */}
+          {/* <div style={{
             maxWidth: '500px',
             margin: '0 auto',
             opacity: isVisible ? 1 : 0,
@@ -203,7 +210,7 @@ export default function Accommodation({
                 }}
               />
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -215,7 +222,8 @@ export default function Accommodation({
         minHeight: '50vh',
         height: 'auto' 
       }}>
-        {!loading && (
+        {/* ❌ ลบส่วนแสดงผลลัพธ์การค้นหา */}
+        {/* {!loading && (
           <div style={{
             marginBottom: '20px',
             color: '#888',
@@ -235,7 +243,7 @@ export default function Accommodation({
                 : `แสดงที่พักทั้งหมด ${filteredAccommodations.length} แห่ง`
             )}
           </div>
-        )}
+        )} */}
 
         {loading ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>

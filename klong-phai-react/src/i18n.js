@@ -6,7 +6,7 @@ const resources = {
   th: {
     translation: {
       // ===== Navbar =====
-      brand_title: "คลองไผ่",
+      brand_title: "เที่ยวคลองไผ่",
       nav_home: "หน้าแรก",
       nav_restaurant_acc: "ร้านอาหาร / ที่พัก",
       nav_restaurant: "ร้านอาหาร",
@@ -16,12 +16,30 @@ const resources = {
       nav_contact: "ติดต่อเรา",
       nav_plan: "วางแผนการเดินทาง",
 
-      // ===== Hero =====
-      hero_title: "เทศบาลตำบลคลองไผ่",
-      hero_subtitle: "ค้นพบสถานที่ท่องเที่ยว ที่พัก และร้านอาหารในคลองไผ่",
-      search_placeholder: "ค้นหาสถานที่ท่องเที่ยว...",
+      // ===== Hero (Home Page) =====
+      hero_title: "เที่ยวคลองไผ่",
+      hero_subtitle: "ชวนมาเที่ยว มาพัก มาสัมผัสธรรมชาติ",
+      hero_description: "ออกเดินทางมาสัมผัสธรรมชาติ สนุกกับกิจกรรม และพักผ่อนท่ามกลางบรรยากาศดี ๆ ที่คลองไผ่",
+      hero_button: "สำรวจคลองไผ่",
+      hero_more_info: "ข้อมูลเพิ่มเติม",
+
+      // ===== Hero Alt =====
+      hero_alt: "วัดเขาพริก",
+
+      // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
+      features_title: "ค้นพบคลองไผ่",
+      features_subtitle: "ทุกสิ่งที่คุณต้องรู้ก่อนไปเที่ยวคลองไผ่",
+      feature_1_title: "แนะนำสถานที่",
+      feature_1_desc: "รวมจุดน่าเที่ยวและสถานที่น่าสนใจในคลองไผ่ ที่อยากชวนให้คุณออกไปสัมผัสด้วยตัวเอง",
+      feature_2_title: "แผนที่ชุมชน",
+      feature_2_desc: "สำรวจสถานที่น่าสนใจรอบคลองไผ่ พร้อมข้อมูลสำหรับการเดินทาง",
+      feature_3_title: "วางแผนการเดินทาง",
+      feature_3_desc: "เลือกสถานที่ที่สนใจ แล้วจัดแผนการเดินทางของคุณได้ง่าย ๆ ในที่เดียว",
+      feature_4_title: "กิจกรรมน่าสนใจ",
+      feature_4_desc: "หลากหลายกิจกรรม ทั้งเดินเขา ล่องเรือ SUP และเรียนรู้ภูมิปัญญาท้องถิ่น",
 
       // ===== Search =====
+      search_placeholder: "ค้นหาสถานที่ท่องเที่ยว...",
       search_result: 'ผลการค้นหา "{keyword}" ({count} รายการ)',
       no_result: "ไม่พบข้อมูลสถานที่ที่คุณค้นหา",
 
@@ -205,13 +223,13 @@ const resources = {
       
       // ===== Info Sections (Home Page) =====
       about_title: "ชุมชนคลองไผ่คืออะไร?",
-      about_desc: "ชุมชนคลองไผ่เป็นชุมชนท่องเที่ยวเชิงนิเวศที่มีความโดดเด่นด้านวัฒนธรรมท้องถิ่น ธรรมชาติที่สวยงาม และการต้อนรับที่อบอุ่น ตั้งอยู่ในพื้นที่อำเภอสีคิ้ว จังหวัดนครราชสีมา เป็นแหล่งท่องเที่ยวที่เหมาะสำหรับผู้ที่ต้องการพักผ่อนหย่อนใจ เรียนรู้วิถีชีวิตท้องถิ่น และสัมผัสกับธรรมชาติที่บริสุทธิ์",
-      attractions_title: "สถานที่น่าสนใจ",
-      attractions_desc: "ภายในชุมชนคลองไผ่มีสถานที่ท่องเที่ยวที่น่าสนใจมากมาย ทั้งวัดเขาพริก จุดชมวิวเขื่อนลำตะคอง ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ",
-      activities_title: "กิจกรรมท่องเที่ยว",
-      activities_desc: "เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก",
+      about_desc: "คลองไผ่คือคำตอบของวันพักผ่อนที่แท้จริง ชุมชนเล็กๆ ริมน้ำที่เต็มไปด้วยวิถีชีวิตเรียบง่าย ธรรมชาติบริสุทธิ์ และวัฒนธรรมท้องถิ่นที่ยังคงความเป็นเอกลักษณ์ ที่นี่คุณจะได้พบกับภูเขา สายน้ำ รอยยิ้มอบอุ่น และการต้อนรับที่ทำให้คุณรู้สึกเหมือนอยู่บ้าน เหมาะสำหรับทุกคนที่ต้องการหลีกหนีความวุ่นวาย มาพักผ่อนหย่อนใจ และเก็บเกี่ยวประสบการณ์ดีๆ ติดตัวกลับไป",
+      attractions_section_title: "สถานที่น่าสนใจ",
+      attractions_section_desc: "ภายในชุมชนคลองไผ่มีสถานที่ท่องเที่ยวที่น่าสนใจมากมาย ทั้งวัดเขาพริก จุดชมวิวเขื่อนลำตะคอง ศูนย์อนุรักษ์พันธุกรรมพืช และกิจกรรม SUP Board ล่องแม่น้ำบรรพกาล (ลำตะคอง) นอกจากนี้ยังมีร้านอาหารและที่พักที่พร้อมให้บริการนักท่องเที่ยวอย่างเต็มรูปแบบ",
+      activities_section_title: "กิจกรรมท่องเที่ยว",
+      activities_section_desc: "เที่ยวชมวัดวาอาราม ชมธรรมชาติ เดินป่าพิชิตยอดเขา ล่องแพ SUP Board ถ่ายรูปจุดชมวิว ชิมอาหารท้องถิ่น และพักผ่อนในโฮมสเตย์ที่อบอุ่น ทุกกิจกรรมได้รับการออกแบบให้เหมาะสมกับนักท่องเที่ยวทุกวัย พร้อมมัคคุเทศก์ท้องถิ่นที่มีประสบการณ์คอยอำนวยความสะดวก",
 
-      // ===== Image Alt Text (เพิ่มเติมเพื่อให้ Home.jsx ทำงานสมบูรณ์) =====
+      // ===== Image Alt Text =====
       alt_about_1: "ชุมชนคลองไผ่",
       alt_about_2: "ธรรมชาติคลองไผ่",
       alt_about_3: "วิวคลองไผ่",
@@ -226,7 +244,7 @@ const resources = {
   en: {
     translation: {
       // ===== Navbar =====
-      brand_title: "Khlong Phai",
+      brand_title: "Explore Klongpai",
       nav_home: "Home",
       nav_restaurant_acc: "Dining & Stay",
       nav_restaurant: "Restaurants",
@@ -236,12 +254,30 @@ const resources = {
       nav_contact: "Contact Us",
       nav_plan: "Plan Your Trip",
 
-      // ===== Hero =====
-      hero_title: "Khlong Phai Subdistrict Municipality",
-      hero_subtitle: "Discover attractions, accommodations and restaurants in Khlong Phai",
-      search_placeholder: "Search attractions...",
+      // ===== Hero (Home Page) =====
+      hero_title: "Klongpai",
+      hero_subtitle: "Visit, relax, and reconnect with nature.",
+      hero_description: "Come experience nature, enjoy fun activities, and relax in the beautiful atmosphere of Klongpai.",
+      hero_button: "Explore Klongpai",
+      hero_more_info: "More information",
+
+      // ===== Hero Alt =====
+      hero_alt: "Wat Khao Phrik",
+
+      // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
+      features_title: "Discover Klongpai",
+      features_subtitle: "Everything you need to know before visiting Klongpai",
+      feature_1_title: "Recommended Places",
+      feature_1_desc: "Discover must-visit spots and interesting places around Klongpai, waiting for you to explore.",
+      feature_2_title: "Community Map",
+      feature_2_desc: "Explore interesting places around Khlong Phai with useful travel information.",
+      feature_3_title: "Plan Your Trip",
+      feature_3_desc: "Choose the places you want to visit and easily create your own itinerary in one place.",
+      feature_4_title: "Interesting Activities",
+      feature_4_desc: "Various activities including hiking, SUP boating, and learning local wisdom",
 
       // ===== Search =====
+      search_placeholder: "Search attractions...",
       search_result: 'Search results for "{keyword}" ({count} items)',
       no_result: "No places found",
 
@@ -277,7 +313,7 @@ const resources = {
       review_placeholder: "Write a review about this place... (2-200 characters)",
 
       // ===== Check-in Page =====
-      checkin_title: "Top 10 Check-in Points in Khlong Phai",
+      checkin_title: "Top 10 Check-in Points in Klongpai",
       checkin_subtitle: "Rankings update in real-time based on heart votes",
       checkin_discuss_title: "Discuss these 10 Check-in Points",
       checkin_placeholder: "Write a review or recommendation... (2-200 characters)",
@@ -289,7 +325,7 @@ const resources = {
       rank: "Rank",
 
       // ===== Map Page =====
-      map_title: "Khlong Phai Community Infographic Map",
+      map_title: "Klongpai Community Infographic Map",
       map_subtitle: "Traveler map — Click pins for details",
       filter_all: "All",
       filter_travel: "Attractions",
@@ -424,17 +460,17 @@ const resources = {
       confirm_delete: "Are you sure you want to delete this comment?",
       
       // ===== Info Sections (Home Page) =====
-      about_title: "What is Khlong Phai Community?",
-      about_desc: "Khlong Phai is an ecotourism community with outstanding local culture, beautiful nature, and warm hospitality. Located in Sikhio District, Nakhon Ratchasima Province, it is a perfect destination for those seeking relaxation, learning about local life, and experiencing pristine nature.",
-      attractions_title: "Interesting Places",
-      attractions_desc: "Khlong Phai community has many interesting tourist attractions including Wat Khao Phrik, Lam Takhong Dam viewpoint, Plant Genetic Conservation Center, and SUP Board activities on the ancient river (Lam Takhong). There are also restaurants and accommodations ready to serve tourists.",
-      activities_title: "Tourist Activities",
-      activities_desc: "Visit temples, enjoy nature, hike to the mountain peak, rafting, SUP Board, take photos at viewpoints, taste local food, and relax in cozy homestays. All activities are designed to suit tourists of all ages, with experienced local guides to facilitate your journey.",
+      about_title: "What is Klongpai Community?",
+      about_desc: "Klongpai is the perfect escape from city life. A small riverside community with simple living, pristine nature, and rich local culture. Here you'll find mountains, rivers, warm smiles, and hospitality that makes you feel at home. Perfect for anyone looking to relax, recharge, and take home unforgettable experiences.",
+      attractions_section_title: "Interesting Places",
+      attractions_section_desc: "Klongpai community has many interesting tourist attractions including Wat Khao Phrik, Lam Takhong Dam viewpoint, Plant Genetic Conservation Center, and SUP Board activities on the ancient river (Lam Takhong). There are also restaurants and accommodations ready to serve tourists.",
+      activities_section_title: "Tourist Activities",
+      activities_section_desc: "Visit temples, enjoy nature, hike to the mountain peak, rafting, SUP Board, take photos at viewpoints, taste local food, and relax in cozy homestays. All activities are designed to suit tourists of all ages, with experienced local guides to facilitate your journey.",
 
-      // ===== Image Alt Text (เพิ่มเติมเพื่อให้ Home.jsx ทำงานสมบูรณ์) =====
-      alt_about_1: "Khlong Phai Community",
-      alt_about_2: "Khlong Phai Nature",
-      alt_about_3: "Khlong Phai View",
+      // ===== Image Alt Text =====
+      alt_about_1: "Klongpai Community",
+      alt_about_2: "Klongpai Nature",
+      alt_about_3: "Klongpai View",
       alt_attractions_1: "Interesting Places",
       alt_attractions_2: "Nature",
       alt_attractions_3: "Mountain View",

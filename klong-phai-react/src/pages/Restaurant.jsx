@@ -1,6 +1,7 @@
 // src/pages/Restaurant.jsx
+
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';  // ✅ แก้ไข: เพิ่ม ' ปิดท้าย
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 import restaurant from '../assets/restaurant.jpg'
@@ -33,11 +34,12 @@ export default function Restaurant({
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  useEffect(() => {
-    if (onSearchChange) {
-      onSearchChange(keyword);
-    }
-  }, [keyword, onSearchChange]);
+  // ❌ ลบ useEffect ที่เกี่ยวกับ search
+  // useEffect(() => {
+  //   if (onSearchChange) {
+  //     onSearchChange(keyword);
+  //   }
+  // }, [keyword, onSearchChange]);
 
   const restaurants = (places || [])
     .filter(place => {
@@ -68,16 +70,20 @@ export default function Restaurant({
       lng: p.lng
     }));
 
-  const filteredRestaurants = restaurants.filter(place => {
-    const searchKey = keyword.trim().toLowerCase();
-    if (!searchKey) return true;
-    const name = (place.name || '').toLowerCase();
-    const nameEn = (place.nameEn || '').toLowerCase();
-    const desc = (place.description || '').toLowerCase();
-    const descEn = (place.descriptionEn || '').toLowerCase();
-    return name.includes(searchKey) || nameEn.includes(searchKey) || 
-           desc.includes(searchKey) || descEn.includes(searchKey);
-  });
+  // ❌ ลบ filter การค้นหา
+  // const filteredRestaurants = restaurants.filter(place => {
+  //   const searchKey = keyword.trim().toLowerCase();
+  //   if (!searchKey) return true;
+  //   const name = (place.name || '').toLowerCase();
+  //   const nameEn = (place.nameEn || '').toLowerCase();
+  //   const desc = (place.description || '').toLowerCase();
+  //   const descEn = (place.descriptionEn || '').toLowerCase();
+  //   return name.includes(searchKey) || nameEn.includes(searchKey) || 
+  //          desc.includes(searchKey) || descEn.includes(searchKey);
+  // });
+
+  // ✅ ใช้ restaurants โดยตรง (ไม่ต้อง filter)
+  const filteredRestaurants = restaurants;
 
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
@@ -160,7 +166,8 @@ export default function Restaurant({
             {t('nav_restaurant', isEn ? 'Restaurants' : 'ร้านอาหาร')}
           </h2>
           
-          <div style={{
+          {/* ❌ ลบ Search Bar */}
+          {/* <div style={{
             maxWidth: '500px',
             margin: '0 auto',
             opacity: isVisible ? 1 : 0,
@@ -200,7 +207,7 @@ export default function Restaurant({
                 }}
               />
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -212,7 +219,8 @@ export default function Restaurant({
         minHeight: '50vh',
         height: 'auto' 
       }}>
-        {!loading && (
+        {/* ❌ ลบส่วนแสดงผลลัพธ์การค้นหา */}
+        {/* {!loading && (
           <div style={{
             marginBottom: '20px',
             color: '#888',
@@ -232,7 +240,7 @@ export default function Restaurant({
                 : `แสดงร้านอาหารทั้งหมด ${filteredRestaurants.length} ร้าน`
             )}
           </div>
-        )}
+        )} */}
 
         {loading ? (
           <div style={{ color: '#aaa', textAlign: 'center', padding: '40px', fontFamily: 'Prompt, sans-serif' }}>
