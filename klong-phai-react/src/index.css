@@ -1,3 +1,7 @@
+/* src/index.css */
+@import 'cropperjs/dist/cropper.css';
+
+/* ...โค้ด CSS ของคุณที่มีอยู่เดิม... */
 :root {
   --text: #6b6375;
   --text-h: #08060d;
