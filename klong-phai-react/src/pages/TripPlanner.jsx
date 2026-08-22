@@ -503,7 +503,7 @@ export default function TripPlanner({
                           <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
+                          <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}></span>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleRemove(place); }}
                             style={{
