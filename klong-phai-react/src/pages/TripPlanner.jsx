@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import SwipeCard from '../components/SwipeCard';
 import { useToast } from '../context/ToastContext';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -38,7 +37,7 @@ const createNumberedIcon = (number, color = '#00a854') =>
   });
 
 // ============================================================
-// ✅ Parse iFrame URL - ดึงเฉพาะ src
+// ✅ Parse iFrame URL
 // ============================================================
 const parseIframeUrl = (input) => {
   if (!input) return '';
@@ -58,9 +57,6 @@ const parseIframeUrl = (input) => {
   return input;
 };
 
-// ============================================================
-// ✅ ดึงพิกัดจาก URL
-// ============================================================
 const extractCoordsFromUrl = (url) => {
   if (!url) return null;
   const cleanUrl = parseIframeUrl(url);
@@ -69,59 +65,37 @@ const extractCoordsFromUrl = (url) => {
   if (qMatch) {
     let q = decodeURIComponent(qMatch[1]).replace(/%2C/g, ',');
     const coordsMatch = q.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
-    if (coordsMatch) {
-      return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
-    }
+    if (coordsMatch) return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
   }
 
   const embedMatch = cleanUrl.match(/!2d([^!]+)!3d([^!]+)/i);
-  if (embedMatch) {
-    return [parseFloat(embedMatch[2]), parseFloat(embedMatch[1])];
-  }
+  if (embedMatch) return [parseFloat(embedMatch[2]), parseFloat(embedMatch[1])];
 
   const embedMatch2 = cleanUrl.match(/!3d([^!]+)!2d([^!]+)/i);
-  if (embedMatch2) {
-    return [parseFloat(embedMatch2[1]), parseFloat(embedMatch2[2])];
-  }
+  if (embedMatch2) return [parseFloat(embedMatch2[1]), parseFloat(embedMatch2[2])];
 
   const atMatch = cleanUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/i);
-  if (atMatch) {
-    return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
-  }
+  if (atMatch) return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
 
   const centerMatch = cleanUrl.match(/[?&]center=([^&]+)/i);
   if (centerMatch) {
     const center = decodeURIComponent(centerMatch[1]);
     const coordsMatch = center.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
-    if (coordsMatch) {
-      return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
-    }
+    if (coordsMatch) return [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])];
   }
 
   return null;
 };
 
-// ============================================================
-// ✅ ดึงพิกัดจาก place
-// ============================================================
 const getPlaceCoords = (place) => {
   if (!place) return null;
-
   if (Array.isArray(place.coords) && place.coords.length === 2) {
     return [parseFloat(place.coords[0]), parseFloat(place.coords[1])];
   }
-
   const lat = parseFloat(place.lat || place.latitude);
   const lng = parseFloat(place.lng || place.longitude);
-  if (!isNaN(lat) && !isNaN(lng)) {
-    return [lat, lng];
-  }
-
-  if (place.mapUrl) {
-    const fromUrl = extractCoordsFromUrl(place.mapUrl);
-    if (fromUrl) return fromUrl;
-  }
-
+  if (!isNaN(lat) && !isNaN(lng)) return [lat, lng];
+  if (place.mapUrl) return extractCoordsFromUrl(place.mapUrl);
   return null;
 };
 
@@ -182,120 +156,81 @@ export default function TripPlanner({
   const activeSelected = setSelectedPlaces ? selectedPlaces : internalSelected;
   const setActiveSelected = setSelectedPlaces || setInternalSelected;
 
-  const [swipeQueue, setSwipeQueue] = useState(places);
+  const [queue, setQueue] = useState(places);
   const [queueSearchKeyword, setQueueSearchKeyword] = useState('');
 
-  // Drag state
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [draggingIndex, setDraggingIndex] = useState(null);
-  const dragItemRef = useRef(null);
+  // Responsive state for mobile/tablet
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkScreen = () => setIsMobile(window.innerWidth < 1024);
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
-    setSwipeQueue(places);
+    setQueue(places);
   }, [places]);
 
-  // ============================================================
-  // ✅ กรองคิวตามคำค้นหา
-  // ============================================================
-  const filteredQueue = swipeQueue.filter(place => {
+  const filteredQueue = queue.filter(place => {
     const keyword = queueSearchKeyword.trim().toLowerCase();
     if (!keyword) return true;
-    
     const name = (place.title || place.name || '').toLowerCase();
     const nameEn = (place.title_en || place.nameEn || '').toLowerCase();
     const desc = (place.description || '').toLowerCase();
     const descEn = (place.description_en || '').toLowerCase();
     const category = (place.category || '').toLowerCase();
-    
-    return name.includes(keyword) || 
-           nameEn.includes(keyword) || 
-           desc.includes(keyword) || 
-           descEn.includes(keyword) ||
-           category.includes(keyword);
+    return name.includes(keyword) || nameEn.includes(keyword) || desc.includes(keyword) || descEn.includes(keyword) || category.includes(keyword);
   });
 
-  // ============================================================
-  // ✅ สร้าง Google Maps URL
-  // ============================================================
   const generateGoogleMapsUrl = (placesList) => {
     if (!placesList || placesList.length === 0) return '';
-
     const coordsList = placesList.map(p => getPlaceCoords(p)).filter(Boolean);
-    
     if (coordsList.length === 0) {
       showToast('ไม่พบพิกัดของสถานที่');
       return '';
     }
-
     if (coordsList.length === 1) {
       return `https://www.google.com/maps/dir/?api=1&destination=${coordsList[0][0]},${coordsList[0][1]}`;
     }
-
     const origin = `${coordsList[0][0]},${coordsList[0][1]}`;
     const destination = `${coordsList[coordsList.length - 1][0]},${coordsList[coordsList.length - 1][1]}`;
     const waypoints = coordsList.slice(1, -1).map(c => `${c[0]},${c[1]}`).join('|');
-
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
     if (waypoints) url += `&waypoints=${waypoints}`;
     return url;
   };
 
-  const handleSwipeRight = (place) => {
+  const handleAdd = (place) => {
     const targetId = place.id || place.docId;
     const placeTitle = place.title || place.name || 'สถานที่';
     const exists = activeSelected.some(p => (p.id || p.docId) === targetId);
-
     if (exists) {
       showToast(`"${placeTitle}" ${isEn ? 'already in trip' : 'อยู่ในทริปแล้ว'}`);
       return;
     }
     setActiveSelected(prev => [...prev, place]);
-    setSwipeQueue(prev => prev.filter(p => (p.id || p.docId) !== targetId));
+    setQueue(prev => prev.filter(p => (p.id || p.docId) !== targetId));
     showToast(`${isEn ? 'Added' : 'เพิ่ม'} "${placeTitle}" ${isEn ? 'to trip' : 'ลงทริปแล้ว'}`);
-  };
-
-  const handleSwipeLeft = (place) => {
-    const targetId = place.id || place.docId;
-    const placeTitle = place.title || place.name || 'สถานที่';
-
-    if (onRemoveFromPlan) {
-      onRemoveFromPlan(place);
-    } else {
-      setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
-      showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
-    }
-    setSwipeQueue(prev => {
-      if (prev.some(p => (p.id || p.docId) === targetId)) return prev;
-      return [...prev, place];
-    });
-  };
-
-  const handleButtonClick = (place, isAdded) => {
-    if (isAdded) {
-      handleRemove(place);
-    } else {
-      handleSwipeRight(place);
-    }
   };
 
   const handleRemove = (place) => {
     const targetId = place.id || place.docId;
     const placeTitle = place.title || place.name || 'สถานที่';
-
     if (onRemoveFromPlan) {
       onRemoveFromPlan(place);
     } else {
       setActiveSelected(prev => prev.filter(p => (p.id || p.docId) !== targetId));
-      showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
     }
-    setSwipeQueue(prev => {
+    setQueue(prev => {
       if (prev.some(p => (p.id || p.docId) === targetId)) return prev;
       return [...prev, place];
     });
+    showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
   };
 
   const handleNavigate = () => {
@@ -303,7 +238,6 @@ export default function TripPlanner({
       showToast('กรุณาเลือกสถานที่ก่อน');
       return;
     }
-
     if (typeof propsGenerateMultiStopMapUrl === 'function') {
       const url = propsGenerateMultiStopMapUrl(activeSelected);
       if (url && url !== '#') {
@@ -311,13 +245,9 @@ export default function TripPlanner({
         return;
       }
     }
-
     const url = generateGoogleMapsUrl(activeSelected);
-    if (url) {
-      window.open(url, '_blank');
-    } else {
-      showToast('ไม่พบพิกัดของสถานที่ที่เลือก');
-    }
+    if (url) window.open(url, '_blank');
+    else showToast('ไม่พบพิกัดของสถานที่ที่เลือก');
   };
 
   const applyCombo = (combo) => {
@@ -343,48 +273,40 @@ export default function TripPlanner({
 
     setActiveSelected(prev => [...prev, ...newOnes]);
     const newIds = newOnes.map(p => p.id || p.docId);
-    setSwipeQueue(prev => prev.filter(p => !newIds.includes(p.id || p.docId)));
+    setQueue(prev => prev.filter(p => !newIds.includes(p.id || p.docId)));
     showToast(`เพิ่ม Combo "${isEn ? combo.titleEn : combo.title}" (${newOnes.length} ที่)`);
   };
 
-  // ============================================================
-  // ✅ Drag & Drop Handlers (พร้อม Animation)
-  // ============================================================
+  // Drag & Drop
+  const [draggingIndex, setDraggingIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const dragItemRef = useRef(null);
+
   const handleDragStart = (e, index) => {
     setDraggingIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(index));
-    
-    // เก็บ ref ของ element ที่กำลังลาก
     dragItemRef.current = e.currentTarget;
-    
-    // เพิ่ม delay เพื่อให้ animation ทำงาน
     setTimeout(() => {
       if (e.currentTarget) {
         e.currentTarget.style.opacity = '0.5';
         e.currentTarget.style.transform = 'scale(0.95)';
-        e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
-        e.currentTarget.style.zIndex = '100';
       }
     }, 0);
   };
 
-  const handleDragEnd = (e) => {
+  const handleDragEnd = () => {
     setDraggingIndex(null);
     setDragOverIndex(null);
-    
     if (dragItemRef.current) {
       dragItemRef.current.style.opacity = '1';
       dragItemRef.current.style.transform = 'scale(1)';
-      dragItemRef.current.style.boxShadow = 'none';
-      dragItemRef.current.style.zIndex = 'auto';
     }
     dragItemRef.current = null;
   };
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
   };
 
@@ -396,23 +318,15 @@ export default function TripPlanner({
   const handleDrop = (e, toIndex) => {
     e.preventDefault();
     setDragOverIndex(null);
-    
     const fromIndex = Number(e.dataTransfer.getData('text/plain'));
     if (isNaN(fromIndex) || fromIndex === toIndex) return;
-
-    // เปลี่ยนลำดับแบบมี Animation
     const updated = [...activeSelected];
     const [moved] = updated.splice(fromIndex, 1);
     updated.splice(toIndex, 0, moved);
     setActiveSelected(updated);
-
-    // แสดง Toast แจ้งเตือน
     showToast(isEn ? `Reordered: #${fromIndex+1} → #${toIndex+1}` : `เปลี่ยนลำดับ: #${fromIndex+1} → #${toIndex+1}`);
   };
 
-  // ============================================================
-  // ✅ Route Polyline
-  // ============================================================
   const routePolyline = activeSelected.map(p => getPlaceCoords(p)).filter(Boolean);
   const defaultCenter = [14.872085, 101.569337];
   const mapCenter = routePolyline.length > 0 ? routePolyline[0] : defaultCenter;
@@ -422,45 +336,45 @@ export default function TripPlanner({
     : (() => {
         if (activeSelected.length === 0) return isEn ? '0 min' : '0 นาที';
         const minutes = activeSelected.length * 35 + Math.max(0, activeSelected.length - 1) * 12;
-        if (minutes < 60) {
-          return `~${minutes} ${isEn ? 'min' : 'นาที'}`;
-        }
+        if (minutes < 60) return `~${minutes} ${isEn ? 'min' : 'นาที'}`;
         const h = Math.floor(minutes / 60);
         const m = minutes % 60;
-        if (m === 0) {
-          return `~${h} ${isEn ? 'hr' : 'ชม.'}`;
-        }
+        if (m === 0) return `~${h} ${isEn ? 'hr' : 'ชม.'}`;
         return `~${h} ${isEn ? 'hr' : 'ชม.'} ${m} ${isEn ? 'min' : 'นาที'}`;
       })();
 
-  // ============================================================
-  // ✅ Render
-  // ============================================================
   return (
-    <div style={{ paddingTop: '80px', minHeight: '100vh', background: '#1a1a1a', color: '#fff', fontFamily: 'Prompt, sans-serif' }}>
+    <div style={{
+      paddingTop: '80px',
+      minHeight: '100vh',
+      background: '#1a1a1a',
+      color: '#fff',
+      fontFamily: 'Prompt, sans-serif',
+      touchAction: 'pan-y', // ✅ อนุญาตให้เลื่อนขึ้นลง แต่ป้องกันการซูม pinch
+    }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 60px' }}>
 
-        {/* หัวข้อหลัก */}
+        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h1 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.8rem', marginBottom: '4px' }}>
             {isEn ? 'Trip Planner' : 'วางแผนเส้นทางท่องเที่ยว'}
           </h1>
           <p style={{ color: '#aaa', fontSize: '0.85rem' }}>
-            {isEn ? 'Swipe right = add · Swipe left = remove' : 'ปัดขวา = เพิ่ม · ปัดซ้าย = ลบออกจากคิว'}
+            {isEn ? 'Drag to reorder or use buttons' : 'ลากเพื่อเปลี่ยนลำดับ หรือใช้ปุ่มเพิ่ม/ลบ'}
           </p>
         </div>
 
-        {/* === GRID 2 คอลัมน์ === */}
+        {/* Responsive Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
           gap: '30px',
           alignItems: 'start'
         }}>
-          {/* ===== COLUMN LEFT: แผนที่ + จุดแวะ + คอมโบ ===== */}
+          {/* LEFT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-            {/* Combo แนะนำ */}
+            
+            {/* Combo */}
             <div>
               <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.05rem', marginBottom: '12px' }}>
                 {isEn ? 'Recommended Combos' : 'Combo แนะนำ'}
@@ -493,7 +407,7 @@ export default function TripPlanner({
               </div>
             </div>
 
-            {/* จุดแวะในทริป + ปุ่มนำทาง */}
+            {/* Selected places */}
             <div style={{
               background: activeSelected.length > 0 ? 'rgba(0, 168, 84, 0.12)' : 'rgba(255,255,255,0.03)',
               padding: '16px 20px',
@@ -523,9 +437,6 @@ export default function TripPlanner({
                       cursor: 'pointer',
                       fontWeight: 'bold',
                       fontSize: '0.85rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
                     }}
                   >
                     {isEn ? 'Navigate' : 'นำทาง'}
@@ -559,47 +470,23 @@ export default function TripPlanner({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          background: isDragOver 
-                            ? 'rgba(0, 168, 84, 0.25)' 
-                            : isDragging 
-                              ? 'rgba(0, 168, 84, 0.15)' 
-                              : 'rgba(255,255,255,0.06)',
+                          background: isDragOver ? 'rgba(0, 168, 84, 0.25)' : isDragging ? 'rgba(0, 168, 84, 0.15)' : 'rgba(255,255,255,0.06)',
                           padding: '10px 14px',
                           borderRadius: '10px',
                           cursor: 'grab',
                           userSelect: 'none',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          transition: 'all 0.25s',
                           transform: isDragOver ? 'scale(1.02)' : isDragging ? 'scale(0.95)' : 'scale(1)',
                           opacity: isDragging ? 0.6 : 1,
-                          boxShadow: isDragOver 
-                            ? '0 0 20px rgba(0,168,84,0.2), inset 0 0 20px rgba(0,168,84,0.05)' 
-                            : isDragging 
-                              ? '0 20px 60px rgba(0,0,0,0.5)' 
-                              : 'none',
-                          border: isDragOver 
-                            ? '2px dashed #00a854' 
-                            : '2px solid transparent',
+                          boxShadow: isDragOver ? '0 0 20px rgba(0,168,84,0.2)' : isDragging ? '0 20px 60px rgba(0,0,0,0.5)' : 'none',
+                          border: isDragOver ? '2px dashed #00a854' : '2px solid transparent',
                           zIndex: isDragging ? 100 : 1,
                           position: 'relative'
                         }}
                       >
-                        {/* Drag Indicator Line (อนิเมชัน) */}
-                        {isDragOver && (
-                          <div style={{
-                            position: 'absolute',
-                            top: '-2px',
-                            left: '0',
-                            right: '0',
-                            height: '3px',
-                            background: 'linear-gradient(90deg, #00a854, #00e676)',
-                            borderRadius: '2px',
-                            animation: 'pulseLine 0.8s ease-in-out infinite'
-                          }} />
-                        )}
-
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
                           <span style={{
-                            background: isDragOver ? '#00a854' : '#00a854',
+                            background: '#00a854',
                             color: '#fff',
                             width: '26px',
                             height: '26px',
@@ -609,29 +496,16 @@ export default function TripPlanner({
                             justifyContent: 'center',
                             fontWeight: 'bold',
                             fontSize: '0.8rem',
-                            flexShrink: 0,
-                            transition: 'all 0.3s ease',
-                            transform: isDragOver ? 'scale(1.15)' : 'scale(1)'
+                            flexShrink: 0
                           }}>
                             {index + 1}
                           </span>
                           <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ 
-                            color: '#555', 
-                            fontSize: '1.2rem', 
-                            cursor: 'grab',
-                            transition: 'all 0.3s ease',
-                            transform: isDragOver ? 'scale(1.2)' : 'scale(1)'
-                          }}>
-                            
-                          </span>
+                          <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}>⠿</span>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemove(place);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handleRemove(place); }}
                             style={{
                               background: 'rgba(255,77,77,0.2)',
                               color: '#ff4d4d',
@@ -639,33 +513,12 @@ export default function TripPlanner({
                               borderRadius: '6px',
                               padding: '5px 10px',
                               cursor: 'pointer',
-                              fontSize: '0.85rem',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseOver={(e) => {
-                              e.currentTarget.style.background = 'rgba(255,77,77,0.4)';
-                              e.currentTarget.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseOut={(e) => {
-                              e.currentTarget.style.background = 'rgba(255,77,77,0.2)';
-                              e.currentTarget.style.transform = 'scale(1)';
+                              fontSize: '0.85rem'
                             }}
                           >
                             ✕
                           </button>
                         </div>
-
-                        {/* Global CSS Animation Keyframes (ใส่ในหัวข้อ) */}
-                        <style>{`
-                          @keyframes pulseLine {
-                            0%, 100% { opacity: 1; transform: scaleX(1); }
-                            50% { opacity: 0.5; transform: scaleX(0.8); }
-                          }
-                          @keyframes glowPulse {
-                            0%, 100% { box-shadow: 0 0 20px rgba(0,168,84,0.2); }
-                            50% { box-shadow: 0 0 40px rgba(0,168,84,0.4); }
-                          }
-                        `}</style>
                       </div>
                     );
                   })}
@@ -673,10 +526,20 @@ export default function TripPlanner({
               )}
             </div>
 
-            {/* แผนที่ */}
+            {/* Map - ล็อกการซูม */}
             <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <MapContainer center={mapCenter} zoom={13} style={{ height: '340px', width: '100%' }}>
-                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <MapContainer
+                center={mapCenter}
+                zoom={13}
+                style={{ height: '340px', width: '100%' }}
+                scrollWheelZoom={false}   // ✅ ไม่ซูมด้วยเมาส์
+                touchZoom={false}         // ✅ ไม่ซูมด้วยสองนิ้ว
+                dragging={true}           // ✅ ยังลากแผนที่ได้
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
                 <MapController coordsList={routePolyline} />
                 {routePolyline.length > 1 && (
                   <Polyline positions={routePolyline} color="#00a854" weight={3} dashArray="6, 6" />
@@ -700,12 +563,10 @@ export default function TripPlanner({
                 })}
               </MapContainer>
             </div>
+          </div>
 
-          </div> {/* end col left */}
-
-          {/* ===== COLUMN RIGHT: สถานที่แนะนำ (คิว) พร้อม Search Bar ===== */}
+          {/* RIGHT COLUMN */}
           <div>
-            {/* ✅ Search Bar สำหรับค้นหาในคิว */}
             <div style={{ marginBottom: '16px' }}>
               <input
                 type="text"
@@ -721,25 +582,14 @@ export default function TripPlanner({
                   color: '#fff',
                   fontSize: '0.9rem',
                   outline: 'none',
-                  fontFamily: 'Prompt, sans-serif',
-                  transition: 'all 0.3s ease'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#00a854';
-                  e.target.style.background = 'rgba(255,255,255,0.1)';
-                  e.target.style.boxShadow = '0 0 20px rgba(0,168,84,0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255,255,255,0.15)';
-                  e.target.style.background = 'rgba(255,255,255,0.06)';
-                  e.target.style.boxShadow = 'none';
+                  fontFamily: 'Prompt, sans-serif'
                 }}
               />
             </div>
 
             <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.1rem', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>
-                {isEn ? `Suggested Places` : `สถานที่แนะนำ`}
+                {isEn ? 'Suggested Places' : 'สถานที่แนะนำ'}
                 {queueSearchKeyword.trim() !== '' && (
                   <span style={{ fontSize: '0.8rem', color: '#aaa', marginLeft: '8px', fontWeight: 'normal' }}>
                     ({filteredQueue.length} {isEn ? 'results' : 'ผลลัพธ์'})
@@ -747,13 +597,13 @@ export default function TripPlanner({
                 )}
               </span>
               <span style={{ fontSize: '0.85rem', color: '#888', fontWeight: 'normal' }}>
-                {swipeQueue.length} {isEn ? 'total' : 'ทั้งหมด'}
+                {queue.length} {isEn ? 'total' : 'ทั้งหมด'}
               </span>
             </h3>
 
             {filteredQueue.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '30px', color: '#777', background: '#222', borderRadius: '12px' }}>
-                {queueSearchKeyword.trim() !== '' 
+                {queueSearchKeyword.trim() !== ''
                   ? (isEn ? `No results found for "${queueSearchKeyword}"` : `ไม่พบผลลัพธ์สำหรับ "${queueSearchKeyword}"`)
                   : (isEn ? 'All places selected!' : 'คุณเลือกครบทุกสถานที่ในคิวแล้ว!')
                 }
@@ -767,13 +617,9 @@ export default function TripPlanner({
                   const imgUrl = place.img || place.imageUrl || place.image;
 
                   return (
-                    <SwipeCard
+                    <div
                       key={placeId ? `queue-${placeId}` : `queue-idx-${index}`}
-                      isAdded={isAdded}
-                      onSwipeRight={() => handleSwipeRight(place)}
-                      onSwipeLeft={() => handleSwipeLeft(place)}
-                    >
-                      <div style={{
+                      style={{
                         background: '#252525',
                         padding: '16px',
                         borderRadius: '12px',
@@ -781,51 +627,40 @@ export default function TripPlanner({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                        transition: 'all 0.3s ease',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {imgUrl && <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />}
-                          <div>
-                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{title}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '2px' }}>
-                              {place.category || 'สถานที่ท่องเที่ยว'}
-                            </div>
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {imgUrl && <img src={imgUrl} alt={title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />}
+                        <div>
+                          <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{title}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '2px' }}>
+                            {place.category || 'สถานที่ท่องเที่ยว'}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleButtonClick(place, isAdded)}
-                          style={{
-                            background: isAdded ? '#ff4d4d' : '#00a854',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '8px 14px',
-                            borderRadius: '20px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
-                        >
-                          {isAdded ? (isEn ? 'Remove' : 'ลบออก') : (isEn ? 'Add' : 'เพิ่ม')}
-                        </button>
                       </div>
-                    </SwipeCard>
+                      <button
+                        onClick={() => (isAdded ? handleRemove(place) : handleAdd(place))}
+                        style={{
+                          background: isAdded ? '#ff4d4d' : '#00a854',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '8px 14px',
+                          borderRadius: '20px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        {isAdded ? (isEn ? 'Remove' : 'ลบออก') : (isEn ? 'Add' : 'เพิ่ม')}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
             )}
-          </div> {/* end col right */}
-
-        </div> {/* end grid */}
+          </div>
+        </div>
       </div>
     </div>
   );
