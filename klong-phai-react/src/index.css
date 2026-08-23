@@ -1,7 +1,11 @@
 /* src/index.css */
+
+/* ✅ Import Cropper CSS */
 @import 'cropperjs/dist/cropper.css';
 
-/* ...โค้ด CSS ของคุณที่มีอยู่เดิม... */
+/* ============================================
+   GLOBAL ROOT VARIABLES (อาจไม่ใช้แล้ว แต่คงไว้)
+   ============================================ */
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -13,7 +17,8 @@
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -46,7 +51,8 @@
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
+      rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
 
   #social .button-icon {
@@ -54,22 +60,40 @@
   }
 }
 
+/* ============================================
+   BODY STYLES
+   ============================================ */
 body {
   margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  background-color: #2b2b2b; /* สีพื้นหลังตาม App.css */
+  /* ครอบคลุมด้วย App.css แล้ว แต่กันไว้ */
 }
 
+/* ============================================
+   #root - ครอบคลุมทั้งแอป
+   ปล่อยให้ App.css จัดการ full-width
+   ============================================ */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  /* ไม่กำหนด width หรือ max-width ที่ตายตัว */
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
+  background-color: #2b2b2b; /* สอดคล้องกับ App.css */
+  /* ไม่มี border-inline หรือการจำกัดขนาด */
 }
 
+/* ============================================
+   HEADING & TYPOGRAPHY
+   ============================================ */
 h1,
 h2 {
   font-family: var(--heading);
