@@ -101,7 +101,7 @@ export default function FloatingTripBasket({
         zIndex: -1,
       }} />
 
-      <span style={{ fontSize: '1.4rem' }}>🗺️</span>
+      <span style={{ fontSize: '1.4rem' }}></span>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
         <span style={{ fontSize: '0.85rem', fontWeight: 'bold', lineHeight: '1.2' }}>
           {isDragOver ? 'ปล่อยเพื่อเพิ่ม!' : 'ทริปของคุณ'}

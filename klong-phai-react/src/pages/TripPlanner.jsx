@@ -267,7 +267,7 @@ export default function TripPlanner({
     );
 
     if (newOnes.length === 0) {
-      showToast('ℹสถานที่ใน Combo นี้อยู่ในทริปครบแล้ว');
+      showToast('อยู่ในทริปครบแล้ว');
       return;
     }
 
