@@ -11,7 +11,7 @@ import cook_n_coff_view from '../assets/cook_n_coff_view.jpg';
 import cook_n_coff_view2 from '../assets/cook_n_coff_view2.jpg';
 import Rpsg_Sut from '../assets/Rpsg_Sut.jpg';
 import cook_and_cof from '../assets/cook_and_cof.jpg';
-import kpick from '../assets/kpick.jpg';
+import kpick from '../assets/kpick.jpg'
 import char from '../assets/char.jpg';
 import kat from '../assets/kat.jpg';
 import ggk from '../assets/ggk.jpg';
