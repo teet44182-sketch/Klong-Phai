@@ -26,7 +26,10 @@ import {
   setDoc,
   increment,
   deleteDoc,
-  updateDoc
+  updateDoc,
+  writeBatch,
+  getDocs,
+  where
 } from 'firebase/firestore';
 
 // Lazy Loading
@@ -51,26 +54,52 @@ const ADMIN_EMAILS = [
   'khunyoi16@gmail.com'
 ];
 
+// ============================================================
+// ✅ PageViewTracker – บันทึกยอดเข้าชมแบบรวมและรายวัน
+// ============================================================
 function PageViewTracker() {
   const location = useLocation();
   useEffect(() => {
     const track = async () => {
       try {
         const page = location.pathname || '/';
-        const ref = doc(db, 'analytics', 'pageViews');
-        await setDoc(ref, {
+        const now = new Date();
+        // ใช้ timezone Asia/Bangkok
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }); // YYYY-MM-DD
+
+        const batch = writeBatch(db);
+
+        // 1. อัปเดตยอดรวมทั้งหมด
+        const totalRef = doc(db, 'analytics', 'pageViews');
+        batch.set(totalRef, {
           [page]: increment(1),
           total: increment(1),
           lastUpdated: serverTimestamp()
         }, { merge: true });
-      } catch (e) {}
+
+        // 2. อัปเดตยอดรายวัน
+        const dailyRef = doc(db, 'dailyViews', todayStr);
+        batch.set(dailyRef, {
+          [page]: increment(1),
+          total: increment(1),
+          lastUpdated: serverTimestamp()
+        }, { merge: true });
+
+        await batch.commit();
+      } catch (e) {
+        // เงียบไว้เพื่อไม่ให้รบกวน UX
+        console.warn('Analytics tracking error:', e);
+      }
     };
     track();
   }, [location.pathname]);
   return null;
 }
 
-const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+// ============================================================
+// ฟังก์ชันอรรถประโยชน์ (export เพื่อใช้ที่อื่น)
+// ============================================================
+export const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -186,7 +215,7 @@ const getPlaceCoords = (place) => {
   return null;
 };
 
-// ✅ ฟังก์ชันตรวจจับ Genre จากชื่อ
+// ✅ ตรวจจับ Genre จากชื่อ
 const detectGenreFromName = (name) => {
   if (!name) return 'other';
   const n = name.toLowerCase().trim();
@@ -202,7 +231,6 @@ const detectGenreFromName = (name) => {
   return 'other';
 };
 
-// Genre Options
 const GENRE_OPTIONS = [
   { value: 'other', label: 'อื่นๆ' },
   { value: 'cafe', label: 'คาเฟ่และร้านอาหาร' },
@@ -214,6 +242,9 @@ const GENRE_OPTIONS = [
   { value: 'new_attraction', label: 'ท่องเที่ยวแนวใหม่' },
 ];
 
+// ============================================================
+// MainApp Component
+// ============================================================
 function MainApp() {
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
@@ -228,6 +259,15 @@ function MainApp() {
   const [loadingPlaces, setLoadingPlaces] = useState(true);
   const [pageViews, setPageViews] = useState({});
   const [showAnalytics, setShowAnalytics] = useState(false);
+
+  // ===== State สำหรับสถิติรายวัน =====
+  const [dailyStats, setDailyStats] = useState({
+    todayTotal: 0,
+    avgDaily: 0,
+    dailyData: [],
+    lastUpdated: null,
+    loading: false
+  });
 
   const [selectedPlaces, setSelectedPlaces] = useState(() => {
     try {
@@ -267,16 +307,15 @@ function MainApp() {
   const [likes, setLikes] = useState({});
   const [reviewsData, setReviewsData] = useState({});
 
-  // ===== Crop Related States =====
+  // ===== Crop Related =====
   const [cropModal, setCropModal] = useState({ isOpen: false, imageSrc: null, mode: 'main' });
   const cropperRef = useRef(null);
 
-  // ===== Cursor Glow Effect =====
+  // ===== Cursor Glow =====
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  
-  // ✅ State สำหรับภาษาในฟอร์ม Admin
-  const [formLang, setFormLang] = useState('th'); // 'th' หรือ 'en'
+  const [formLang, setFormLang] = useState('th');
 
+  // ===== Effects =====
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePos({ x: e.clientX, y: e.clientY });
@@ -287,12 +326,10 @@ function MainApp() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // ===== Save to Local Storage =====
   useEffect(() => {
     localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
   }, [selectedPlaces]);
 
-  // ===== Auth =====
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -307,7 +344,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Places =====
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "places"), (snapshot) => {
       setPlaces(snapshot.docs.map(d => ({ id: d.id, docId: d.id, ...d.data() })));
@@ -316,7 +352,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Likes =====
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
       const likesMap = {};
@@ -326,7 +361,6 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Reviews =====
   useEffect(() => {
     const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -341,7 +375,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Analytics =====
+  // ===== Fetch Analytics (ยอดรวม) =====
   useEffect(() => {
     if (!isAdmin) return;
     const unsub = onSnapshot(doc(db, 'analytics', 'pageViews'), (snap) => {
@@ -350,8 +384,61 @@ function MainApp() {
     return () => unsub();
   }, [isAdmin]);
 
+  // ===== ฟังก์ชันดึงข้อมูลสถิติรายวัน =====
+  const fetchDailyStats = async () => {
+    setDailyStats(prev => ({ ...prev, loading: true }));
+    try {
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const startDate = thirtyDaysAgo.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+
+      const q = query(
+        collection(db, 'dailyViews'),
+        where('__name__', '>=', startDate),
+        where('__name__', '<=', today)
+      );
+      const querySnapshot = await getDocs(q);
+      let totalDailySum = 0;
+      let todayTotal = 0;
+      let lastUpdated = null;
+
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        const dayTotal = data.total || 0;
+        totalDailySum += dayTotal;
+        if (doc.id === today) {
+          todayTotal = dayTotal;
+        }
+        if (data.lastUpdated && (!lastUpdated || data.lastUpdated.seconds > lastUpdated.seconds)) {
+          lastUpdated = data.lastUpdated;
+        }
+      });
+
+      const avgDaily = Math.round((totalDailySum / 30) * 10) / 10;
+
+      setDailyStats({
+        todayTotal,
+        avgDaily,
+        dailyData: querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })),
+        lastUpdated: lastUpdated ? new Date(lastUpdated.seconds * 1000) : null,
+        loading: false
+      });
+    } catch (error) {
+      console.error('Error fetching daily stats:', error);
+      setDailyStats(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  // เมื่อเปิด Analytics Modal ให้ดึงข้อมูล
+  useEffect(() => {
+    if (showAnalytics && isAdmin) {
+      fetchDailyStats();
+    }
+  }, [showAnalytics, isAdmin]);
+
   // ============================================================
-  // TRIP PLANNER FUNCTIONS
+  // TRIP PLANNER FUNCTIONS (คงเดิม)
   // ============================================================
   const handleAddPlaceToTrip = (place) => {
     if (!place) return;
@@ -410,7 +497,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // MAP FUNCTIONS
+  // MAP FUNCTIONS (คงเดิม)
   // ============================================================
   const getEmbedMapUrl = (place) => {
     if (!place) return '';
@@ -446,7 +533,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // LOGIN / LOGOUT
+  // LOGIN / LOGOUT (คงเดิม)
   // ============================================================
   const handleLogin = async () => {
     try {
@@ -474,7 +561,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // IMAGE HANDLERS
+  // IMAGE HANDLERS (คงเดิม)
   // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
@@ -571,7 +658,6 @@ function MainApp() {
     setFormLang('th');
   };
 
-  // ✅ ฟังก์ชันเปลี่ยนประเภทหลัก (Category)
   const handleCategoryChange = (value) => {
     let subCat = newPlace.subCategory || 'other';
     if (value === 'accommodation' || value === 'restaurant') {
@@ -580,18 +666,16 @@ function MainApp() {
     setNewPlace(prev => ({ ...prev, category: value, type: value, subCategory: subCat }));
   };
 
-  // ✅ ฟังก์ชันเปลี่ยน Genre (หมวดหมู่ย่อย)
   const handleSubCategoryChange = (value) => {
     setNewPlace(prev => ({ ...prev, subCategory: value, category: 'travel', type: 'travel' }));
   };
 
   // ============================================================
-  // ADD / EDIT PLACE
+  // ADD / EDIT PLACE (คงเดิม)
   // ============================================================
   const handleAddPlaceSubmit = async (e) => {
     e.preventDefault();
 
-    // ✅ ตรวจสอบตามภาษาที่เลือกในฟอร์ม
     const requiredTitle = formLang === 'en' ? newPlace.title_en : newPlace.title;
     if (!requiredTitle) {
       showToast(formLang === 'en' ? 'Please enter an English place name' : 'กรุณากรอกชื่อสถานที่');
@@ -651,7 +735,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // LIKE
+  // LIKE (คงเดิม)
   // ============================================================
   const handleLike = async (placeId) => {
     const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
@@ -664,7 +748,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // EDIT / DELETE PLACE
+  // EDIT / DELETE PLACE (คงเดิม)
   // ============================================================
   const handleEditPlace = (place) => {
     const targetId = place.id || place.docId;
@@ -699,7 +783,6 @@ function MainApp() {
       lng: place.lng || place.longitude || (Array.isArray(place.coords) ? place.coords[1] : '') || ''
     });
     setImageFileName(place.img ? 'มีรูปเดิมในระบบ' : '');
-    // ✅ กำหนดภาษาเริ่มต้นของฟอร์มตามข้อมูลที่มี
     setFormLang(place.title_en && !place.title ? 'en' : 'th');
     setIsAddPlaceModalOpen(true);
   };
@@ -722,12 +805,12 @@ function MainApp() {
   };
 
   // ============================================================
-  // LANGUAGE
+  // LANGUAGE (คงเดิม)
   // ============================================================
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
   // ============================================================
-  // REVIEW FUNCTIONS
+  // REVIEW FUNCTIONS (คงเดิม)
   // ============================================================
   const validateReviewText = (text) => {
     const clean = sanitizeInput(text.trim());
@@ -842,7 +925,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // OPEN PLANNER
+  // OPEN PLANNER (คงเดิม)
   // ============================================================
   const handleOpenPlanner = () => {
     navigate('/planner');
@@ -886,7 +969,6 @@ function MainApp() {
   const currentPlaceId = detailModal.placeData?.id || detailModal.placeData?.docId;
   const currentReviews = currentPlaceId ? (reviewsData[currentPlaceId] || []) : [];
 
-  // ✅ LIVE PREVIEW DATA
   const previewPlace = {
     id: 'preview',
     title: formLang === 'en' ? (newPlace.title_en || 'Place Name EN') : (newPlace.title || 'ชื่อสถานที่'),
@@ -967,7 +1049,7 @@ function MainApp() {
             </div>
           </div>
 
-          <Link to="/checkin" onClick={closeMobileMenu}>{t('nav_top10', '10 จุดเช็คอิน')}</Link>
+          <Link to="/checkin" onClick={closeMobileMenu}>{t('nav_top10','กิจกรรม')}</Link>
           <Link to="/map" onClick={closeMobileMenu}>{t('nav_map', 'แผนที่ชุมชน')}</Link>
 
           {isAdmin && (
@@ -1163,41 +1245,70 @@ function MainApp() {
         onOpenTripPlanner={handleOpenPlanner}
       />
 
+      {/* ===== ANALYTICS MODAL ===== */}
       {showAnalytics && isAdmin && (
         <div className="map-modal-overlay active" style={{ zIndex: 2300 }} onClick={() => setShowAnalytics(false)}>
-          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '480px', padding: '28px', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#7c4dff', marginBottom: '8px' }}>
+          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '560px', padding: '28px', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#7c4dff', marginBottom: '4px' }}>
               {isEn ? 'Website Analytics' : 'ยอดเข้าชมเว็บไซต์'}
             </h2>
-            <p style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '20px' }}>
+            <p style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '20px' }}>
               {isEn ? 'Real-time updates' : 'อัปเดตแบบเรียลไทม์'}
             </p>
-            <div style={{ background: 'rgba(124,77,255,0.12)', border: '1px solid rgba(124,77,255,0.3)', borderRadius: '12px', padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.85rem', color: '#bbb' }}>
-                {isEn ? 'Total Views' : 'ยอดรวมทั้งหมด'}
-              </div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 'bold', fontFamily: 'Mitr, sans-serif' }}>
-                {(pageViews.total || 0).toLocaleString()}
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {Object.entries(pageViews).filter(([k]) => k !== 'total' && k !== 'lastUpdated').sort((a, b) => (b[1] || 0) - (a[1] || 0)).map(([path, count]) => (
-                <div key={path} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '10px 14px', borderRadius: '8px' }}>
-                  <span>{pageNameMap[path] || path}</span>
-                  <span style={{ background: '#00a854', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                    {(count || 0).toLocaleString()}
-                  </span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ background: 'rgba(124,77,255,0.12)', border: '1px solid rgba(124,77,255,0.3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: '#bbb' }}>{isEn ? 'Total Views' : 'ยอดรวม'}</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Mitr, sans-serif' }}>
+                  {(pageViews.total || 0).toLocaleString()}
                 </div>
-              ))}
+              </div>
+              <div style={{ background: 'rgba(0,168,84,0.12)', border: '1px solid rgba(0,168,84,0.3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: '#bbb' }}>{isEn ? 'Today' : 'วันนี้'}</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Mitr, sans-serif' }}>
+                  {dailyStats.todayTotal.toLocaleString()}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: '#bbb' }}>{isEn ? 'Avg Daily (30d)' : 'เฉลี่ยรายวัน (30 วัน)'}</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Mitr, sans-serif' }}>
+                  {dailyStats.avgDaily.toLocaleString()}
+                </div>
+              </div>
             </div>
-            <button onClick={() => setShowAnalytics(false)} style={{ marginTop: '24px', width: '100%', background: '#6c757d', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+
+            {dailyStats.lastUpdated && (
+              <div style={{ fontSize: '0.7rem', color: '#666', textAlign: 'center', marginBottom: '16px' }}>
+                {isEn ? 'Last updated: ' : 'อัปเดตล่าสุด: '}
+                {dailyStats.lastUpdated.toLocaleString(isEn ? 'en-US' : 'th-TH', { timeZone: 'Asia/Bangkok' })}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '8px' }}>{isEn ? 'Page Breakdown' : 'ยอดแยกตามหน้า'}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                {Object.entries(pageViews)
+                  .filter(([k]) => k !== 'total' && k !== 'lastUpdated')
+                  .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+                  .map(([path, count]) => (
+                    <div key={path} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '0.85rem' }}>{pageNameMap[path] || path}</span>
+                      <span style={{ background: '#00a854', color: '#fff', padding: '0 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        {(count || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <button onClick={() => setShowAnalytics(false)} style={{ marginTop: '16px', width: '100%', background: '#6c757d', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
               {isEn ? 'Close' : 'ปิด'}
             </button>
           </div>
         </div>
       )}
 
-      {/* ===== CROP MODAL สากล (Cropper.js) ===== */}
+      {/* ===== CROP MODAL ===== */}
       {cropModal.isOpen && (
         <div 
           className="map-modal-overlay active" 
@@ -1294,12 +1405,11 @@ function MainApp() {
         </div>
       )}
 
-      {/* ===== ADD/EDIT PLACE MODAL (ปรับ UI ให้ compact & modern) ===== */}
+      {/* ===== ADD/EDIT PLACE MODAL ===== */}
       {isAddPlaceModalOpen && (
         <div className="map-modal-overlay active" style={{ zIndex: 2200 }} onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }}>
           <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '760px', padding: '20px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
             
-            {/* Header: Title + Language Toggle */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', margin: 0, fontSize: '1.2rem' }}>
                 {editingPlaceId ? (isEn ? 'Edit Place' : 'แก้ไขสถานที่') : (isEn ? 'Add New Place' : 'เพิ่มสถานที่ใหม่')}
@@ -1333,11 +1443,8 @@ function MainApp() {
             </div>
             
             <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-              {/* Left Form */}
               <div style={{ flex: 1, minWidth: '320px' }}>
                 <form onSubmit={handleAddPlaceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  
-                  {/* ชื่อสถานที่ (ตามภาษาฟอร์ม) */}
                   <input 
                     type="text" 
                     placeholder={formLang === 'en' ? 'Place Name (English) *' : 'ชื่อสถานที่ (ไทย) *'} 
@@ -1347,7 +1454,6 @@ function MainApp() {
                     style={inputStyle} 
                   />
                   
-                  {/* ชื่ออีกภาษา (ซ่อนเมื่อเลือกภาษานั้น) */}
                   {formLang === 'en' ? (
                     <input 
                       type="text" 
@@ -1366,7 +1472,6 @@ function MainApp() {
                     />
                   )}
                   
-                  {/* Category & Genre Grid */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ fontSize: '0.75rem', color: '#aaa', display: 'block', marginBottom: '4px' }}>Category</label>
@@ -1389,7 +1494,6 @@ function MainApp() {
                     )}
                   </div>
 
-                  {/* Main Image Upload */}
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#aaa', display: 'block', marginBottom: '4px' }}>Main Image</label>
                     <input type="file" accept="image/*" onChange={handleImageBrowse} style={{ ...inputStyle, padding: '6px', fontSize: '0.8rem' }} />
@@ -1407,7 +1511,6 @@ function MainApp() {
                     )}
                   </div>
 
-                  {/* Gallery Upload */}
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#aaa', display: 'block', marginBottom: '4px' }}>Gallery</label>
                     <input type="file" accept="image/*" multiple onChange={handleGalleryBrowse} style={{ ...inputStyle, padding: '6px', fontSize: '0.8rem' }} />
@@ -1423,7 +1526,6 @@ function MainApp() {
                     )}
                   </div>
                   
-                  {/* Description & Detail (ตามภาษาฟอร์ม) */}
                   <textarea 
                     placeholder={formLang === 'en' ? 'Short Description (EN)' : 'คำอธิบายสั้น'} 
                     value={formLang === 'en' ? newPlace.description_en : newPlace.description} 
@@ -1450,7 +1552,6 @@ function MainApp() {
                     <textarea placeholder="Details (EN) (Optional)" value={newPlace.detailDescription_en} onChange={e => setNewPlace(prev => ({ ...prev, detailDescription_en: e.target.value }))} rows="3" style={{ ...inputStyle, resize: 'none', opacity: 0.7 }} />
                   )}
 
-                  {/* Location, Hours, Phone */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <input type="text" placeholder="Latitude" value={newPlace.lat} onChange={e => setNewPlace(prev => ({ ...prev, lat: e.target.value }))} style={inputStyle} />
                     <input type="text" placeholder="Longitude" value={newPlace.lng} onChange={e => setNewPlace(prev => ({ ...prev, lng: e.target.value }))} style={inputStyle} />
@@ -1459,7 +1560,6 @@ function MainApp() {
                   <input type="text" placeholder={isEn ? 'Phone Number' : 'เบอร์โทร'} value={newPlace.phone} onChange={e => setNewPlace(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                   <input type="text" placeholder={isEn ? 'Google Maps URL or Embed Code' : 'Google Maps URL หรือ Embed Code'} value={newPlace.mapUrl} onChange={e => setNewPlace(prev => ({ ...prev, mapUrl: e.target.value }))} style={inputStyle} />
                   
-                  {/* Buttons */}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
                     <button type="button" onClick={() => { setIsAddPlaceModalOpen(false); resetForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
                       {isEn ? 'Cancel' : 'ยกเลิก'}
@@ -1471,13 +1571,11 @@ function MainApp() {
                 </form>
               </div>
 
-              {/* Right Live Preview */}
               <div style={{ flex: 1, minWidth: '280px', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#fff', marginBottom: '14px', fontSize: '0.95rem', textAlign: 'center' }}>
                   {isEn ? 'Live Preview' : 'ตัวอย่างการ์ด'}
                 </h3>
                 
-                {/* Preview Language (ใช้ formLang อัตโนมัติ แต่มี toggle ให้ดูได้) */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
                   <button onClick={() => setFormLang('th')} style={{ padding: '4px 12px', borderRadius: '14px', background: formLang === 'th' ? '#00a854' : 'transparent', color: formLang === 'th' ? '#fff' : '#aaa', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>ไทย</button>
                   <button onClick={() => setFormLang('en')} style={{ padding: '4px 12px', borderRadius: '14px', background: formLang === 'en' ? '#00a854' : 'transparent', color: formLang === 'en' ? '#fff' : '#aaa', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>EN</button>
@@ -1880,6 +1978,9 @@ function MainApp() {
   );
 }
 
+// ============================================================
+// App Wrapper
+// ============================================================
 export default function App() {
   return (
     <Router>

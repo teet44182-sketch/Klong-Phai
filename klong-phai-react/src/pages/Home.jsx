@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom'; // ✅ เพิ่ม import Link
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 import watKaoprickImg from '../assets/watkaoprick.jpg';
@@ -9,6 +10,11 @@ import cook_n_coff from '../assets/cook_n_coff.jpg';
 import cook_n_coff_view from '../assets/cook_n_coff_view.jpg';
 import cook_n_coff_view2 from '../assets/cook_n_coff_view2.jpg';
 import Rpsg_Sut from '../assets/Rpsg_Sut.jpg';
+import cook_and_cof from '../assets/cook_and_cof.jpg';
+import kpick from '../assets/kpick.jpg';
+import char from '../assets/char.jpg';
+import kat from '../assets/kat.jpg';
+import ggk from '../assets/ggk.jpg';
 
 // ✅ Import รูปภาพจาก assets
 import natureIcon from '../assets/location.png';
@@ -137,35 +143,39 @@ export default function Home({
     return thName.includes(searchKey) || enName.includes(searchKey);
   });
 
-  // ✅ Feature data - ใช้รูปภาพจาก assets
+  // ✅ Feature data - เพิ่มลิงก์สำหรับแต่ละการ์ด
   const features = [
     {
       id: 1,
-      icon: natureIcon,           // ✅ nature.png
+      icon: natureIcon,
       iconAlt: 'ธรรมชาติ',
-      title: t('feature_1_title'),
-      desc: t('feature_1_desc')
+      title: 'แนะนำสถานที่',
+      desc: 'รวมจุดน่าเที่ยวและสถานที่น่าสนใจในคลองไผ่ ที่อยากชวนให้คุณออกไปสัมผัสด้วยตัวเอง',
+      link: '/attractions'  // ✅ ลิงก์ไปหน้าสถานที่ท่องเที่ยว
     },
     {
       id: 2,
-      icon: localHistoryIcon,     // ✅ local-history.png
+      icon: localHistoryIcon,
       iconAlt: 'วัฒนธรรม',
-      title: t('feature_2_title'),
-      desc: t('feature_2_desc')
+      title: 'แผนที่ชุมชน',
+      desc: 'สำรวจสถานที่น่าสนใจรอบคลองไผ่ พร้อมข้อมูลสำหรับการเดินทาง',
+      link: '/map'  // ✅ ลิงก์ไปแผนที่ชุมชน
     },
     {
       id: 3,
-      icon: foodIcon,             // ✅ tray.png
+      icon: foodIcon,
       iconAlt: 'อาหาร',
-      title: t('feature_3_title'),
-      desc: t('feature_3_desc')
+      title: 'วางแผนการเดินทาง',
+      desc: 'เลือกสถานที่ที่สนใจ แล้วจัดแผนการเดินทางของคุณได้ง่าย ๆ ในที่เดียว',
+      link: '/planner'  // ✅ ลิงก์ไปวางแผนการเดินทาง
     },
     {
       id: 4,
-      icon: activitiesIcon,       // ✅ jogging.png
+      icon: activitiesIcon,
       iconAlt: 'กิจกรรม',
-      title: t('feature_4_title'),
-      desc: t('feature_4_desc')
+      title: 'กิจกรรมน่าสนใจ',
+      desc: 'หลากหลายกิจกรรม ทั้งเดินเขา ล่องเรือ SUP และเรียนรู้ภูมิปัญญาท้องถิ่น',
+      link: '/checkin'  // ✅ ลิงก์ไปหน้าสถานที่ท่องเที่ยว (หรือหน้าอื่น)
     }
   ];
 
@@ -185,7 +195,6 @@ export default function Home({
         marginTop: '0',
         backgroundColor: '#2b2b2b',
       }}>
-        {/* รูปพื้นหลัง */}
         <img 
           src={watKaoprickImg} 
           alt={t('hero_alt')} 
@@ -202,7 +211,6 @@ export default function Home({
           }}
         />
 
-        {/* Gradient overlay */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -213,7 +221,6 @@ export default function Home({
           zIndex: 2,
         }} />
 
-        {/* เนื้อหาข้อความ */}
         <div style={{
           position: 'relative',
           zIndex: 3,
@@ -380,23 +387,37 @@ export default function Home({
 
           <div className="features-grid">
             {features.map((feature) => (
-              <div
-                key={feature.id}
-                className="feature-card"
+              <Link 
+                key={feature.id} 
+                to={feature.link} 
+                style={{ textDecoration: 'none' }}
               >
-                {/* ✅ ใช้ <img> แสดงรูปจาก assets */}
-                <img 
-                  src={feature.icon} 
-                  alt={feature.iconAlt}
-                  className="feature-icon-img"
-                />
-                <h3 className="feature-card-title">
-                  {feature.title}
-                </h3>
-                <p className="feature-card-desc">
-                  {feature.desc}
-                </p>
-              </div>
+                <div className="feature-card" style={{ cursor: 'pointer' }}>
+                  <img 
+                    src={feature.icon} 
+                    alt={feature.iconAlt}
+                    className="feature-icon-img"
+                  />
+                  <h3 className="feature-card-title">
+                    {feature.title}
+                  </h3>
+                  <p className="feature-card-desc">
+                    {feature.desc}
+                  </p>
+                  {/* ✅ เพิ่มลูกศรเล็กๆ บอกว่าคลิกได้ */}
+                  <div style={{
+                    marginTop: '16px',
+                    color: 'rgba(255,255,255,0.3)',
+                    fontSize: '0.8rem',
+                    fontFamily: 'Prompt, sans-serif',
+                    transition: 'color 0.3s ease',
+                  }}
+                  className="feature-card-link-hint"
+                  >
+                    {isEn ? 'Explore →' : 'สำรวจ →'}
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -404,7 +425,40 @@ export default function Home({
 
       {/* ===== INFO SECTIONS ===== */}
       <section className="info-sections">
-        {/* Slider 1 */}
+        
+        {/* ลำดับที่ 1: สถานที่น่าสนใจ */}
+        <div className="info-row reverse">
+          <div className="info-img">
+            <div className="image-slider">
+              <img 
+                src={Rpsg_Sut} 
+                alt={t('alt_attractions_1')}
+                className={`slide-image ${slider2 === 0 ? 'active' : ''}`}
+              />
+              <img 
+                src={cook_and_cof}
+                alt={t('alt_attractions_2')}
+                className={`slide-image ${slider2 === 1 ? 'active' : ''}`}
+              />
+              <img 
+                src={kpick} 
+                alt={t('alt_attractions_3')}
+                className={`slide-image ${slider2 === 2 ? 'active' : ''}`}
+              />
+              <div className="slider-dots">
+                <span className={`dot ${slider2 === 0 ? 'active' : ''}`} onClick={() => setSlider2(0)}></span>
+                <span className={`dot ${slider2 === 1 ? 'active' : ''}`} onClick={() => setSlider2(1)}></span>
+                <span className={`dot ${slider2 === 2 ? 'active' : ''}`} onClick={() => setSlider2(2)}></span>
+              </div>
+            </div>
+          </div>
+          <div className="info-text">
+            <h2>{t('attractions_section_title')}</h2>
+            <p>{t('attractions_section_desc')}</p>
+          </div>
+        </div>
+
+        {/* ลำดับที่ 2: ชุมชนคลองไผ่คืออะไร? */}
         <div className="info-row">
           <div className="info-img">
             <div className="image-slider">
@@ -436,54 +490,22 @@ export default function Home({
           </div>
         </div>
 
-        {/* Slider 2 */}
+        {/* ลำดับที่ 3: กิจกรรมท่องเที่ยว */}
         <div className="info-row reverse">
           <div className="info-img">
             <div className="image-slider">
               <img 
-                src={Rpsg_Sut} 
-                alt={t('alt_attractions_1')}
-                className={`slide-image ${slider2 === 0 ? 'active' : ''}`}
-              />
-              <img 
-                src="https://images.unsplash.com/photo-1470071459604-7b8ec44ffd1b?w=600&h=400&fit=crop" 
-                alt={t('alt_attractions_2')}
-                className={`slide-image ${slider2 === 1 ? 'active' : ''}`}
-              />
-              <img 
-                src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop" 
-                alt={t('alt_attractions_3')}
-                className={`slide-image ${slider2 === 2 ? 'active' : ''}`}
-              />
-              <div className="slider-dots">
-                <span className={`dot ${slider2 === 0 ? 'active' : ''}`} onClick={() => setSlider2(0)}></span>
-                <span className={`dot ${slider2 === 1 ? 'active' : ''}`} onClick={() => setSlider2(1)}></span>
-                <span className={`dot ${slider2 === 2 ? 'active' : ''}`} onClick={() => setSlider2(2)}></span>
-              </div>
-            </div>
-          </div>
-          <div className="info-text">
-            <h2>{t('attractions_section_title')}</h2>
-            <p>{t('attractions_section_desc')}</p>
-          </div>
-        </div>
-
-        {/* Slider 3 */}
-        <div className="info-row">
-          <div className="info-img">
-            <div className="image-slider">
-              <img 
-                src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop" 
+                src={kat}
                 alt={t('alt_activities_1')}
                 className={`slide-image ${slider3 === 0 ? 'active' : ''}`}
               />
               <img 
-                src="https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop" 
+                src={char} 
                 alt={t('alt_activities_2')}
                 className={`slide-image ${slider3 === 1 ? 'active' : ''}`}
               />
               <img 
-                src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop" 
+                src={ggk} 
                 alt={t('alt_activities_3')}
                 className={`slide-image ${slider3 === 2 ? 'active' : ''}`}
               />
@@ -499,6 +521,7 @@ export default function Home({
             <p>{t('activities_section_desc')}</p>
           </div>
         </div>
+
       </section>  
     </div>
   );

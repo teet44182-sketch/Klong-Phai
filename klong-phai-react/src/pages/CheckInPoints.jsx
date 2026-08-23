@@ -1,88 +1,418 @@
 // src/pages/CheckInPoints.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import Card from '../components/Card';
-import SwipeCard from '../components/SwipeCard';
-import { bannedWords } from '../utils/wordlist';
 import { useToast } from '../context/ToastContext';
 import checkin from '../assets/checkin.jpg';
-
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
 import { db } from '../firebase';
 import { 
-  collection,
-  addDoc,
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  serverTimestamp 
+  collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp,
+  onSnapshot, query, orderBy
 } from 'firebase/firestore';
+import { sanitizeInput, compressImage } from '../App';
+import { bannedWords } from '../utils/wordlist';
 
-export default function CheckInPoints({ 
+// ============================================================
+// Utility: แปลง YouTube Watch URL เป็น Embed URL
+// ============================================================
+const getEmbedUrl = (url) => {
+  if (!url) return null;
+  const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?#]+)/);
+  if (watchMatch) {
+    return `https://www.youtube.com/embed/${watchMatch[1]}`;
+  }
+  if (url.includes('youtube.com/embed') || url.includes('player.vimeo.com')) {
+    return url;
+  }
+  return url;
+};
+
+// ============================================================
+// Component: Slider สำหรับ PromotionCard
+// ============================================================
+function PromotionSlider({ image, videoUrl, title, lang }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [slides, setSlides] = useState([]);
+
+  useEffect(() => {
+    const items = [];
+    if (image) {
+      items.push({ type: 'image', url: image });
+    }
+    const embed = getEmbedUrl(videoUrl);
+    if (embed) {
+      items.push({ type: 'video', url: embed });
+    }
+    setSlides(items);
+    setCurrentIndex(0);
+  }, [image, videoUrl]);
+
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  };
+
+  if (slides.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#555', fontSize: '1.1rem' }}>
+        {lang === 'en' ? 'No media' : 'ไม่มีรูปภาพ/วิดีโอ'}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#111', minHeight: '340px' }}>
+      {slides.map((slide, idx) => (
+        <div
+          key={idx}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            opacity: idx === currentIndex ? 1 : 0,
+            transition: 'opacity 0.5s ease',
+            pointerEvents: idx === currentIndex ? 'auto' : 'none',
+          }}
+        >
+          {slide.type === 'image' ? (
+            <img
+              src={slide.url}
+              alt={title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <iframe
+              src={slide.url}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              allowFullScreen
+              title={title}
+              loading="lazy"
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            />
+          )}
+        </div>
+      ))}
+
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={handlePrev}
+            style={{
+              position: 'absolute',
+              left: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'rgba(0,0,0,0.5)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 5,
+            }}
+          >
+            ‹
+          </button>
+          <button
+            onClick={handleNext}
+            style={{
+              position: 'absolute',
+              right: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'rgba(0,0,0,0.5)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 5,
+            }}
+          >
+            ›
+          </button>
+
+          <div style={{
+            position: 'absolute',
+            bottom: '12px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            gap: '8px',
+            zIndex: 5,
+          }}>
+            {slides.map((_, idx) => (
+              <span
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+                style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  background: idx === currentIndex ? '#00a854' : 'rgba(255,255,255,0.4)',
+                  cursor: 'pointer',
+                  transition: 'background 0.3s',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Component: PromotionCard
+// ============================================================
+function PromotionCard({ promo, lang, isAdmin, onEdit, onDelete }) {
+  const isEn = lang === 'en';
+  const title = isEn && promo.titleEn ? promo.titleEn : promo.title;
+  const description = isEn && promo.descriptionEn ? promo.descriptionEn : promo.description;
+  const hasCoords = (promo.lat && promo.lng) || (promo.coords && promo.coords.length === 2);
+
+  const handleNavigate = (e) => {
+    e.stopPropagation();
+    let lat, lng;
+    if (promo.coords && promo.coords.length === 2) {
+      lat = promo.coords[0];
+      lng = promo.coords[1];
+    } else {
+      lat = promo.lat;
+      lng = promo.lng;
+    }
+    if (lat && lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+    }
+  };
+
+  const handleCardClick = () => {
+    if (promo.link) {
+      window.open(promo.link, '_blank');
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        background: '#1a1a1a',
+        borderRadius: '24px',
+        overflow: 'hidden',
+        border: '2px solid transparent',
+        backgroundImage: 'linear-gradient(#1a1a1a, #1a1a1a), linear-gradient(135deg, #00a854, #00d4a8, #00ff88)',
+        backgroundOrigin: 'border-box',
+        backgroundClip: 'padding-box, border-box',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.6), 0 0 40px rgba(0,168,84,0.05)',
+        marginBottom: '36px',
+        cursor: promo.link ? 'pointer' : 'default',
+        transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease',
+        width: '100%',
+        minHeight: '340px',
+        position: 'relative',
+      }}
+      onClick={handleCardClick}
+      onMouseEnter={(e) => {
+        if (promo.link) {
+          e.currentTarget.style.transform = 'scale(1.02)';
+          e.currentTarget.style.boxShadow = '0 24px 72px rgba(0,0,0,0.8), 0 0 60px rgba(0,168,84,0.15)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.6), 0 0 40px rgba(0,168,84,0.05)';
+      }}
+    >
+      {/* ด้านซ้าย: Slider (รูปภาพ + วิดีโอ) */}
+      <div style={{ flex: '0 0 50%', maxWidth: '50%', minHeight: '340px', background: '#111', position: 'relative' }}>
+        <PromotionSlider image={promo.image} videoUrl={promo.videoUrl} title={title} lang={lang} />
+        
+        {/* ปุ่ม Admin (Edit/Delete) */}
+        {isAdmin && (
+          <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px', zIndex: 10 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(promo); }}
+              style={{ background: 'rgba(0,0,0,0.8)', color: '#ffca28', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' }}
+            >
+              ✏️ {isEn ? 'Edit' : 'แก้ไข'}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(promo); }}
+              style={{ background: 'rgba(0,0,0,0.8)', color: '#ff4b4b', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' }}
+            >
+              🗑️ {isEn ? 'Delete' : 'ลบ'}
+            </button>
+          </div>
+        )}
+
+        {/* Badge พิกัด */}
+        {hasCoords && (
+          <div style={{
+            position: 'absolute',
+            bottom: '16px',
+            left: '16px',
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(8px)',
+            color: '#00e87a',
+            padding: '4px 14px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            border: '1px solid rgba(0,168,84,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            zIndex: 5,
+          }}>
+             {isEn ? 'Location available' : 'มีพิกัดนำทาง'}
+          </div>
+        )}
+      </div>
+
+      {/* ด้านขวา: ข้อความ + ปุ่มนำทาง */}
+      <div style={{ flex: 1, padding: '32px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00e87a', fontSize: '1.8rem', marginBottom: '12px', fontWeight: '600', lineHeight: '1.3' }}>
+          {title || (isEn ? 'Untitled' : 'ไม่มีชื่อ')}
+        </h3>
+        {description && (
+          <p style={{ color: '#ddd', fontSize: '1.05rem', lineHeight: '1.8', marginBottom: '20px', whiteSpace: 'pre-line' }}>
+            {description}
+          </p>
+        )}
+        
+        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginTop: 'auto', alignItems: 'center' }}>
+          {promo.link && (
+            <span style={{ color: '#00a854', fontWeight: 'bold', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+              {isEn ? 'Learn more →' : 'ดูรายละเอียด →'}
+            </span>
+          )}
+          
+          {hasCoords && (
+            <span
+              onClick={handleNavigate}
+              style={{
+                color: '#00a854',
+                fontWeight: '500',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease',
+                borderBottom: '1px solid transparent',
+                marginLeft: 'auto'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderBottom = '1px solid #00a854';
+                e.currentTarget.style.color = '#00e87a';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderBottom = '1px solid transparent';
+                e.currentTarget.style.color = '#00a854';
+              }}
+            >
+               {isEn ? 'Navigate' : 'นำทาง'}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Main Component (ส่วนที่เหลือเหมือนเดิม)
+// ============================================================
+export default function CheckInPoints({
   places = [],
   loading = false,
-  onOpenMap, 
-  likes = {}, 
-  onLike,
-  googleUser,          
-  handleGoogleLogin,   
-  handleGoogleLogout,  
+  onOpenMap,
+  googleUser,
+  handleGoogleLogin,
+  handleGoogleLogout,
   reviewsData = {},
   lang,
-  isAdmin = false,     
-  onEditPlace,         
-  onDeletePlace,
-  selectedPlaces = [],
-  setSelectedPlaces,
-  onAddToPlan,
-  searchKeyword = '',
-  onSearchChange
+  isAdmin = false,
 }) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
-  
-  const [keyword, setKeyword] = useState(searchKeyword || '');
-  const [isVisible, setIsVisible] = useState(false);
 
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
+  const [isVisible, setIsVisible] = useState(false);
+
+  // ===== Review States =====
   const [inputText, setInputText] = useState('');
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editText, setEditText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
   const COOLDOWN_MS = 5000;
 
-  const pageId = 'checkin_page'; 
+  const pageId = 'checkin_page';
   const pageReviews = reviewsData[pageId] || [];
 
+  // ===== Promotion States =====
+  const [promotions, setPromotions] = useState([]);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [editingPromoId, setEditingPromoId] = useState(null);
+  const [newPromo, setNewPromo] = useState({
+    title: '',
+    titleEn: '',
+    description: '',
+    descriptionEn: '',
+    image: '',
+    videoUrl: '',
+    link: '',
+    coordsInput: ''
+  });
+  const [promoImageFileName, setPromoImageFileName] = useState('');
+
+  // ===== Crop States for Promo =====
+  const [promoCropModal, setPromoCropModal] = useState({ isOpen: false, imageSrc: null });
+  const promoCropperRef = useRef(null);
+
+  // ===== Fetch Promotions =====
+  useEffect(() => {
+    const q = query(collection(db, 'promotions'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPromotions(data);
+    }, (error) => {
+      console.error('Error fetching promotions:', error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ===== UI Visibility =====
   useEffect(() => {
     window.scrollTo(0, 0);
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  // ❌ ลบ useEffect ที่เกี่ยวกับ search
-  // useEffect(() => {
-  //   if (onSearchChange) {
-  //     onSearchChange(keyword);
-  //   }
-  // }, [keyword, onSearchChange]);
-
-  const sanitizeInput = (text) => {
-    if (!text) return '';
-    return String(text)
-      .replace(/[<>]/g, '')
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
-      .replace(/\//g, '&#x2F;')
-      .replace(/`/g, '&#96;')
-      .replace(/\\/g, '&#92;')
-      .trim();
-  };
-
+  // ===== Utility Functions =====
   const escapeHtml = (text) => {
     if (!text) return '';
     const div = document.createElement('div');
@@ -92,198 +422,66 @@ export default function CheckInPoints({
 
   const detectScriptInjection = (text) => {
     const patterns = [
-      /<script/i,
-      /javascript:/i,
-      /onerror\s*=/i,
-      /onload\s*=/i,
-      /onclick\s*=/i,
-      /onmouseover\s*=/i,
-      /onfocus\s*=/i,
-      /eval\s*\(/i,
-      /document\./i,
-      /window\./i,
-      /alert\s*\(/i,
-      /confirm\s*\(/i,
-      /prompt\s*\(/i,
+      /<script/i, /javascript:/i, /onerror\s*=/i, /onload\s*=/i,
+      /onclick\s*=/i, /onmouseover\s*=/i, /onfocus\s*=/i,
+      /eval\s*\(/i, /document\./i, /window\./i,
+      /alert\s*\(/i, /confirm\s*\(/i, /prompt\s*\(/i,
     ];
     return patterns.some(pattern => pattern.test(text));
   };
 
-  const handleSwipeRightAdd = (place) => {
-    if (setSelectedPlaces) {
-      const placeId = place.id || place.docId;
-      setSelectedPlaces(prev => {
-        const safePrev = prev || [];
-        const exists = safePrev.some(p => (p.id || p.docId) === placeId);
-        if (!exists) {
-          if (onAddToPlan) onAddToPlan(place);
-          return [...safePrev, place];
-        }
-        return safePrev;
-      });
-    }
-  };
-
-  const handleSwipeLeftRemove = (place) => {
-    if (setSelectedPlaces) {
-      const placeId = place.id || place.docId;
-      setSelectedPlaces(prev => (prev || []).filter(p => (p.id || p.docId) !== placeId));
-      if (onAddToPlan) onAddToPlan(place);
-    }
-  };
-
-  const handleToggleAddToPlan = (place) => {
-    const placeId = place.id || place.docId;
-    const safeSelected = selectedPlaces || [];
-    const exists = safeSelected.some(p => (p.id || p.docId) === placeId);
-
-    if (exists) {
-      handleSwipeLeftRemove(place);
-    } else {
-      handleSwipeRightAdd(place);
-    }
-  };
-
-  const mapPlaceData = (p) => {
-    if (!p) return null;
-
-    let lat = p.lat || p.latitude;
-    let lng = p.lng || p.longitude;
-
-    if (Array.isArray(p.coords) && p.coords.length >= 2) {
-      lat = p.coords[0];
-      lng = p.coords[1];
-    }
-
-    return {
-      ...p,
-      id: p.id || p.docId,
-      docId: p.docId || p.id,
-      name: p.title || p.name || p.placeName || 'ไม่มีชื่อสถานที่',
-      nameEn: p.title_en || p.titleEn || p.nameEn || p.title || p.name,
-      description: p.description || p.detail || '',
-      descriptionEn: p.description_en || p.descriptionEn || p.description || '',
-      detail: p.detailDescription || p.detail || p.description || '',
-      detailEn: p.detailDescription_en || p.detailDescriptionEn || p.detailEn || p.description_en || '',
-      img: p.img || p.imageUrl || p.image || '',
-      gallery: Array.isArray(p.gallery) ? p.gallery : [],
-      mapUrl: p.mapUrl || p.googleMap || p.map || '',
-      workingHours: p.workingHours || p.time || '',
-      workingHoursEn: p.workingHours_en || p.workingHoursEn || p.workingHours || '',
-      phone: p.phone || '-',
-      category: p.category || p.type || 'checkin',
-      coords: p.coords || null,
-      lat: lat || null,
-      lng: lng || null
-    };
-  };
-
-  const filteredPlaces = (places || [])
-    .filter(p => {
-      if (!p) return false;
-      const cat = (p.category || p.type || '').toString().toLowerCase().trim();
-      const validCategories = ['checkin', 'check_in', 'check-in', 'attraction', 'tourist', 'travel', 'top10', ''];
-      if (!p.category) return true;
-      return validCategories.includes(cat);
-    })
-    .map(mapPlaceData)
-    .filter(Boolean);
-
-  const finalPlaces = filteredPlaces.length > 0 
-    ? filteredPlaces 
-    : (places || []).map(mapPlaceData).filter(Boolean);
-
-  // ❌ ลบ filter การค้นหา
-  // const searchFilteredPlaces = finalPlaces.filter(place => {
-  //   const searchKey = keyword.trim().toLowerCase();
-  //   if (!searchKey) return true;
-  //   const name = (place.name || '').toLowerCase();
-  //   const nameEn = (place.nameEn || '').toLowerCase();
-  //   const desc = (place.description || '').toLowerCase();
-  //   const descEn = (place.descriptionEn || '').toLowerCase();
-  //   return name.includes(searchKey) || nameEn.includes(searchKey) || 
-  //          desc.includes(searchKey) || descEn.includes(searchKey);
-  // });
-
-  // ✅ ใช้ finalPlaces โดยตรง (ไม่ต้อง filter)
-  const searchFilteredPlaces = finalPlaces;
-
+  // ============================================================
+  // REVIEW FUNCTIONS (เหมือนเดิม)
+  // ============================================================
   const validateReviewText = (text) => {
     const cleanText = sanitizeInput(text);
-    
     if (cleanText.length < 2) {
-      showToast(isEn ? " Review is too short (min 2 characters)" : "ข้อความสั้นเกินไป (ขั้นต่ำ 2 ตัวอักษร)");
+      showToast(isEn ? "Review is too short (min 2 characters)" : "ข้อความสั้นเกินไป (ขั้นต่ำ 2 ตัวอักษร)");
       return false;
     }
     if (cleanText.length > 200) {
       showToast(isEn ? "Review is too long (max 200 characters)" : "ข้อความต้องไม่เกิน 200 ตัวอักษร");
       return false;
     }
-    
     const textLower = cleanText.toLowerCase();
     const hasBannedWord = bannedWords.some(word => textLower.includes(word.toLowerCase()));
     if (hasBannedWord) {
       showToast(isEn ? "Inappropriate language detected" : "พบคำไม่เหมาะสม กรุณาแก้ไข");
       return false;
     }
-    
     if (detectScriptInjection(cleanText)) {
       showToast(isEn ? "Invalid characters detected" : "พบอักขระที่ไม่ถูกต้อง");
       return false;
     }
-    
     return cleanText;
-  };
-
-  const sortedPlaces = [...searchFilteredPlaces].sort((a, b) => {
-    const scoreA = likes[a.id || a.docId] || 0;
-    const scoreB = likes[b.id || b.docId] || 0;
-    return scoreB - scoreA;
-  });
-
-  const getTranslatedPlace = (place) => {
-    if (!isEn) return place;
-    return {
-      ...place,
-      name: place.nameEn || place.name,
-      description: place.descriptionEn || place.description,
-      detail: place.detailEn || place.detail
-    };
   };
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    
     const now = Date.now();
     if (now - lastSubmitTime < COOLDOWN_MS) {
       const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
       showToast(isEn ? `Please wait ${waitSeconds}s` : `กรุณารอ ${waitSeconds} วินาที`);
       return;
     }
-    
     if (!inputText.trim()) {
       showToast(isEn ? "Please write a review" : "กรุณาเขียนรีวิวก่อนส่ง");
       return;
     }
-    
     if (!googleUser) {
       showToast(isEn ? "Please sign in first" : "กรุณาเข้าสู่ระบบก่อน");
       return;
     }
-
     if (isSubmitting) {
       showToast(isEn ? "Please wait..." : "กรุณารอสักครู่...");
       return;
     }
-
     const validatedText = validateReviewText(inputText);
     if (!validatedText) return;
 
     setIsSubmitting(true);
-
     try {
       const reviewsRef = collection(db, "reviews");
-      
       await addDoc(reviewsRef, {
         placeId: pageId,
         name: sanitizeInput(googleUser.displayName || 'Anonymous'),
@@ -292,14 +490,12 @@ export default function CheckInPoints({
         userId: googleUser.uid,
         createdAt: serverTimestamp()
       });
-      
       setInputText('');
       setLastSubmitTime(now);
       showToast(isEn ? "Review submitted!" : "ส่งรีวิวเรียบร้อย!");
-      
     } catch (error) {
       console.error("Error saving review:", error);
-      showToast(isEn ? " Failed to submit: " + error.message : " ไม่สามารถส่งรีวิวได้: " + error.message);
+      showToast(isEn ? "Failed to submit: " + error.message : "ไม่สามารถส่งรีวิวได้: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -308,22 +504,19 @@ export default function CheckInPoints({
   const handleUpdateReview = async (review) => {
     const targetId = review.id || review.docId;
     if (!targetId) {
-      showToast(isEn ? " Document ID not found" : " ไม่พบ ID");
+      showToast(isEn ? "Document ID not found" : "ไม่พบ ID");
       return;
     }
     if (!editText.trim()) {
       showToast(isEn ? "Please write something" : "กรุณาเขียนข้อความ");
       return;
     }
-
     if (googleUser && review.userId !== googleUser.uid) {
-      showToast(isEn ? " You can only edit your own reviews" : " คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ");
+      showToast(isEn ? "You can only edit your own reviews" : "คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ");
       return;
     }
-
     const validatedText = validateReviewText(editText);
     if (!validatedText) return;
-
     try {
       await updateDoc(doc(db, "reviews", targetId), {
         text: validatedText,
@@ -334,25 +527,21 @@ export default function CheckInPoints({
       showToast(isEn ? "Review updated!" : "แก้ไขรีวิวเรียบร้อย!");
     } catch (error) {
       console.error("Error updating review:", error);
-      showToast(isEn ? " Failed to update: " + error.message : " ไม่สามารถแก้ไขได้: " + error.message);
+      showToast(isEn ? "Failed to update: " + error.message : "ไม่สามารถแก้ไขได้: " + error.message);
     }
   };
 
   const handleDeleteReview = async (review) => {
     const targetId = review.id || review.docId || review._id;
-    
     if (!targetId) {
-      showToast(isEn ? " Comment ID not found" : " ไม่พบ ID");
+      showToast(isEn ? "Comment ID not found" : "ไม่พบ ID");
       return;
     }
-    
     if (googleUser && review.userId !== googleUser.uid) {
-      showToast(isEn ? " You can only delete your own reviews" : " คุณสามารถลบได้เฉพาะรีวิวของคุณ");
+      showToast(isEn ? "You can only delete your own reviews" : "คุณสามารถลบได้เฉพาะรีวิวของคุณ");
       return;
     }
-    
     if (!window.confirm(isEn ? "Delete this comment?" : "ลบคอมเมนต์นี้?")) return;
-    
     try {
       await deleteDoc(doc(db, "reviews", targetId));
       showToast(isEn ? "Review deleted!" : "ลบรีวิวเรียบร้อย!");
@@ -367,21 +556,181 @@ export default function CheckInPoints({
     return escapeHtml(text);
   };
 
-  // ✅ แสดงผลลัพธ์
-  const getResultText = () => {
-    return isEn 
-      ? `Showing top ${sortedPlaces.length} check-in points`
-      : `แสดงจุดเช็คอินทั้งหมด ${sortedPlaces.length} แห่ง`;
+  // ============================================================
+  // PROMOTION FUNCTIONS (เหมือนเดิม ไม่ต้องแก้ เพราะใช้ image กับ videoUrl แยกกัน)
+  // ============================================================
+  const resetPromoForm = () => {
+    setEditingPromoId(null);
+    setPromoImageFileName('');
+    setNewPromo({
+      title: '',
+      titleEn: '',
+      description: '',
+      descriptionEn: '',
+      image: '',
+      videoUrl: '',
+      link: '',
+      coordsInput: ''
+    });
   };
 
+  const handlePromoImageBrowse = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast(isEn ? 'Please select an image file' : 'กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast(isEn ? 'Image too large (max 5MB)' : 'รูปใหญ่เกินไป (สูงสุด 5MB)');
+      return;
+    }
+    setPromoImageFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPromoCropModal({ isOpen: true, imageSrc: ev.target.result });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePromoCropCancel = () => {
+    setPromoCropModal({ isOpen: false, imageSrc: null });
+    setPromoImageFileName('');
+    const fileInput = document.querySelector('input[name="promoImage"]');
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handlePromoCropConfirm = async () => {
+    const cropper = promoCropperRef.current?.cropper;
+    if (!cropper) {
+      showToast(isEn ? 'Cropper not ready' : 'ระบบ Crop ยังไม่พร้อม');
+      return;
+    }
+    const canvas = cropper.getCroppedCanvas();
+    if (!canvas) {
+      showToast(isEn ? 'Failed to crop image' : 'ไม่สามารถตัดรูปได้');
+      return;
+    }
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        showToast(isEn ? 'Failed to process image' : 'ไม่สามารถประมวลผลรูปได้');
+        return;
+      }
+      const croppedFile = new File([blob], 'promo-cropped.jpg', { type: 'image/jpeg' });
+      try {
+        const compressed = await compressImage(croppedFile, 1200, 0.7);
+        setNewPromo(prev => ({ ...prev, image: compressed }));
+        setPromoCropModal({ isOpen: false, imageSrc: null });
+        showToast(isEn ? 'Cropped and compressed successfully!' : 'ครอบตัดและย่อรูปสำเร็จ!');
+      } catch (err) {
+        console.error(err);
+        showToast(isEn ? 'Failed to process cropped image' : 'ไม่สามารถประมวลผลรูปที่ Crop ได้');
+      }
+    }, 'image/jpeg');
+  };
+
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault();
+
+    const requiredTitle = isEn ? newPromo.titleEn : newPromo.title;
+    if (!requiredTitle) {
+      showToast(isEn ? 'Please enter a title' : 'กรุณากรอกชื่อเรื่อง');
+      return;
+    }
+    if (!newPromo.image && !newPromo.videoUrl) {
+      showToast(isEn ? 'Please provide an image or video' : 'กรุณาใส่รูปภาพหรือวิดีโอ');
+      return;
+    }
+
+    let lat = null, lng = null;
+    if (newPromo.coordsInput.trim()) {
+      const parts = newPromo.coordsInput.split(',').map(s => s.trim());
+      if (parts.length === 2) {
+        const latNum = parseFloat(parts[0]);
+        const lngNum = parseFloat(parts[1]);
+        if (!isNaN(latNum) && !isNaN(lngNum)) {
+          lat = latNum;
+          lng = lngNum;
+        }
+      }
+    }
+
+    const payload = {
+      title: newPromo.title || '',
+      titleEn: newPromo.titleEn || '',
+      description: newPromo.description || '',
+      descriptionEn: newPromo.descriptionEn || '',
+      image: newPromo.image || '',
+      videoUrl: newPromo.videoUrl || '',
+      link: newPromo.link || '',
+      lat: lat,
+      lng: lng,
+      coords: (lat !== null && lng !== null) ? [lat, lng] : null,
+      updatedAt: serverTimestamp()
+    };
+
+    try {
+      if (editingPromoId) {
+        await updateDoc(doc(db, 'promotions', editingPromoId), payload);
+        showToast(isEn ? 'Promotion updated!' : 'อัปเดตโปรโมทเรียบร้อย!');
+      } else {
+        await addDoc(collection(db, 'promotions'), {
+          ...payload,
+          createdAt: serverTimestamp()
+        });
+        showToast(isEn ? 'Promotion added!' : 'เพิ่มโปรโมทเรียบร้อย!');
+      }
+      setShowPromoModal(false);
+      resetPromoForm();
+    } catch (error) {
+      console.error('Error saving promotion:', error);
+      showToast(isEn ? 'Failed to save: ' + error.message : 'ไม่สามารถบันทึกได้: ' + error.message);
+    }
+  };
+
+  const handleEditPromo = (promo) => {
+    setEditingPromoId(promo.id);
+    let lat = promo.lat || (promo.coords ? promo.coords[0] : null);
+    let lng = promo.lng || (promo.coords ? promo.coords[1] : null);
+    const coordsString = (lat !== null && lng !== null) ? `${lat}, ${lng}` : '';
+
+    setNewPromo({
+      title: promo.title || '',
+      titleEn: promo.titleEn || '',
+      description: promo.description || '',
+      descriptionEn: promo.descriptionEn || '',
+      image: promo.image || '',
+      videoUrl: promo.videoUrl || '',
+      link: promo.link || '',
+      coordsInput: coordsString
+    });
+    setPromoImageFileName(promo.image ? 'มีรูปเดิม' : '');
+    setShowPromoModal(true);
+  };
+
+  const handleDeletePromo = async (promo) => {
+    if (!window.confirm(isEn ? `Delete promotion "${promo.title || promo.titleEn}"?` : `ลบโปรโมท "${promo.title || promo.titleEn}" ใช่หรือไม่?`)) return;
+    try {
+      await deleteDoc(doc(db, 'promotions', promo.id));
+      showToast(isEn ? 'Promotion deleted!' : 'ลบโปรโมทเรียบร้อย!');
+    } catch (error) {
+      console.error('Error deleting promotion:', error);
+      showToast(isEn ? 'Failed to delete' : 'ไม่สามารถลบได้');
+    }
+  };
+
+  // ============================================================
+  // RENDER (เหมือนเดิม)
+  // ============================================================
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
       
+      {/* HERO SECTION */}
       <div style={{
         position: 'relative',
         width: '100%',
-        height: '35vh', 
-        marginTop: '70px', 
+        height: '45vh',
+        marginTop: '70px',
         overflow: 'hidden',
         display: 'flex',
         justifyContent: 'center',
@@ -399,212 +748,122 @@ export default function CheckInPoints({
             height: '100%',
             objectFit: 'cover',
             objectPosition: 'center',
-            filter: 'blur(8px)', 
-            transform: 'scale(1.1)', 
+            filter: 'blur(8px) brightness(0.8)',
+            transform: 'scale(1.1)',
             zIndex: 1
           }}
           onError={(e) => {
             e.target.src = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200';
           }}
         />
-        
         <div style={{
           position: 'absolute',
           top: 0,
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(43, 43, 43, 0.9))',
+          background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(43, 43, 43, 0.85))',
           zIndex: 2
         }} />
-
         <div style={{ position: 'relative', zIndex: 3, textAlign: 'center', padding: '0 20px', width: '100%' }}>
-          {/* ✅ เปลี่ยนเป็นสีขาว */}
           <h1 className="page-title" style={{ 
-            fontSize: '2.2rem', 
-            marginBottom: '8px',
-            textShadow: '2px 2px 10px rgba(0, 0, 0, 0.6)',
+            fontSize: '2.8rem',
+            marginBottom: '12px',
+            textShadow: '0 4px 20px rgba(0,0,0,0.7)',
             fontFamily: 'Mitr, sans-serif',
-            color: '#ffffff',  // ✅ เปลี่ยนเป็นสีขาว
+            color: '#ffffff',
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease'
           }}>
-            {isEn ? 'Top 10 Check-in Points in Khlong Phai Subdistrict Municipality' : 'จัดอันดับ 10 จุดเช็คอิน เทศบาลตำบลคลองไผ่'}
+            {isEn ? 'Interesting activites in Klongpai' : 'กิจกรรมน่าทำในคลองไผ่'}
           </h1>
-          
           <p style={{ 
-            color: '#ccc', 
-            margin: '0 0 16px 0', 
-            fontFamily: 'Prompt, sans-serif', 
-            fontSize: '0.95rem',
+            color: '#ddd',
+            margin: '0 0 20px 0',
+            fontFamily: 'Prompt, sans-serif',
+            fontSize: '1.1rem',
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? 'translateY(0)' : 'translateY(-10px)',
             transition: 'opacity 0.8s ease 0.15s, transform 0.8s ease 0.15s'
           }}>
             {isEn 
-              ? 'Rankings update in real-time based on heart votes' 
-              : 'อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ'}
+              ? 'Discover the most popular activities in Klongpai' 
+              : 'กิจกรรมยอดนิยมในคลองไผ่'}
           </p>
-
-          {/* ❌ ลบ Search Bar */}
-          {/* <div style={{
-            maxWidth: '500px',
-            margin: '0 auto',
-            opacity: isVisible ? 1 : 0,
-            transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s'
-          }}>
-            <div className="search-box" style={{ margin: 0 }}>
-              <input 
-                type="text" 
-                value={keyword}
-                onChange={(e) => {
-                  setKeyword(e.target.value);
-                  if (onSearchChange) onSearchChange(e.target.value);
-                }}
-                placeholder={isEn ? 'Search check-in points...' : 'ค้นหาจุดเช็คอิน...'} 
-                style={{
-                  width: '100%',
-                  padding: '14px 24px',
-                  borderRadius: '30px',
-                  border: '2px solid rgba(255,255,255,0.25)',
-                  outline: 'none',
-                  fontSize: '16px',
-                  background: 'rgba(255,255,255,0.12)',
-                  color: '#fff',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.3s ease'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#00a854';
-                  e.target.style.background = 'rgba(255,255,255,0.2)';
-                  e.target.style.boxShadow = '0 0 30px rgba(0,168,84,0.15)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255,255,255,0.25)';
-                  e.target.style.background = 'rgba(255,255,255,0.12)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-          </div> */}
         </div>
       </div>
 
-      <div className="page-container" style={{ 
-        width: '100%',
+      {/* PROMOTIONS SECTION */}
+      <div style={{ 
         maxWidth: '1126px',
         margin: '0 auto',
-        padding: '30px 20px 60px 20px', 
-        minHeight: '50vh',
-        height: 'auto' 
+        padding: '40px 20px 20px 20px',
+        width: '100%'
       }}>
-        
-        {/* ✅ แสดงจำนวนผลลัพธ์ (ไม่แสดงคำค้นหา) */}
-        {!loading && (
-          <div style={{
-            marginBottom: '20px',
-            color: '#888',
-            fontSize: '0.9rem',
-            fontFamily: 'Prompt, sans-serif',
-            opacity: isVisible ? 1 : 0,
-            transition: 'opacity 0.6s ease 0.5s',
-            textAlign: 'center'
-          }}>
-            {getResultText()}
+        {isAdmin && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+            <button
+              onClick={() => { resetPromoForm(); setShowPromoModal(true); }}
+              style={{
+                background: '#00a854',
+                color: '#fff',
+                border: 'none',
+                padding: '12px 28px',
+                borderRadius: '30px',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                fontFamily: 'Mitr, sans-serif',
+                boxShadow: '0 4px 16px rgba(0,168,84,0.4)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#008743'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#00a854'}
+            >
+              + {isEn ? 'Add Promotion' : 'เพิ่มโปรโมท'}
+            </button>
           </div>
         )}
-        
-        {loading ? (
-          <div style={{ 
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '25px'
-          }}>
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ 
-                background: '#1e1e1e', 
-                borderRadius: '12px', 
-                padding: '12px',
-                border: '1px solid rgba(255,255,255,0.05)'
-              }}>
-                <div className="skeleton skeleton-image" />
-                <div className="skeleton skeleton-title" />
-                <div className="skeleton skeleton-text" style={{ width: '90%' }} />
-                <div className="skeleton skeleton-text" style={{ width: '60%' }} />
-              </div>
-            ))}
-          </div>
-        ) : sortedPlaces.length === 0 ? (
-          <div style={{ color: '#aaa', textAlign: 'center', padding: '40px' }}>
-            {isEn ? 'No check-in places found.' : 'ยังไม่มีข้อมูลจุดเช็คอินในขณะนี้'}
+
+        {promotions.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: '1.1rem' }}>
+            {isEn ? 'No promotions yet. Stay tuned!' : 'ยังไม่มีโปรโมทในขณะนี้'}
           </div>
         ) : (
-          <div className="results-grid" style={{ marginBottom: '60px' }}>
-            {sortedPlaces.slice(0, 10).map((place, index) => {
-              const translatedPlace = getTranslatedPlace(place);
-              const placeId = place.id || place.docId;
-              const safeSelected = selectedPlaces || [];
-              const isAdded = safeSelected.some(p => (p.id || p.docId) === placeId);
-
-              return (
-                <div 
-                  key={placeId ? `checkin-${placeId}` : `checkin-idx-${index}`} 
-                  style={{ 
-                    position: 'relative',
-                    opacity: isVisible ? 1 : 0,
-                    transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-                    transition: `opacity 0.6s ease ${0.05 + index * 0.04}s, transform 0.6s ease ${0.05 + index * 0.04}s`
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', top: '-8px', left: '-8px',
-                    background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#00a854',
-                    color: index <= 2 ? '#000' : '#fff', fontWeight: 'bold', padding: '4px 12px', borderRadius: '6px', zIndex: 20, fontSize: '0.85rem', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', fontFamily: 'Mitr, sans-serif'
-                  }}>
-                    {isEn ? `Rank ${index + 1}` : `อันดับ ${index + 1}`}
-                  </div>
-
-                  <SwipeCard
-                    isAdded={isAdded}
-                    onSwipeRight={() => handleSwipeRightAdd(place)}
-                    onSwipeLeft={() => handleSwipeLeftRemove(place)}
-                  >
-                    <Card 
-                      place={translatedPlace} 
-                      onOpenMap={onOpenMap} 
-                      likesCount={likes[placeId] || 0} 
-                      onLike={onLike} 
-                      lang={currentLang}
-                      isAdmin={isAdmin}
-                      onEdit={onEditPlace}
-                      onDelete={onDeletePlace}
-                      onAddToPlan={() => handleToggleAddToPlan(place)}
-                      isAddedToPlan={isAdded}
-                    />
-                  </SwipeCard>
-                </div>
-              );
-            })}
+          <div style={{ marginBottom: '40px' }}>
+            {promotions.map((promo) => (
+              <PromotionCard
+                key={promo.id}
+                promo={promo}
+                lang={currentLang}
+                isAdmin={isAdmin}
+                onEdit={handleEditPromo}
+                onDelete={handleDeletePromo}
+              />
+            ))}
           </div>
         )}
+      </div>
 
-        {/* REVIEW SECTION - ส่วนนี้คงเดิม */}
+      {/* REVIEW SECTION (เหมือนเดิม) */}
+      <div className="page-container" style={{ 
+        width: '100%',
+        maxWidth: '800px',
+        margin: '0 auto',
+        padding: '0 20px 60px 20px',
+      }}>
         <div style={{ 
-          background: 'rgba(255, 255, 255, 0.04)', 
-          backdropFilter: 'blur(10px)', 
-          border: '1px solid rgba(255, 255, 255, 0.08)', 
-          padding: '30px', 
-          borderRadius: '16px', 
-          color: '#eee', 
-          maxWidth: '800px', 
-          margin: '0 auto',
+          background: 'rgba(255, 255, 255, 0.04)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          padding: '30px',
+          borderRadius: '16px',
+          color: '#eee',
           opacity: isVisible ? 1 : 0,
           transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
           transition: `opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s`
         }}>
-          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.3rem' }}>
               {isEn ? 'Discuss these 10 Check-in Points' : 'พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้'}
@@ -714,7 +973,6 @@ export default function CheckInPoints({
                           {safeReviewName}
                         </strong>
                       </div>
-                      
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {isOwner && editingReviewId !== reviewId && (
                           <div style={{ display: 'flex', gap: '10px', fontSize: '0.85rem' }}>
@@ -776,7 +1034,6 @@ export default function CheckInPoints({
               })
             )}
           </div>
-          
           <div style={{ marginTop: '15px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
             <span style={{ color: '#555', fontSize: '0.8rem' }}>
               {isEn ? `Total ${pageReviews.length} reviews` : `ทั้งหมด ${pageReviews.length} รีวิว`}
@@ -784,6 +1041,208 @@ export default function CheckInPoints({
           </div>
         </div>
       </div>
+
+      {/* MODAL: ADD/EDIT PROMOTION (เหมือนเดิม) */}
+      {showPromoModal && (
+        <div className="map-modal-overlay active" style={{ zIndex: 2200 }} onClick={() => { setShowPromoModal(false); resetPromoForm(); }}>
+          <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '760px', padding: '24px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', margin: 0, fontSize: '1.3rem' }}>
+                {editingPromoId ? (isEn ? 'Edit Promotion' : 'แก้ไขโปรโมท') : (isEn ? 'Add Promotion' : 'เพิ่มโปรโมท')}
+              </h2>
+              <button onClick={() => { setShowPromoModal(false); resetPromoForm(); }} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '1.8rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <form onSubmit={handlePromoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input
+                type="text"
+                placeholder={isEn ? 'Title (Thai) *' : 'ชื่อเรื่อง (ไทย) *'}
+                value={newPromo.title}
+                onChange={e => setNewPromo(prev => ({ ...prev, title: e.target.value }))}
+                required={!isEn}
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+              />
+              <input
+                type="text"
+                placeholder={isEn ? 'Title (English) *' : 'ชื่อเรื่อง (อังกฤษ)'}
+                value={newPromo.titleEn}
+                onChange={e => setNewPromo(prev => ({ ...prev, titleEn: e.target.value }))}
+                required={isEn}
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+              />
+              <textarea
+                placeholder={isEn ? 'Description (Thai)' : 'คำอธิบาย (ไทย)'}
+                value={newPromo.description}
+                onChange={e => setNewPromo(prev => ({ ...prev, description: e.target.value }))}
+                rows="3"
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', resize: 'none', width: '100%' }}
+              />
+              <textarea
+                placeholder={isEn ? 'Description (English)' : 'คำอธิบาย (อังกฤษ)'}
+                value={newPromo.descriptionEn}
+                onChange={e => setNewPromo(prev => ({ ...prev, descriptionEn: e.target.value }))}
+                rows="3"
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', resize: 'none', width: '100%' }}
+              />
+
+              <div>
+                <label style={{ fontSize: '0.75rem', color: '#aaa', display: 'block', marginBottom: '4px' }}>
+                  {isEn ? 'Main Image' : 'รูปภาพหลัก'}
+                </label>
+                <input
+                  type="file"
+                  name="promoImage"
+                  accept="image/*"
+                  onChange={handlePromoImageBrowse}
+                  style={{ padding: '6px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', width: '100%' }}
+                />
+                {newPromo.image && (
+                  <div style={{ position: 'relative', marginTop: '8px' }}>
+                    <img src={newPromo.image} alt="Preview" style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '6px' }} />
+                    <button
+                      type="button"
+                      onClick={() => setNewPromo(prev => ({ ...prev, image: '' }))}
+                      style={{ position: 'absolute', top: '4px', right: '4px', background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="url"
+                placeholder={isEn ? 'Video URL (YouTube/Vimeo embed)' : 'URL วิดีโอ (YouTube/Vimeo embed)'}
+                value={newPromo.videoUrl}
+                onChange={e => setNewPromo(prev => ({ ...prev, videoUrl: e.target.value }))}
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+              />
+
+              <input
+                type="url"
+                placeholder={isEn ? 'Link (e.g., /detail/xxx or https://...)' : 'ลิงก์ (เช่น /detail/xxx หรือ https://...)'}
+                value={newPromo.link}
+                onChange={e => setNewPromo(prev => ({ ...prev, link: e.target.value }))}
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+              />
+
+              <input
+                type="text"
+                placeholder={isEn ? 'Coordinates (e.g., 14.872085, 101.569337)' : 'พิกัด (เช่น 14.872085, 101.569337)'}
+                value={newPromo.coordsInput}
+                onChange={e => setNewPromo(prev => ({ ...prev, coordsInput: e.target.value }))}
+                style={{ padding: '10px 12px', background: '#2b2d31', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button type="button" onClick={() => { setShowPromoModal(false); resetPromoForm(); }} style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  {isEn ? 'Cancel' : 'ยกเลิก'}
+                </button>
+                <button type="submit" style={{ background: '#ffe76c', color: '#3b3a3b', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  {editingPromoId ? (isEn ? 'Save' : 'บันทึก') : (isEn ? 'Add' : 'เพิ่ม')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CROP MODAL (เหมือนเดิม) */}
+      {promoCropModal.isOpen && (
+        <div 
+          className="map-modal-overlay active" 
+          style={{ zIndex: 2500, padding: '20px', alignItems: 'center', justifyContent: 'center' }} 
+          onClick={handlePromoCropCancel}
+        >
+          <div 
+            className="map-modal-content" 
+            style={{ 
+              backgroundColor: '#1e1e1e', 
+              color: '#fff', 
+              maxWidth: '90vw', 
+              maxHeight: '90vh', 
+              width: '100%', 
+              padding: '20px', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              display: 'flex', 
+              flexDirection: 'column',
+              borderRadius: '16px'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#ffe76c', marginBottom: '16px', fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}>
+              {isEn ? 'Crop Image' : 'ครอบตัดรูปภาพ'}
+            </h2>
+            
+            <div style={{ 
+              flex: 1, 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              background: '#111', 
+              borderRadius: '12px', 
+              padding: '8px', 
+              minHeight: '300px',
+              maxHeight: '60vh',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              <Cropper
+                ref={promoCropperRef}
+                src={promoCropModal.imageSrc}
+                style={{ height: '100%', width: '100%' }}
+                aspectRatio={16 / 9}
+                guides={true}
+                viewMode={1}
+                autoCropArea={0.8}
+                background={false}
+                responsive={true}
+                checkOrientation={false}
+                toggleDragModeOnDblclick={false}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
+              <button 
+                type="button" 
+                onClick={handlePromoCropCancel} 
+                style={{ 
+                  background: '#6c757d', 
+                  color: '#fff', 
+                  border: 'none', 
+                  padding: '12px 24px', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  flex: 1,
+                  minWidth: '80px',
+                  fontSize: '0.9rem'
+                }}
+              >
+                {isEn ? 'Cancel' : 'ยกเลิก'}
+              </button>
+              <button 
+                type="button" 
+                onClick={handlePromoCropConfirm} 
+                style={{ 
+                  background: '#00a854', 
+                  color: '#fff', 
+                  border: 'none', 
+                  padding: '12px 24px', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  flex: 1,
+                  minWidth: '80px',
+                  fontSize: '0.9rem'
+                }}
+              >
+                {isEn ? 'Crop & Confirm' : 'ตัดและยืนยัน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

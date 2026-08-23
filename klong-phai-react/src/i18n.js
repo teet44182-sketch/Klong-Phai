@@ -11,7 +11,7 @@ const resources = {
       nav_restaurant_acc: "ร้านอาหาร / ที่พัก",
       nav_restaurant: "ร้านอาหาร",
       nav_accommodation: "ที่พัก",
-      nav_top10: "10 จุดเช็คอิน",
+      nav_top10: "กิจกรรม",
       nav_map: "แผนที่ชุมชน",
       nav_contact: "ติดต่อเรา",
       nav_plan: "วางแผนการเดินทาง",

@@ -53,49 +53,49 @@ const CATEGORY_OPTIONS = [
     value: 'cafe', 
     label: 'คาเฟ่และร้านอาหาร', 
     labelEn: 'Cafes & Restaurants',
-    color: '#D4A017' // ม่วง
+    color: '#D4A017'
   },
   { 
     value: 'temple', 
     label: 'วัดและศาสนสถาน', 
     labelEn: 'Temples',
-    color: '#F1C40F' // เหลือง
+    color: '#F1C40F'
   },
   { 
     value: 'nature_activity', 
     label: 'ธรรมชาติและกิจกรรม', 
     labelEn: 'Nature & Activities',
-    color: '#1ABC9C' // เขียว
+    color: '#1ABC9C'
   },
   { 
     value: 'government_training', 
     label: 'ราชการและฝึกอบรม', 
     labelEn: 'Government & Training',
-    color: '#307fef' // ส้ม
+    color: '#307fef'
   },
   { 
     value: 'conservation', 
     label: 'ศูนย์อนุรักษ์และศึกษา', 
     labelEn: 'Conservation & Learning',
-    color: '#27AE60' // น้ำเงิน
+    color: '#27AE60'
   },
   { 
     value: 'transport', 
     label: 'การคมนาคม', 
     labelEn: 'Transport',
-    color: '#C0392B' // ฟ้า
+    color: '#C0392B'
   },
   { 
     value: 'new_attraction', 
     label: 'ท่องเที่ยวแนวใหม่', 
     labelEn: 'New Attractions',
-    color: '#EC4899' // ชมพู
+    color: '#EC4899'
   },
   { 
     value: 'other', 
     label: 'อื่นๆ', 
     labelEn: 'Others',
-    color: '#9CA3AF' // เทาอ่อน
+    color: '#9CA3AF'
   },
 ];
 
@@ -128,9 +128,10 @@ export default function Attractions({
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  useEffect(() => {
-    if (onSearchChange) onSearchChange(keyword);
-  }, [keyword, onSearchChange]);
+  // ❌ ลบ useEffect ที่เกี่ยวกับ search
+  // useEffect(() => {
+  //   if (onSearchChange) onSearchChange(keyword);
+  // }, [keyword, onSearchChange]);
 
   // ✅ กรองเฉพาะสถานที่ท่องเที่ยว (ไม่รวมที่พักและร้านอาหาร)
   const allPlaces = (places || [])
@@ -170,23 +171,26 @@ export default function Attractions({
         mapUrl: p.mapUrl || p.googleMap || p.map,
         workingHours: p.workingHours,
         phone: p.phone,
-        category: subCategory, // หมวดหมู่ย่อยใหม่
+        category: subCategory,
         coords: p.coords,
         lat: p.lat,
         lng: p.lng
       };
     });
 
-  // ✅ ค้นหาตาม keyword
-  const searchedPlaces = allPlaces.filter(place => {
-    const searchKey = keyword.trim().toLowerCase();
-    if (!searchKey) return true;
-    const name = (place.name || '').toLowerCase();
-    const nameEn = (place.nameEn || '').toLowerCase();
-    return name.includes(searchKey) || nameEn.includes(searchKey);
-  });
+  // ❌ ลบการค้นหาตาม keyword
+  // const searchedPlaces = allPlaces.filter(place => {
+  //   const searchKey = keyword.trim().toLowerCase();
+  //   if (!searchKey) return true;
+  //   const name = (place.name || '').toLowerCase();
+  //   const nameEn = (place.nameEn || '').toLowerCase();
+  //   return name.includes(searchKey) || nameEn.includes(searchKey);
+  // });
 
-  // ✅ กรองตามหมวดหมู่ย่อย (ถ้าไม่เลือก (all) จะแสดงทั้งหมด)
+  // ✅ ใช้ allPlaces โดยตรง (ไม่ต้อง filter ค้นหา)
+  const searchedPlaces = allPlaces;
+
+  // ✅ กรองตามหมวดหมู่ย่อย
   const filteredPlaces = searchedPlaces.filter(place => {
     if (filterCategory === 'all') return true;
     return (place.category || 'other') === filterCategory;
@@ -237,7 +241,8 @@ export default function Attractions({
             {isEn ? 'All Attractions' : 'สถานที่ท่องเที่ยวทั้งหมด'}
           </h2>
           
-          <div style={{ maxWidth: '500px', margin: '0 auto', opacity: isVisible ? 1 : 0, transform: isVisible ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s' }}>
+          {/* ❌ ลบ Search Bar */}
+          {/* <div style={{ maxWidth: '500px', margin: '0 auto', opacity: isVisible ? 1 : 0, transform: isVisible ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s' }}>
             <div className="search-box" style={{ margin: 0 }}>
               <input 
                 type="text" 
@@ -249,7 +254,7 @@ export default function Attractions({
                 onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.25)'; e.target.style.background = 'rgba(255,255,255,0.12)'; e.target.style.boxShadow = 'none'; }}
               />
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -293,13 +298,21 @@ export default function Attractions({
           })}
         </div>
 
-        {!loading && (
+        {/* ❌ ลบส่วนแสดงผลลัพธ์การค้นหา */}
+        {/* {!loading && (
           <div style={{ marginBottom: '20px', color: '#888', fontSize: '0.9rem', fontFamily: 'Prompt, sans-serif', opacity: isVisible ? 1 : 0, transition: 'opacity 0.6s ease 0.5s', textAlign: 'center' }}>
             {keyword.trim() !== '' ? (
               isEn ? `Found ${filteredPlaces.length} results for "${keyword}"` : `พบ ${filteredPlaces.length} ผลลัพธ์สำหรับ "${keyword}"`
             ) : (
               isEn ? `Showing all ${filteredPlaces.length} places` : `แสดงทั้งหมด ${filteredPlaces.length} สถานที่`
             )}
+          </div>
+        )} */}
+
+        {/* ✅ แสดงจำนวนสถานที่ทั้งหมด (แบบไม่มีการค้นหา) */}
+        {!loading && (
+          <div style={{ marginBottom: '20px', color: '#888', fontSize: '0.9rem', fontFamily: 'Prompt, sans-serif', opacity: isVisible ? 1 : 0, transition: 'opacity 0.6s ease 0.5s', textAlign: 'center' }}>
+            {isEn ? `Showing all ${filteredPlaces.length} places` : `แสดงทั้งหมด ${filteredPlaces.length} สถานที่`}
           </div>
         )}
 
