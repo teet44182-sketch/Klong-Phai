@@ -1,3 +1,5 @@
+/* src/App.css */
+
 /* ==========================================
    1. GLOBAL STYLES & FONTS (สไตล์เริ่มต้น & ฟอนต์)
    ========================================== */
@@ -141,17 +143,14 @@ body {
    MOBILE NAV & GENERAL RESPONSIVE (≤768px)
    ========================================== */
 @media (max-width: 768px) {
-  /* Navbar compact */
   .navbar {
     padding: 15px 20px;
   }
 
-  /* Show hamburger button */
   .hamburger {
     display: flex;
   }
 
-  /* Nav links become full-width slide-down overlay */
   .nav-links {
     position: fixed;
     top: 70px;
@@ -175,7 +174,6 @@ body {
     max-height: 520px;
   }
 
-  /* Each link row */
   .nav-links > a,
   .nav-links > .dropdown {
     border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -188,7 +186,6 @@ body {
     color: #ddd;
   }
 
-  /* Dropdown inside mobile nav becomes static */
   .nav-links .dropdown {
     display: block;
     width: 100%;
@@ -231,7 +228,6 @@ body {
     background: rgba(0,0,0,0.18) !important;
   }
 
-  /* CTA button inside mobile nav */
   .nav-links .btn-green {
     display: block;
     margin: 12px 20px 16px 20px;
@@ -241,12 +237,10 @@ body {
     font-size: 14px;
   }
 
-  /* Hero title smaller on tablet */
   .search-container-inside h1 {
     font-size: 2.4rem;
   }
 
-  /* Info sections already stack at 768px - keep border tidy */
   .info-text {
     border-left: none !important;
     border-right: none !important;
@@ -254,7 +248,7 @@ body {
 }
 
 /* ==========================================
-   3. DROPDOWN STYLE (ระบบเมนูคลิกแบบใส 25%)
+   3. DROPDOWN STYLE
    ========================================== */
 .dropdown {
   position: relative;
@@ -335,7 +329,7 @@ body {
 }
 
 /* ==========================================
-   4. HERO & SEARCH SECTION (ส่วนหัวภาพปกและกล่องค้นหา)
+   4. HERO & SEARCH SECTION
    ========================================== */
 .hero-section {
   width: 100%;
@@ -350,7 +344,6 @@ body {
   transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* เมื่อเริ่มพิมพ์ค้นหาหรือเลือกฟิลเตอร์ รูปภาพจะหดสัดส่วนขึ้นไปหลบแผงผลลัพธ์ */
 .home-page-wrapper:has(.lift-up) .hero-section {
   height: 40vh;
 }
@@ -400,7 +393,6 @@ body {
   transition: font-size 0.7s cubic-bezier(0.25, 1, 0.5, 1), margin-bottom 0.7s ease;
 }
 
-/* เมื่อพิมพ์ค้นหา ตัวอักษรหัวข้อใหญ่หดเล็กลง */
 .home-page-wrapper:has(.lift-up) .search-container-inside h1 {
   font-size: 2.2rem;
   margin-bottom: 12px;
@@ -434,7 +426,7 @@ body {
 }
 
 /* ==========================================
-   5. PANEL & RESULTS GRID (แก้ไขจุดบกพร่องเรื่องการ Scroll และโดนบดบัง)
+   5. PANEL & RESULTS GRID
    ========================================== */
 .search-panel-bottom {
   position: relative;
@@ -454,7 +446,6 @@ body {
   transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, visibility 0.5s;
 }
 
-/* แสดงแผงข้อมูลเมื่อติดคลาส .lift-up */
 .search-panel-bottom.lift-up {
   transform: translateY(0);
   margin-top: 0; 
@@ -489,7 +480,6 @@ body {
   padding-bottom: 50px; 
 }
 
-/* ปรับให้รองรับหน้าจอเล็ก */
 @media (max-width: 768px) {
   .results-grid {
     grid-template-columns: 1fr;
@@ -511,7 +501,7 @@ body {
 }
 
 /* ==========================================
-   6. CARD SYSTEM (แบบทั่วไป)
+   6. CARD SYSTEM
    ========================================== */
 .card {
   background: #fff;
@@ -584,7 +574,7 @@ body {
 }
 
 /* ==========================================
-   7. PAGE UTILITIES (หน้าเพจย่อยเพิ่มเติม)
+   7. PAGE UTILITIES
    ========================================== */
 .page-title {
   font-family: 'Mitr', sans-serif;
@@ -594,7 +584,7 @@ body {
 }
 
 /* ==========================================
-   8. INFO SECTIONS (สลับซ้ายขวา image + text)
+   8. INFO SECTIONS
    ========================================== */
 .info-sections {
   width: 100%;
@@ -613,7 +603,6 @@ body {
   gap: 0;
   padding: 50px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  /* fade-up initial state */
   opacity: 0;
   transform: translateY(48px);
   transition: opacity 0.7s ease, transform 0.7s ease;
@@ -628,7 +617,6 @@ body {
   border-bottom: none;
 }
 
-/* สลับฝั่ง: text ซ้าย image ขวา */
 .info-row.reverse {
   direction: rtl;
 }
@@ -705,7 +693,6 @@ body {
   }
 }
 
-/* Animation สำหรับแบบที่ 2 (Switch Toggle) */
 @keyframes fadeInText {
   from {
     opacity: 0;
@@ -717,7 +704,6 @@ body {
   }
 }
 
-/* เอฟเฟกต์ Hover & Click Interactive */
 .lang-switch-btn:hover {
   background: rgba(255, 255, 255, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.4) !important;
@@ -736,7 +722,6 @@ body {
    9. MODERN UPGRADE PACK 2025 🚀
    ========================================== */
 
-/* ===== 9.1 Smooth Scroll & Selection ===== */
 html {
   scroll-behavior: smooth;
 }
@@ -765,14 +750,12 @@ html {
   background: #00d4a8;
 }
 
-/* ===== 9.2 Better Focus Outline ===== */
 *:focus-visible {
   outline: 2px solid #00a854;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* ===== 9.3 Premium Button Micro-interactions ===== */
 button,
 .nav-links a,
 .btn-green,
@@ -802,7 +785,6 @@ button:active,
   transform: scale(0.92) !important;
 }
 
-/* ===== 9.4 Premium Hover Effects ===== */
 .nav-links a {
   position: relative;
   transition: color 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -827,7 +809,6 @@ button:active,
   width: 100%;
 }
 
-/* ===== 9.5 Premium Button Glow ===== */
 .btn-green {
   position: relative;
   overflow: hidden;
@@ -843,7 +824,6 @@ button:active,
   transform: scale(0.95) !important;
 }
 
-/* ===== 9.6 Gradient Text (Trending) ===== */
 .gradient-text {
   background: linear-gradient(135deg, #00a854 0%, #00d4a8 50%, #00ffcc 100%);
   -webkit-background-clip: text;
@@ -868,7 +848,6 @@ button:active,
   display: inline-block;
 }
 
-/* ===== 9.7 Premium Glassmorphism ===== */
 .glass-premium {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(20px);
@@ -888,7 +867,6 @@ button:active,
   border-radius: 16px;
 }
 
-/* ===== 9.8 Floating Animation ===== */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
@@ -907,7 +885,6 @@ button:active,
   animation: floatSlow 4s ease-in-out infinite;
 }
 
-/* ===== 9.9 Pulse Ring Animation ===== */
 @keyframes pulseRing {
   0% { transform: scale(1); opacity: 0.6; }
   100% { transform: scale(1.8); opacity: 0; }
@@ -930,7 +907,6 @@ button:active,
   pointer-events: none;
 }
 
-/* ===== 9.10 Shimmer / Skeleton Loading ===== */
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
@@ -963,7 +939,6 @@ button:active,
   margin-bottom: 12px;
 }
 
-/* ===== 9.11 Marquee / Scrolling Text ===== */
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-33.33%); }
@@ -993,7 +968,6 @@ button:active,
   gap: 8px;
 }
 
-/* ===== 9.12 Scroll Progress Bar ===== */
 .scroll-progress {
   position: fixed;
   top: 70px;
@@ -1005,13 +979,11 @@ button:active,
   box-shadow: 0 0 20px rgba(0, 168, 84, 0.3);
 }
 
-/* ===== 9.13 Magnetic Button Effect ===== */
 .magnetic-btn {
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
 }
 
-/* ===== 9.14 Cursor Glow (Desktop only) ===== */
 @media (hover: hover) {
   .cursor-glow {
     position: fixed;
@@ -1026,7 +998,6 @@ button:active,
   }
 }
 
-/* ===== 9.15 Page Transitions ===== */
 .page-enter {
   opacity: 0;
   transform: translateY(20px);
@@ -1038,7 +1009,6 @@ button:active,
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-/* ===== 9.16 Card Interactive Premium (Hover & Click) ===== */
 .card-interactive {
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -1055,7 +1025,6 @@ button:active,
   transition: transform 0.05s ease !important;
 }
 
-/* ===== 9.17 Like Button Animation ===== */
 @keyframes heartBounce {
   0% { transform: scale(1); }
   25% { transform: scale(1.3); }
@@ -1068,7 +1037,6 @@ button:active,
   animation: heartBounce 0.4s ease;
 }
 
-/* ===== 9.18 Toast Premium ===== */
 .toast-premium {
   background: rgba(18, 18, 18, 0.85);
   backdrop-filter: blur(24px);
@@ -1079,7 +1047,6 @@ button:active,
   padding: 14px 28px;
 }
 
-/* ===== 9.19 Modal Premium (Map Modal) ===== */
 .map-modal-overlay {
   position: fixed;
   top: 0;
@@ -1145,7 +1112,6 @@ button:active,
   background: #eee;
 }
 
-/* ===== 9.20 Input Focus Glow ===== */
 input:focus,
 textarea:focus,
 select:focus {
@@ -1154,7 +1120,6 @@ select:focus {
   transition: all 0.3s ease;
 }
 
-/* ===== 9.21 Responsive Typography ===== */
 @media (max-width: 768px) {
   h1 { font-size: 2rem; }
   h2 { font-size: 1.5rem; }
@@ -1168,7 +1133,6 @@ select:focus {
   .page-title { font-size: 1.1rem; }
 }
 
-/* ===== 9.22 Loading Spinner Premium ===== */
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -1192,7 +1156,6 @@ select:focus {
   animation: spin 0.7s linear infinite;
 }
 
-/* ===== 9.23 Badge / Tag Styles ===== */
 .badge {
   display: inline-block;
   padding: 2px 12px;
@@ -1222,7 +1185,6 @@ select:focus {
   color: #ff4d4d;
 }
 
-/* ===== 9.24 Divider Styles ===== */
 .divider {
   width: 60px;
   height: 3px;
@@ -1239,7 +1201,6 @@ select:focus {
   margin: 8px auto 16px;
 }
 
-/* ===== 9.25 Image Hover Zoom ===== */
 .img-zoom {
   overflow: hidden;
   border-radius: 12px;
@@ -1253,7 +1214,6 @@ select:focus {
   transform: scale(1.05);
 }
 
-/* ===== 9.26 Status Dot ===== */
 .status-dot {
   display: inline-block;
   width: 8px;
@@ -1277,10 +1237,9 @@ select:focus {
 }
 
 /* ==========================================
-   10. LINE CLAMP - ตัดข้อความ
+   10. LINE CLAMP
    ========================================== */
 
-/* ✅ Fallback สำหรับ Browser ที่ไม่รองรับ */
 .line-clamp-2,
 .line-clamp-3 {
   overflow: hidden;
@@ -1288,7 +1247,6 @@ select:focus {
   white-space: nowrap;
 }
 
-/* ✅ สำหรับ Browser ที่รองรับ (Chrome, Safari, Edge) */
 @supports (display: -webkit-box) {
   .line-clamp-2 {
     display: -webkit-box;
@@ -1318,7 +1276,7 @@ select:focus {
 }
 
 /* ==========================================
-   12. UTILITY CLASSES (ใช้ได้ทุกที่)
+   12. UTILITY CLASSES
    ========================================== */
 .text-center { text-align: center; }
 .text-left { text-align: left; }
@@ -1425,7 +1383,6 @@ select:focus {
   }
 }
 
-/* ✅ แก้ไขตัวอักษรตัด */
 * {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -1437,7 +1394,9 @@ h1, h2, h3, .nav-logo, .panel-title {
   line-height: 1.4;
 }
 
-/* ===== Image Slider ===== */
+/* ==========================================
+   14. IMAGE SLIDER
+   ========================================== */
 .image-slider {
   position: relative;
   width: 100%;
@@ -1465,7 +1424,6 @@ h1, h2, h3, .nav-logo, .panel-title {
   transform: scale(1);
 }
 
-/* ===== Slider Dots ===== */
 .slider-dots {
   position: absolute;
   bottom: 12px;
@@ -1497,7 +1455,6 @@ h1, h2, h3, .nav-logo, .panel-title {
   background: rgba(255, 255, 255, 0.8);
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 768px) {
   .image-slider {
     min-height: 200px;
@@ -1506,5 +1463,227 @@ h1, h2, h3, .nav-logo, .panel-title {
   .dot {
     width: 8px;
     height: 8px;
+  }
+}
+
+/* ==========================================
+   15. FEATURE CARDS SECTION
+   ========================================== */
+
+.features-section {
+  padding: 80px 20px 60px 20px;
+  background: #2b2b2b;
+}
+
+.features-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* ✅ หัวข้อ */
+.features-title {
+  font-family: 'Mitr', sans-serif;
+  font-size: 2.2rem;
+  color: #ffffff;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.features-subtitle {
+  font-family: 'Prompt', sans-serif;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+  margin-bottom: 48px;
+  letter-spacing: 0.5px;
+}
+
+/* ✅ Grid Cards */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+/* ✅ Feature Card */
+.feature-card {
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 32px 20px 28px;
+  text-align: center;
+  transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ✅ Glow effect on hover */
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(0, 168, 84, 0.06) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.feature-card:hover::before {
+  opacity: 1;
+}
+
+.feature-card:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-6px);
+  border-color: rgba(0, 168, 84, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.feature-card:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+
+/* ✅ Feature Icon */
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.feature-icon-img {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transition: transform 0.3s ease;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.feature-card:hover .feature-icon-img {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+/* ✅ Feature Title */
+.feature-card-title {
+  font-family: 'Mitr', sans-serif;
+  color: #00e87a;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* ✅ Feature Description */
+.feature-card-desc {
+  font-family: 'Prompt', sans-serif;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ✅ Responsive */
+@media (max-width: 992px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .features-title {
+    font-size: 1.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .features-section {
+    padding: 50px 16px 60px 16px;
+  }
+
+  .features-title {
+    font-size: 1.6rem;
+  }
+
+  .features-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 32px;
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .feature-card {
+    padding: 24px 14px 20px;
+  }
+
+  .feature-icon {
+    font-size: 2.4rem;
+    margin-bottom: 12px;
+  }
+  
+  .feature-icon-img {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card-title {
+    font-size: 0.95rem;
+  }
+
+  .feature-card-desc {
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 480px) {
+  .features-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .feature-card {
+    padding: 18px 10px 16px;
+  }
+
+  .feature-icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+  }
+  
+  .feature-icon-img {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 8px;
+  }
+
+  .feature-card-title {
+    font-size: 0.82rem;
+  }
+
+  .feature-card-desc {
+    font-size: 0.7rem;
+    line-height: 1.5;
+  }
+
+  .features-title {
+    font-size: 1.3rem;
   }
 }

@@ -1,14 +1,20 @@
 // src/pages/Home.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
-import MarqueeBanner from '../components/MarqueeBanner';
 import watKaoprickImg from '../assets/watkaoprick.jpg';
 import cook_n_coff from '../assets/cook_n_coff.jpg';
 import cook_n_coff_view from '../assets/cook_n_coff_view.jpg';
 import cook_n_coff_view2 from '../assets/cook_n_coff_view2.jpg';
 import Rpsg_Sut from '../assets/Rpsg_Sut.jpg';
+
+// ✅ Import รูปภาพจาก assets
+import natureIcon from '../assets/location.png';
+import localHistoryIcon from '../assets/local-history.png';
+import foodIcon from '../assets/destination.png';
+import activitiesIcon from '../assets/jogging.png';
 
 export default function Home({ 
   places = [],        
@@ -30,25 +36,20 @@ export default function Home({
   const currentLang = lang || ((i18n.language || 'th').startsWith('th') ? 'th' : 'en');
   const isEn = currentLang === 'en';
 
-  // ===== State สำหรับ Slider แต่ละอัน =====
   const [slider1, setSlider1] = useState(0);
   const [slider2, setSlider2] = useState(0);
   const [slider3, setSlider3] = useState(0);
 
-  // ===== Auto-Slide แต่ละอันแยกกัน =====
   useEffect(() => {
     const interval1 = setInterval(() => {
       setSlider1(prev => (prev + 1) % 3);
     }, 5000);
-
     const interval2 = setInterval(() => {
       setSlider2(prev => (prev + 1) % 3);
     }, 5000);
-
     const interval3 = setInterval(() => {
       setSlider3(prev => (prev + 1) % 3);
     }, 5000);
-
     return () => {
       clearInterval(interval1);
       clearInterval(interval2);
@@ -74,7 +75,6 @@ export default function Home({
     return () => observer.disconnect();
   }, []);
 
-  // ===== Swipe Functions =====
   const handleSwipeRightAdd = (place) => {
     if (setSelectedPlaces) {
       const placeId = place.id || place.docId;
@@ -100,7 +100,6 @@ export default function Home({
   const handleToggleAddToPlan = (place) => {
     const placeId = place.id || place.docId;
     const exists = selectedPlaces.some(p => (p.id || p.docId) === placeId);
-
     if (exists) {
       handleSwipeLeftRemove(place);
     } else {
@@ -138,107 +137,272 @@ export default function Home({
     return thName.includes(searchKey) || enName.includes(searchKey);
   });
 
+  // ✅ Feature data - ใช้รูปภาพจาก assets
+  const features = [
+    {
+      id: 1,
+      icon: natureIcon,           // ✅ nature.png
+      iconAlt: 'ธรรมชาติ',
+      title: t('feature_1_title'),
+      desc: t('feature_1_desc')
+    },
+    {
+      id: 2,
+      icon: localHistoryIcon,     // ✅ local-history.png
+      iconAlt: 'วัฒนธรรม',
+      title: t('feature_2_title'),
+      desc: t('feature_2_desc')
+    },
+    {
+      id: 3,
+      icon: foodIcon,             // ✅ tray.png
+      iconAlt: 'อาหาร',
+      title: t('feature_3_title'),
+      desc: t('feature_3_desc')
+    },
+    {
+      id: 4,
+      icon: activitiesIcon,       // ✅ jogging.png
+      iconAlt: 'กิจกรรม',
+      title: t('feature_4_title'),
+      desc: t('feature_4_desc')
+    }
+  ];
+
   return (
     <div className="home-page-wrapper">
+
       {/* ===== HERO SECTION ===== */}
-      <div className="hero-section">
+      <div className="hero-section" style={{
+        position: 'relative',
+        width: '100%',
+        height: '100vh',
+        minHeight: '100vh',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'flex-start',
+        marginTop: '0',
+        backgroundColor: '#2b2b2b',
+      }}>
+        {/* รูปพื้นหลัง */}
         <img 
           src={watKaoprickImg} 
-          alt={t('hero_alt', 'วัดเขาพริก')} 
-          className="hero-bg-img"
+          alt={t('hero_alt')} 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            filter: 'blur(0px) brightness(1.3)',
+            transform: 'scale(1.05)',
+            zIndex: 1,
+          }}
         />
 
-        <div className="search-container-inside">
-          <h1 className="gradient-text">
-            {t('hero_title', 'เที่ยวในเทศบาลตำบล คลองไผ่')}
+        {/* Gradient overlay */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0) 100%)',
+          zIndex: 2,
+        }} />
+
+        {/* เนื้อหาข้อความ */}
+        <div style={{
+          position: 'relative',
+          zIndex: 3,
+          padding: '100px 100px 120px 100px',
+          maxWidth: '850px',
+          width: '100%',
+          textAlign: 'left',
+        }}>
+          <h1 style={{
+            fontSize: isEn ? '5rem' : '4.5rem',
+            fontWeight: '700',
+            color: '#ffffff',
+            marginBottom: '10px',
+            fontFamily: 'Mitr, sans-serif',
+            textShadow: '0 4px 30px rgba(0,0,0,0.35)',
+            lineHeight: '1.1',
+            letterSpacing: '2px',
+          }}>
+            {t('hero_title')}
           </h1>
-          <br />
-          <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
-            <div className="search-box" style={{ margin: 0 }}>
-              <input 
-                type="text" 
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder={t('search_placeholder', 'ค้นหาสถานที่ท่องเที่ยว...')} 
-              />
-            </div>
-          </div>
+
+          <p style={{
+            fontSize: isEn ? '1.8rem' : '1.7rem',
+            color: '#00e87a',
+            fontWeight: '500',
+            marginBottom: '12px',
+            fontFamily: 'Mitr, sans-serif',
+            textShadow: '0 4px 30px rgba(0,0,0,0.25)',
+            letterSpacing: '1px',
+          }}>
+            {t('hero_subtitle')}
+          </p>
+
+          <p style={{
+            fontSize: '1.2rem',
+            color: 'rgba(255,255,255,0.92)',
+            marginBottom: '40px',
+            fontFamily: 'Prompt, sans-serif',
+            maxWidth: '580px',
+            textShadow: '0 2px 10px rgba(0,0,0,0.2)',
+            lineHeight: '1.7',
+            letterSpacing: '0.5px',
+          }}>
+            {t('hero_description')}
+          </p>
+
+          <a 
+            href="/attractions" 
+            className="explore-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '16px 48px',
+              background: 'linear-gradient(135deg, #00a854, #008743)',
+              color: '#fff',
+              borderRadius: '50px',
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              fontFamily: 'Mitr, sans-serif',
+              textDecoration: 'none',
+              boxShadow: '0 8px 30px rgba(0, 168, 84, 0.4)',
+              transition: 'all 0.3s ease',
+              border: '2px solid rgba(255,255,255,0.1)',
+              letterSpacing: '1px',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 12px 45px rgba(0, 168, 84, 0.55)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #00c45e, #00a854)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 168, 84, 0.4)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #00a854, #008743)';
+            }}
+          >
+            {t('hero_button')}
+            <span style={{ fontSize: '1.6rem', lineHeight: '1' }}>→</span>
+          </a>
         </div>
+
+        {/* ลูกศรชี้ลง */}
+        <div style={{
+          position: 'absolute',
+          bottom: '30px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          animation: 'bounce 2s infinite',
+          opacity: 0.8,
+          transition: 'opacity 0.3s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '1';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '0.8';
+        }}
+        onClick={() => {
+          const nextSection = document.querySelector('.features-section');
+          if (nextSection) {
+            nextSection.scrollIntoView({ behavior: 'smooth' });
+          }
+        }}>
+          <span style={{
+            color: 'rgba(255,255,255,1)',
+            fontSize: '0.85rem',
+            fontFamily: 'Prompt, sans-serif',
+            letterSpacing: '1px',
+            textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+          }}>
+            {t('hero_more_info')}
+          </span>
+          
+          <svg 
+            width="30" 
+            height="30" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="rgba(255,255,255,0.7)" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{
+              filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))',
+            }}
+          >
+            <path d="M7 13l5 5 5-5" />
+            <path d="M7 7l5 5 5-5" />
+          </svg>
+        </div>
+
+        <style>{`
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateX(-50%) translateY(0);
+            }
+            40% {
+              transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+              transform: translateX(-50%) translateY(-5px);
+            }
+          }
+        `}</style>
       </div>
 
-      {/* ===== MARQUEE BANNER ===== */}
-      <MarqueeBanner />
+      {/* ===== FEATURE CARDS SECTION ===== */}
+      <section className="features-section">
+        <div className="features-container">
+          <h2 className="features-title">
+            {t('features_title')}
+          </h2>
+          <p className="features-subtitle">
+            {t('features_subtitle')}
+          </p>
 
-      {/* ===== SEARCH RESULTS PANEL ===== */}
-      <div className={`search-panel-bottom ${keyword.trim() !== '' ? 'lift-up' : 'hidden-panel'}`}>
-        <h2 className="panel-title">
-          {keyword.trim() !== '' && (
-            isEn 
-              ? `Search results for "${keyword}" (${filteredPlaces.length} items)`
-              : `ผลการค้นหาสำหรับ "${keyword}" (${filteredPlaces.length} รายการ)`
-          )}
-        </h2>
-        
-        {loading ? (
-          <div style={{ 
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '25px'
-          }}>
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ 
-                background: '#1e1e1e', 
-                borderRadius: '12px', 
-                padding: '12px',
-                border: '1px solid rgba(255,255,255,0.05)'
-              }}>
-                <div className="skeleton skeleton-image" />
-                <div className="skeleton skeleton-title" />
-                <div className="skeleton skeleton-text" style={{ width: '90%' }} />
-                <div className="skeleton skeleton-text" style={{ width: '60%' }} />
+          <div className="features-grid">
+            {features.map((feature) => (
+              <div
+                key={feature.id}
+                className="feature-card"
+              >
+                {/* ✅ ใช้ <img> แสดงรูปจาก assets */}
+                <img 
+                  src={feature.icon} 
+                  alt={feature.iconAlt}
+                  className="feature-icon-img"
+                />
+                <h3 className="feature-card-title">
+                  {feature.title}
+                </h3>
+                <p className="feature-card-desc">
+                  {feature.desc}
+                </p>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="results-grid">
-            {filteredPlaces.length > 0 ? (
-              filteredPlaces.map(place => {
-                const placeId = place.id || place.docId;
-                const isAdded = selectedPlaces.some(p => (p.id || p.docId) === placeId);
+        </div>
+      </section>
 
-                return (
-                  <SwipeCard
-                    key={placeId}
-                    isAdded={isAdded}
-                    onSwipeRight={() => handleSwipeRightAdd(place)}
-                    onSwipeLeft={() => handleSwipeLeftRemove(place)}
-                  >
-                    <Card 
-                      place={place} 
-                      onOpenMap={onOpenMap} 
-                      likesCount={likes[placeId] || 0}
-                      onLike={onLike}
-                      lang={currentLang}
-                      isAdmin={isAdmin}
-                      onEdit={onEditPlace}
-                      onDelete={onDeletePlace}
-                      onAddToPlan={() => handleToggleAddToPlan(place)}
-                      isAddedToPlan={isAdded}
-                    />
-                  </SwipeCard>
-                );
-              })
-            ) : (
-              <div className="no-result">
-                <h3>{t('no_search_title', 'ไม่พบชื่อสถานที่ที่คุณค้นหา')}</h3>
-                <p style={{ marginTop: '5px' }}>{t('no_search_desc', 'ลองพิมพ์ค้นหาด้วยชื่ออื่น')}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ===== INFO SECTIONS (แก้ไขให้ใช้คีย์จาก i18n.js ของคุณ) ===== */}
+      {/* ===== INFO SECTIONS ===== */}
       <section className="info-sections">
         {/* Slider 1 */}
         <div className="info-row">
@@ -246,17 +410,17 @@ export default function Home({
             <div className="image-slider">
               <img 
                 src={cook_n_coff} 
-                alt={t('alt_about_1', 'ชุมชนคลองไผ่')}
+                alt={t('alt_about_1')}
                 className={`slide-image ${slider1 === 0 ? 'active' : ''}`}
               />
               <img 
                 src={cook_n_coff_view} 
-                alt={t('alt_about_2', 'ธรรมชาติคลองไผ่')}
+                alt={t('alt_about_2')}
                 className={`slide-image ${slider1 === 1 ? 'active' : ''}`}
               />
               <img 
                 src={cook_n_coff_view2} 
-                alt={t('alt_about_3', 'วิวคลองไผ่')}
+                alt={t('alt_about_3')}
                 className={`slide-image ${slider1 === 2 ? 'active' : ''}`}
               />
               <div className="slider-dots">
@@ -278,17 +442,17 @@ export default function Home({
             <div className="image-slider">
               <img 
                 src={Rpsg_Sut} 
-                alt={t('alt_attractions_1', 'สถานที่น่าสนใจ')}
+                alt={t('alt_attractions_1')}
                 className={`slide-image ${slider2 === 0 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1470071459604-7b8ec44ffd1b?w=600&h=400&fit=crop" 
-                alt={t('alt_attractions_2', 'ธรรมชาติ')}
+                alt={t('alt_attractions_2')}
                 className={`slide-image ${slider2 === 1 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop" 
-                alt={t('alt_attractions_3', 'วิวเขา')}
+                alt={t('alt_attractions_3')}
                 className={`slide-image ${slider2 === 2 ? 'active' : ''}`}
               />
               <div className="slider-dots">
@@ -299,8 +463,8 @@ export default function Home({
             </div>
           </div>
           <div className="info-text">
-            <h2>{t('attractions_title')}</h2>
-            <p>{t('attractions_desc')}</p>
+            <h2>{t('attractions_section_title')}</h2>
+            <p>{t('attractions_section_desc')}</p>
           </div>
         </div>
 
@@ -310,17 +474,17 @@ export default function Home({
             <div className="image-slider">
               <img 
                 src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop" 
-                alt={t('alt_activities_1', 'กิจกรรมท่องเที่ยว')}
+                alt={t('alt_activities_1')}
                 className={`slide-image ${slider3 === 0 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&h=400&fit=crop" 
-                alt={t('alt_activities_2', 'กิจกรรมกลางแจ้ง')}
+                alt={t('alt_activities_2')}
                 className={`slide-image ${slider3 === 1 ? 'active' : ''}`}
               />
               <img 
                 src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop" 
-                alt={t('alt_activities_3', 'วิวทะเล')}
+                alt={t('alt_activities_3')}
                 className={`slide-image ${slider3 === 2 ? 'active' : ''}`}
               />
               <div className="slider-dots">
@@ -331,11 +495,11 @@ export default function Home({
             </div>
           </div>
           <div className="info-text">
-            <h2>{t('activities_title')}</h2>
-            <p>{t('activities_desc')}</p>
+            <h2>{t('activities_section_title')}</h2>
+            <p>{t('activities_section_desc')}</p>
           </div>
         </div>
-      </section>
+      </section>  
     </div>
   );
 }
