@@ -7,6 +7,11 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icon1.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- ✅ เพิ่มบรรทัดนี้เพื่อแก้ warning -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
     <!-- ===== SEO Meta Tags ===== -->
     <title>เที่ยวเทศบาลตำบลคลองไผ่ - สถานที่ท่องเที่ยว ที่พัก ร้านอาหาร</title>
     <meta name="description" content="แหล่งรวมสถานที่ท่องเที่ยว ที่พัก ร้านอาหาร ในคลองไผ่ พร้อมแผนที่และรีวิวจากนักท่องเที่ยว" />
@@ -32,8 +37,6 @@
 
     <!-- ===== Theme Color ===== -->
     <meta name="theme-color" content="#00a854" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- ===== Preconnect ===== -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -51,6 +54,7 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- ✅ สำคัญมาก: ต้องเป็น /src/main.jsx -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
