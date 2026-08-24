@@ -18,8 +18,8 @@ const resources = {
 
       // ===== Hero (Home Page) =====
       hero_title: "เที่ยวคลองไผ่",
-      hero_subtitle: "ชวนมาเที่ยว มาพัก มาสัมผัสธรรมชาติ",
-      hero_description: "ออกเดินทางมาสัมผัสธรรมชาติ สนุกกับกิจกรรม และพักผ่อนท่ามกลางบรรยากาศดี ๆ ที่คลองไผ่",
+      hero_subtitle: "ท่องเที่ยวคลองไผ่ ในแบบที่เป็นคุณ",
+      hero_description: "ค้นพบสถานที่ วางแผนการเดินทาง และออกไปสัมผัสคลองไผ่ได้ง่าย ๆ ในที่เดียว",
       hero_button: "สำรวจคลองไผ่",
       hero_more_info: "ข้อมูลเพิ่มเติม",
 
@@ -27,8 +27,8 @@ const resources = {
       hero_alt: "วัดเขาพริก",
 
       // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
-      features_title: "ค้นพบคลองไผ่",
-      features_subtitle: "ทุกสิ่งที่คุณต้องรู้ก่อนไปเที่ยวคลองไผ่",
+      features_title: "เที่ยวคลองไผ่ได้ง่ายขึ้น",
+      features_subtitle: "เครื่องมือช่วยค้นหาสถานที่ สำรวจแผนที่ วางแผนทริป และค้นหากิจกรรม",
       feature_1_title: "แนะนำสถานที่",
       feature_1_desc: "รวมจุดน่าเที่ยวและสถานที่น่าสนใจในคลองไผ่ ที่อยากชวนให้คุณออกไปสัมผัสด้วยตัวเอง",
       feature_2_title: "แผนที่ชุมชน",
@@ -75,10 +75,10 @@ const resources = {
       review_placeholder: "เขียนรีวิวเกี่ยวกับสถานที่นี้... (2-200 ตัวอักษร)",
 
       // ===== Check-in Page =====
-      checkin_title: "จัดอันดับ 10 จุดเช็คอิน คลองไผ่",
+      checkin_title: "กิจกรรม คลองไผ่",
       checkin_subtitle: "อันดับจะจัดเรียงและเปลี่ยนแปลงแบบเรียลไทม์ผ่านปุ่มโหวตหัวใจ",
-      checkin_discuss_title: "พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้",
-      checkin_placeholder: "เขียนรีวิวหรือแนะนำสิ่งที่น่าสนใจใน 10 จุดเช็คอินนี้... (2-200 ตัวอักษร)",
+      checkin_discuss_title: "พูดคุยเกี่ยวกับ กิจกรรมนี้",
+      checkin_placeholder: "เขียนรีวิวหรือแนะนำสิ่งที่น่าสนใจใน กิจกรรมนี้... (2-200 ตัวอักษร)",
       chars_limit: "ตัวอักษร",
       login_prompt: "กรุณาเข้าสู่ระบบด้วย Google เพื่อยืนยันตัวตนก่อนร่วมแสดงความคิดเห็น",
       google_login: "เข้าสู่ระบบด้วย Google",
@@ -132,7 +132,7 @@ const resources = {
       attractions: "สถานที่ท่องเที่ยว",
       restaurants: "ร้านอาหาร",
       accommodations: "ที่พัก",
-      top10: "10 จุดเช็คอิน",
+      top10: "กิจกรรม",
       map: "แผนที่ชุมชน",
       planner: "วางแผนทริป",
       no_accommodation: "ยังไม่มีข้อมูลที่พักในขณะนี้",
@@ -244,33 +244,33 @@ const resources = {
   en: {
     translation: {
       // ===== Navbar =====
-      brand_title: "Explore Klongpai",
+      brand_title: "Explore KhlongPhai",
       nav_home: "Home",
       nav_restaurant_acc: "Dining & Stay",
       nav_restaurant: "Restaurants",
       nav_accommodation: "Accommodations",
-      nav_top10: "Top 10 Check-ins",
+      nav_top10: "Activities",
       nav_map: "Community Map",
       nav_contact: "Contact Us",
       nav_plan: "Plan Your Trip",
 
       // ===== Hero (Home Page) =====
-      hero_title: "Klongpai",
-      hero_subtitle: "Visit, relax, and reconnect with nature.",
-      hero_description: "Come experience nature, enjoy fun activities, and relax in the beautiful atmosphere of Klongpai.",
-      hero_button: "Explore Klongpai",
+      hero_title: "KhlongPhai",
+      hero_subtitle: "Explore KhlongPhai, Your Way",
+      hero_description: "Discover places, plan your journey, and experience KhlongPhai all in one place.",
+      hero_button: "Explore KhlongPhai",
       hero_more_info: "More information",
 
       // ===== Hero Alt =====
       hero_alt: "Wat Khao Phrik",
 
       // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
-      features_title: "Discover Klongpai",
-      features_subtitle: "Everything you need to know before visiting Klongpai",
+      features_title: "Explore KhlongPhai with Ease",
+      features_subtitle: "Tools to discover places, explore the map, plan your trip, and find activities.",
       feature_1_title: "Recommended Places",
-      feature_1_desc: "Discover must-visit spots and interesting places around Klongpai, waiting for you to explore.",
+      feature_1_desc: "Discover must-visit spots and interesting places around KhlongPhai, waiting for you to explore.",
       feature_2_title: "Community Map",
-      feature_2_desc: "Explore interesting places around Khlong Phai with useful travel information.",
+      feature_2_desc: "Explore interesting places around KhlongPhai with useful travel information.",
       feature_3_title: "Plan Your Trip",
       feature_3_desc: "Choose the places you want to visit and easily create your own itinerary in one place.",
       feature_4_title: "Interesting Activities",
@@ -313,9 +313,9 @@ const resources = {
       review_placeholder: "Write a review about this place... (2-200 characters)",
 
       // ===== Check-in Page =====
-      checkin_title: "Top 10 Check-in Points in Klongpai",
+      checkin_title: "Top Activities in KhlongPhai",
       checkin_subtitle: "Rankings update in real-time based on heart votes",
-      checkin_discuss_title: "Discuss these 10 Check-in Points",
+      checkin_discuss_title: "Discuss these Activities",
       checkin_placeholder: "Write a review or recommendation... (2-200 characters)",
       chars_limit: "chars",
       login_prompt: "Please sign in with Google to join the discussion.",
@@ -325,7 +325,7 @@ const resources = {
       rank: "Rank",
 
       // ===== Map Page =====
-      map_title: "Klongpai Community Infographic Map",
+      map_title: "KhlongPhai Community Infographic Map",
       map_subtitle: "Traveler map — Click pins for details",
       filter_all: "All",
       filter_travel: "Attractions",
@@ -370,7 +370,7 @@ const resources = {
       attractions: "Attractions",
       restaurants: "Restaurants",
       accommodations: "Accommodations",
-      top10: "Top 10 Check-ins",
+      top10: "Activities",
       map: "Community Map",
       planner: "Trip Planner",
       no_accommodation: "No accommodations available at the moment.",
@@ -460,17 +460,17 @@ const resources = {
       confirm_delete: "Are you sure you want to delete this comment?",
       
       // ===== Info Sections (Home Page) =====
-      about_title: "What is Klongpai Community?",
-      about_desc: "Klongpai is the perfect escape from city life. A small riverside community with simple living, pristine nature, and rich local culture. Here you'll find mountains, rivers, warm smiles, and hospitality that makes you feel at home. Perfect for anyone looking to relax, recharge, and take home unforgettable experiences.",
+      about_title: "What is KhlongPhai Community?",
+      about_desc: "KhlongPhai is the perfect escape from city life. A small riverside community with simple living, pristine nature, and rich local culture. Here you'll find mountains, rivers, warm smiles, and hospitality that makes you feel at home. Perfect for anyone looking to relax, recharge, and take home unforgettable experiences.",
       attractions_section_title: "Interesting Places",
-      attractions_section_desc: "Klongpai community has many interesting tourist attractions including Wat Khao Phrik, Lam Takhong Dam viewpoint, Plant Genetic Conservation Center, and SUP Board activities on the ancient river (Lam Takhong). There are also restaurants and accommodations ready to serve tourists.",
+      attractions_section_desc: "KhlongPhai community has many interesting tourist attractions including Wat Khao Phrik, Lam Takhong Dam viewpoint, Plant Genetic Conservation Center, and SUP Board activities on the ancient river (Lam Takhong). There are also restaurants and accommodations ready to serve tourists.",
       activities_section_title: "Tourist Activities",
       activities_section_desc: "Visit temples, enjoy nature, hike to the mountain peak, rafting, SUP Board, take photos at viewpoints, taste local food, and relax in cozy homestays. All activities are designed to suit tourists of all ages, with experienced local guides to facilitate your journey.",
 
       // ===== Image Alt Text =====
-      alt_about_1: "Klongpai Community",
-      alt_about_2: "Klongpai Nature",
-      alt_about_3: "Klongpai View",
+      alt_about_1: "KhlongPhai Community",
+      alt_about_2: "KhlongPhai Nature",
+      alt_about_3: "KhlongPhai View",
       alt_attractions_1: "Interesting Places",
       alt_attractions_2: "Nature",
       alt_attractions_3: "Mountain View",

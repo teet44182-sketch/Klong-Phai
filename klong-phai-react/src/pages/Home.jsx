@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom'; // ✅ เพิ่ม import Link
+import { Link } from 'react-router-dom';
 import Card from '../components/Card';
 import SwipeCard from '../components/SwipeCard';
 import watKaoprickImg from '../assets/watkaoprick.jpg';
@@ -143,39 +143,43 @@ export default function Home({
     return thName.includes(searchKey) || enName.includes(searchKey);
   });
 
-  // ✅ Feature data - เพิ่มลิงก์สำหรับแต่ละการ์ด
+  // ✅ Feature data - ใช้ t() เพื่อรองรับหลายภาษา
   const features = [
     {
       id: 1,
       icon: natureIcon,
-      iconAlt: 'ธรรมชาติ',
-      title: 'แนะนำสถานที่',
-      desc: 'รวมจุดน่าเที่ยวและสถานที่น่าสนใจในคลองไผ่ ที่อยากชวนให้คุณออกไปสัมผัสด้วยตัวเอง',
-      link: '/attractions'  // ✅ ลิงก์ไปหน้าสถานที่ท่องเที่ยว
+      iconAlt: t('feature_1_title'),
+      title: t('feature_1_title'),
+      desc: t('feature_1_desc'),
+      linkText: t('feature_1_link', 'สำรวจ →'),
+      link: '/attractions'
     },
     {
       id: 2,
       icon: localHistoryIcon,
-      iconAlt: 'วัฒนธรรม',
-      title: 'แผนที่ชุมชน',
-      desc: 'สำรวจสถานที่น่าสนใจรอบคลองไผ่ พร้อมข้อมูลสำหรับการเดินทาง',
-      link: '/map'  // ✅ ลิงก์ไปแผนที่ชุมชน
+      iconAlt: t('feature_2_title'),
+      title: t('feature_2_title'),
+      desc: t('feature_2_desc'),
+      linkText: t('feature_2_link', 'สำรวจ →'),
+      link: '/map'
     },
     {
       id: 3,
       icon: foodIcon,
-      iconAlt: 'อาหาร',
-      title: 'วางแผนการเดินทาง',
-      desc: 'เลือกสถานที่ที่สนใจ แล้วจัดแผนการเดินทางของคุณได้ง่าย ๆ ในที่เดียว',
-      link: '/planner'  // ✅ ลิงก์ไปวางแผนการเดินทาง
+      iconAlt: t('feature_3_title'),
+      title: t('feature_3_title'),
+      desc: t('feature_3_desc'),
+      linkText: t('feature_3_link', 'สำรวจ →'),
+      link: '/planner'
     },
     {
       id: 4,
       icon: activitiesIcon,
-      iconAlt: 'กิจกรรม',
-      title: 'กิจกรรมน่าสนใจ',
-      desc: 'หลากหลายกิจกรรม ทั้งเดินเขา ล่องเรือ SUP และเรียนรู้ภูมิปัญญาท้องถิ่น',
-      link: '/checkin'  // ✅ ลิงก์ไปหน้าสถานที่ท่องเที่ยว (หรือหน้าอื่น)
+      iconAlt: t('feature_4_title'),
+      title: t('feature_4_title'),
+      desc: t('feature_4_desc'),
+      linkText: t('feature_4_link', 'สำรวจ →'),
+      link: '/checkin'
     }
   ];
 
@@ -404,7 +408,6 @@ export default function Home({
                   <p className="feature-card-desc">
                     {feature.desc}
                   </p>
-                  {/* ✅ เพิ่มลูกศรเล็กๆ บอกว่าคลิกได้ */}
                   <div style={{
                     marginTop: '16px',
                     color: 'rgba(255,255,255,0.3)',
@@ -414,7 +417,7 @@ export default function Home({
                   }}
                   className="feature-card-link-hint"
                   >
-                    {isEn ? 'Explore →' : 'สำรวจ →'}
+                    {feature.linkText}
                   </div>
                 </div>
               </Link>
