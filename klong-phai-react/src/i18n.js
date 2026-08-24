@@ -18,8 +18,8 @@ const resources = {
 
       // ===== Hero (Home Page) =====
       hero_title: "เที่ยวคลองไผ่",
-      hero_subtitle: "ชวนมาเที่ยว มาพัก มาสัมผัสธรรมชาติ",
-      hero_description: "ออกเดินทางมาสัมผัสธรรมชาติ สนุกกับกิจกรรม และพักผ่อนท่ามกลางบรรยากาศดี ๆ ที่คลองไผ่",
+      hero_subtitle: "ท่องเที่ยวคลองไผ่ ในแบบที่เป็นคุณ",
+      hero_description: "ค้นพบสถานที่ วางแผนการเดินทาง และออกไปสัมผัสคลองไผ่ได้ง่าย ๆ ในที่เดียว",
       hero_button: "สำรวจคลองไผ่",
       hero_more_info: "ข้อมูลเพิ่มเติม",
 
@@ -27,8 +27,8 @@ const resources = {
       hero_alt: "วัดเขาพริก",
 
       // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
-      features_title: "ค้นพบคลองไผ่",
-      features_subtitle: "ทุกสิ่งที่คุณต้องรู้ก่อนไปเที่ยวคลองไผ่",
+      features_title: "เที่ยวคลองไผ่ได้ง่ายขึ้น",
+      features_subtitle: "เครื่องมือช่วยค้นหาสถานที่ สำรวจแผนที่ วางแผนทริป และค้นหากิจกรรม",
       feature_1_title: "แนะนำสถานที่",
       feature_1_desc: "รวมจุดน่าเที่ยวและสถานที่น่าสนใจในคลองไผ่ ที่อยากชวนให้คุณออกไปสัมผัสด้วยตัวเอง",
       feature_2_title: "แผนที่ชุมชน",
@@ -256,8 +256,8 @@ const resources = {
 
       // ===== Hero (Home Page) =====
       hero_title: "Klongpai",
-      hero_subtitle: "Visit, relax, and reconnect with nature.",
-      hero_description: "Come experience nature, enjoy fun activities, and relax in the beautiful atmosphere of Klongpai.",
+      hero_subtitle: "Explore Klongpai, Your Way",
+      hero_description: "Discover places, plan your journey, and experience Klongpai all in one place.",
       hero_button: "Explore Klongpai",
       hero_more_info: "More information",
 
@@ -265,12 +265,12 @@ const resources = {
       hero_alt: "Wat Khao Phrik",
 
       // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
-      features_title: "Discover Klongpai",
-      features_subtitle: "Everything you need to know before visiting Klongpai",
+      features_title: "Explore Klongpai with Ease",
+      features_subtitle: "Tools to discover places, explore the map, plan your trip, and find activities.",
       feature_1_title: "Recommended Places",
       feature_1_desc: "Discover must-visit spots and interesting places around Klongpai, waiting for you to explore.",
       feature_2_title: "Community Map",
-      feature_2_desc: "Explore interesting places around Khlong Phai with useful travel information.",
+      feature_2_desc: "Explore interesting places around Klongpai with useful travel information.",
       feature_3_title: "Plan Your Trip",
       feature_3_desc: "Choose the places you want to visit and easily create your own itinerary in one place.",
       feature_4_title: "Interesting Activities",
