@@ -286,70 +286,21 @@ vercel --prod
 
 ```text
 klong-phai-react/
-│
 ├── public/
 │   ├── icon1.svg
 │   └── icon1.png
-│
 ├── src/
 │   ├── assets/
-│   │   ├── hero.png
-│   │   ├── destination.png
-│   │   ├── location.png
-│   │   ├── local-history.png
-│   │   ├── jogging.png
-│   │   ├── float1.png 
-│   │   ├── watkaoprick.jpg
-│   │   ├── rimnam.jpg
-│   │   ├── restaurant.jpg
-│   │   ├── checkin.jpg
-│   │   ├── cook_n_coff.jpg
-│   │   ├── cook_n_coff_view.jpg
-│   │   ├── Rpsg_Sut.jpg
-│   │   ├── kpick.jpg
-│   │   ├── char.jpg
-│   │   ├── kat.jpg
-│   │   └── ggk.jpg
-│   │
 │   ├── components/
-│   │   ├── Card.jsx
-│   │   ├── FloatingTripBasket.jsx
-│   │   ├── Footer.jsx
-│   │   ├── LangSwitcherText.jsx
-│   │   ├── MapModal.jsx
-│   │   ├── MarqueeBanner.jsx
-│   │   ├── ScrollProgress.jsx
-│   │   ├── SkeletonCard.jsx
-│   │   ├── SwipeCard.jsx
-│   │   ├── StarRating.jsx
-│   │   └── StarDisplay.jsx
-│   │
 │   ├── pages/
-│   │   ├── Home.jsx
-│   │   ├── Attractions.jsx
-│   │   ├── Restaurant.jsx
-│   │   ├── Accommodation.jsx
-│   │   ├── CheckInPoints.jsx
-│   │   ├── CommunityMap.jsx
-│   │   ├── Detail.jsx
-│   │   └── TripPlanner.jsx
-│   │
 │   ├── utils/
-│   │   ├── admin.js
-│   │   ├── wordlist.js
-│   │   ├── rateLimit.js
-│   │   └── analytics.js
-│   │
 │   ├── context/
-│   │   └── ToastContext.jsx
-│   │
 │   ├── App.jsx
 │   ├── App.css
 │   ├── index.css
 │   ├── i18n.js
 │   ├── firebase.js
 │   └── main.jsx
-│
 ├── .env.example
 ├── .gitignore
 ├── .oxlintrc.json
@@ -359,10 +310,7 @@ klong-phai-react/
 ├── package-lock.json
 ├── vercel.json
 ├── vite.config.js
-├── README.md
-├── User_Manual.md
-├── Admin_Manual.md
-└── Developer_and_Deployment_Guide.md
+└── README.md
 ```
 
 ---
