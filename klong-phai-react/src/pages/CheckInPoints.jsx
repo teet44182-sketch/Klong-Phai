@@ -776,7 +776,7 @@ export default function CheckInPoints({
             transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease'
           }}>
-            {isEn ? 'Interesting activites in Klongpai' : 'กิจกรรมน่าทำในคลองไผ่'}
+            {isEn ? 'Interesting activities in KhlongPhai' : 'กิจกรรมน่าทำในคลองไผ่'}
           </h1>
           <p style={{ 
             color: '#ddd',
@@ -788,7 +788,7 @@ export default function CheckInPoints({
             transition: 'opacity 0.8s ease 0.15s, transform 0.8s ease 0.15s'
           }}>
             {isEn 
-              ? 'Discover the most popular activities in Klongpai' 
+              ? 'Discover the most popular activities in KhlongPhai' 
               : 'กิจกรรมยอดนิยมในคลองไผ่'}
           </p>
         </div>
@@ -866,7 +866,7 @@ export default function CheckInPoints({
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', margin: 0, fontSize: '1.3rem' }}>
-              {isEn ? 'Discuss these 10 Check-in Points' : 'พูดคุยเกี่ยวกับ 10 จุดเช็คอินนี้'}
+              {isEn ? 'Discuss these Activities' : 'พูดคุยเกี่ยวกับกิจกรรมนี้'}
             </h3>
             {googleUser && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

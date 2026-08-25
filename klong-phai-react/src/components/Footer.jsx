@@ -34,7 +34,7 @@ export default function Footer() {
             alignItems: 'center',
             gap: '8px'
           }}>
-            {isEn ? 'Khlong Phai Subdistrict Municipality' : 'เทศบาลตำบลคลองไผ่'}
+            {isEn ? 'KhlongPhai Subdistrict Municipality' : 'เทศบาลตำบลคลองไผ่'}
           </h3>
           <p style={{
             fontSize: '0.85rem',
@@ -43,54 +43,10 @@ export default function Footer() {
             fontFamily: 'Sarabun, sans-serif'
           }}>
             {isEn 
-              ? 'Khlong Phai Subdistrict Municipality, Sikhio, Nakhon Ratchasima'
+              ? 'KhlongPhai Subdistrict Municipality, Sikhio, Nakhon Ratchasima'
               : 'เทศบาลตำบลคลองไผ่ อำเภอสีคิ้ว จังหวัดนครราชสีมา'
             }
           </p>
-          <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
-            <a 
-              href="#" 
-              style={{ 
-                color: '#aaa', 
-                fontSize: '1.4rem', 
-                textDecoration: 'none',
-                transition: 'color 0.3s, transform 0.2s',
-                display: 'inline-block'
-              }}
-              onMouseOver={(e) => { e.target.style.color = '#00a854'; e.target.style.transform = 'scale(1.2)'; }}
-              onMouseOut={(e) => { e.target.style.color = '#aaa'; e.target.style.transform = 'scale(1)'; }}
-            >
-              
-            </a>
-            <a 
-              href="#" 
-              style={{ 
-                color: '#aaa', 
-                fontSize: '1.4rem', 
-                textDecoration: 'none',
-                transition: 'color 0.3s, transform 0.2s',
-                display: 'inline-block'
-              }}
-              onMouseOver={(e) => { e.target.style.color = '#00a854'; e.target.style.transform = 'scale(1.2)'; }}
-              onMouseOut={(e) => { e.target.style.color = '#aaa'; e.target.style.transform = 'scale(1)'; }}
-            >
-              
-            </a>
-            <a 
-              href="#" 
-              style={{ 
-                color: '#aaa', 
-                fontSize: '1.4rem', 
-                textDecoration: 'none',
-                transition: 'color 0.3s, transform 0.2s',
-                display: 'inline-block'
-              }}
-              onMouseOver={(e) => { e.target.style.color = '#00a854'; e.target.style.transform = 'scale(1.2)'; }}
-              onMouseOut={(e) => { e.target.style.color = '#aaa'; e.target.style.transform = 'scale(1)'; }}
-            >
-              
-            </a>
-          </div>
         </div>
 
         {/* คอลัมน์ 2: ติดต่อเรา */}
@@ -110,11 +66,10 @@ export default function Footer() {
             fontFamily: 'Sarabun, sans-serif'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span>📍</span>
               <span>
                 {isEn 
-                  ? 'Khlong Phai, Sikhio, Nakhon Ratchasima 30140'
-                  : 'คลองไผ่ อ.สีคิ้ว จ.นครราชสีมา 30140'
+                  ? 'Address : KhlongPhai, Sikhio, Nakhon Ratchasima 30140'
+                  : 'ที่อยู่ : คลองไผ่ อ.สีคิ้ว จ.นครราชสีมา 30140'
                 }
               </span>
             </div>
@@ -122,9 +77,57 @@ export default function Footer() {
               <span>Tel :</span>
               <span>044-XXX-XXXX</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span>Gmail :</span>
               <span>klongpaitravel@gmail.com</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span>Facebook :</span>
+              <a 
+                href="https://www.facebook.com/profile.php?id=61592569703021" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ 
+                  color: '#00a854', 
+                  textDecoration: 'none',
+                  fontSize: '0.8rem',
+                  transition: 'color 0.3s ease, text-decoration 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#00d4a8';
+                  e.currentTarget.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#00a854';
+                  e.currentTarget.style.textDecoration = 'none';
+                }}
+              >
+                ท่องเที่ยวคลองไผ่
+              </a>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Tiktok :</span>
+              <a 
+                href="https://www.tiktok.com/@khlongphai_travel?_r=1&_t=ZS-999d5L4fkcE" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ 
+                  color: '#00a854', 
+                  textDecoration: 'none',
+                  fontSize: '0.8rem',
+                  transition: 'color 0.3s ease, text-decoration 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#00d4a8';
+                  e.currentTarget.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#00a854';
+                  e.currentTarget.style.textDecoration = 'none';
+                }}
+              >
+                @khlongphai_travel
+              </a>
             </div>
           </div>
         </div>
@@ -185,7 +188,7 @@ export default function Footer() {
               onMouseOver={(e) => { e.target.style.color = '#00a854'; e.target.style.transform = 'translateX(4px)'; }}
               onMouseOut={(e) => { e.target.style.color = '#aaa'; e.target.style.transform = 'translateX(0)'; }}
             >
-              {isEn ? 'Top 10 Check-ins' : '10 จุดเช็คอิน'}
+              {isEn ? 'Activities' : 'กิจกรรม'}
             </a>
             <a 
               href="/planner" 
@@ -217,13 +220,9 @@ export default function Footer() {
       }}>
         © {new Date().getFullYear()} 
         {isEn 
-          ? ' Khlong Phai Subdistrict Municipality. All rights reserved.'
+          ? ' KhlongPhai Subdistrict Municipality. All rights reserved.'
           : ' เทศบาลตำบลคลองไผ่. สงวนลิขสิทธิ์.'
         }
-        <br />
-        <span style={{ fontSize: '0.65rem', color: '#444' }}>
-          
-        </span>
       </div>
     </footer>
   );

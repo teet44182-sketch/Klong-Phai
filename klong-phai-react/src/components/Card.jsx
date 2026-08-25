@@ -113,11 +113,7 @@ export default function Card({
 
       <img className="card-img" src={imageSrc} alt={displayTitle || 'Place image'} onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x250?text=Image+Not+Found'; }} loading="lazy" />
       
-      {onLike && (
-        <button type="button" className="card-like-btn" onClick={handleLikeClick} style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#ff4b4b', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 15, transition: 'transform 0.1s ease', outline: 'none' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.92)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-           ❤️ {likesCount || 0}
-        </button>
-      )}
+      
       
       <div className="card-content">
         <div className="card-title" style={{ fontFamily: 'Mitr, sans-serif' }}>

@@ -377,7 +377,7 @@ export default function TripPlanner({
             {/* Combo */}
             <div>
               <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', fontSize: '1.05rem', marginBottom: '12px' }}>
-                {isEn ? 'Recommended Combos' : 'Combo แนะนำ'}
+                {isEn ? 'Recommended Combos' : 'เส้นทางที่แนะนำ'}
               </h3>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {COMBO_LIST.map(combo => (
