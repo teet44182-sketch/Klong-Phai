@@ -2,8 +2,9 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { trackNavigationClick } from '../utils/analytics';
 
-export default function Detail({ places = [], onOpenMap, lang }) {
+export default function Detail({ places = [], onOpenMap, lang, user = null }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -40,6 +41,9 @@ export default function Detail({ places = [], onOpenMap, lang }) {
           : rawPlace.workingHours || rawPlace.time,
         phone: rawPlace.phone,
         mapUrl: rawPlace.mapUrl || rawPlace.googleMap,
+        coords: rawPlace.coords,
+        lat: rawPlace.lat,
+        lng: rawPlace.lng,
       }
     : null;
 
@@ -68,6 +72,37 @@ export default function Detail({ places = [], onOpenMap, lang }) {
       </div>
     );
   }
+
+  // ✅ ฟังก์ชันนำทางพร้อม Analytics
+  const handleNavigate = () => {
+    const userId = user?.uid || null;
+    const placeId = place.id;
+
+    // ✅ บันทึก Analytics
+    if (placeId) {
+      trackNavigationClick(placeId, userId, 'detail_page');
+    }
+
+    // เรียก onOpenMap ถ้ามี (เปิด Modal)
+    if (onOpenMap) {
+      // ถ้า onOpenMap คาดว่าให้ส่ง place object
+      if (typeof onOpenMap === 'function') {
+        onOpenMap(rawPlace);
+      }
+    } else {
+      // ถ้าไม่มี onOpenMap ให้เปิดแผนที่โดยตรง
+      const lat = place.lat || (place.coords ? place.coords[0] : null);
+      const lng = place.lng || (place.coords ? place.coords[1] : null);
+      if (lat && lng) {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+      } else if (place.mapUrl) {
+        window.open(place.mapUrl, '_blank');
+      } else {
+        // fallback
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.title)}`, '_blank');
+      }
+    }
+  };
 
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
@@ -174,30 +209,40 @@ export default function Detail({ places = [], onOpenMap, lang }) {
             </div>
           )}
 
-          {/* ปุ่มสำหรับกดเปิดแผนที่ป๊อปอัป (Modal) */}
-          {place.mapUrl && onOpenMap && (
-            <div style={{ marginTop: '30px', textAlign: 'center' }}>
-              <button
-                onClick={() => onOpenMap(place.mapUrl)}
-                style={{
-                  background: '#00a854',
-                  color: '#fff',
-                  padding: '12px 30px',
-                  border: 'none',
-                  borderRadius: '50px',
-                  fontFamily: 'Mitr, sans-serif',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 15px rgba(0, 168, 84, 0.3)',
-                  transition: 'all 0.2s',
-                }}
-                onMouseOver={(e) => (e.target.style.background = '#008743')}
-                onMouseOut={(e) => (e.target.style.background = '#00a854')}
-              >
-                {isEn ? 'View Navigation Map' : 'ดูแผนที่นำทาง'}
-              </button>
-            </div>
-          )}
+          {/* ✅ ปุ่มนำทาง (มี Analytics) */}
+          <div style={{ marginTop: '30px', textAlign: 'center' }}>
+            <button
+              onClick={handleNavigate}
+              style={{
+                background: '#4285F4',
+                color: '#fff',
+                padding: '14px 36px',
+                border: 'none',
+                borderRadius: '50px',
+                fontFamily: 'Mitr, sans-serif',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(66, 133, 244, 0.4)',
+                transition: 'all 0.3s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = '#3367d6';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(66, 133, 244, 0.5)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = '#4285F4';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(66, 133, 244, 0.4)';
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>📍</span>
+              {isEn ? 'Navigate' : 'นำทาง'}
+            </button>
+          </div>
         </div>
 
         {/* ปุ่มกดย้อนกลับ */}

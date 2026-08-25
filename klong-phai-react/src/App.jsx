@@ -23,7 +23,6 @@ import {
   onSnapshot,
   serverTimestamp,
   doc,
-  setDoc,
   increment,
   deleteDoc,
   updateDoc,
@@ -31,6 +30,11 @@ import {
   getDocs,
   where
 } from 'firebase/firestore';
+
+import StarRating from './components/StarRating';
+import StarDisplay from './components/StarDisplay';
+import { checkRateLimit, setRateLimit } from './utils/rateLimit';
+import { trackNavigationClick, submitRating, recalculatePlaceRating } from './utils/analytics';
 
 // Lazy Loading
 const Home = lazy(() => import('./pages/Home'));
@@ -55,21 +59,31 @@ const ADMIN_EMAILS = [
 ];
 
 // ============================================================
-// ✅ PageViewTracker – บันทึกยอดเข้าชมแบบรวมและรายวัน
+// ✅ PageViewTracker – บันทึกยอดเข้าชม (รวม + รายวัน) + นับรีเฟรช
 // ============================================================
 function PageViewTracker() {
   const location = useLocation();
+  const lastTracked = useRef({ path: '', time: 0 });
+
   useEffect(() => {
+    const currentPath = location.pathname + location.search + location.hash;
+    const now = Date.now();
+
+    if (lastTracked.current.path === currentPath && now - lastTracked.current.time < 2000) {
+      return;
+    }
+
+    lastTracked.current.path = currentPath;
+    lastTracked.current.time = now;
+
     const track = async () => {
       try {
         const page = location.pathname || '/';
-        const now = new Date();
-        // ใช้ timezone Asia/Bangkok
-        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }); // YYYY-MM-DD
+        const nowDate = new Date();
+        const todayStr = nowDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 
         const batch = writeBatch(db);
 
-        // 1. อัปเดตยอดรวมทั้งหมด
         const totalRef = doc(db, 'analytics', 'pageViews');
         batch.set(totalRef, {
           [page]: increment(1),
@@ -77,7 +91,6 @@ function PageViewTracker() {
           lastUpdated: serverTimestamp()
         }, { merge: true });
 
-        // 2. อัปเดตยอดรายวัน
         const dailyRef = doc(db, 'dailyViews', todayStr);
         batch.set(dailyRef, {
           [page]: increment(1),
@@ -86,18 +99,19 @@ function PageViewTracker() {
         }, { merge: true });
 
         await batch.commit();
+        console.log(`✅ Analytics: ${page} (${todayStr})`);
       } catch (e) {
-        // เงียบไว้เพื่อไม่ให้รบกวน UX
         console.warn('Analytics tracking error:', e);
       }
     };
     track();
-  }, [location.pathname]);
+  }, [location.pathname, location.search, location.hash]);
+
   return null;
 }
 
 // ============================================================
-// ฟังก์ชันอรรถประโยชน์ (export เพื่อใช้ที่อื่น)
+// Utility functions
 // ============================================================
 export const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
   return new Promise((resolve, reject) => {
@@ -260,7 +274,7 @@ function MainApp() {
   const [pageViews, setPageViews] = useState({});
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  // ===== State สำหรับสถิติรายวัน =====
+  // ===== Daily Stats =====
   const [dailyStats, setDailyStats] = useState({
     todayTotal: 0,
     avgDaily: 0,
@@ -278,6 +292,7 @@ function MainApp() {
     }
   });
 
+  // ===== Modal States =====
   const [detailModal, setDetailModal] = useState({ isOpen: false, placeData: null });
   const [showEmbedMap, setShowEmbedMap] = useState(false);
   const [embedMapUrl, setEmbedMapUrl] = useState('');
@@ -287,14 +302,15 @@ function MainApp() {
   const [isFilterDropdownActive, setIsFilterDropdownActive] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ===== Review States =====
+  // ===== Review & Rating States =====
   const [reviewText, setReviewText] = useState('');
+  const [userRating, setUserRating] = useState(0);
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editReviewText, setEditReviewText] = useState('');
+  const [editRating, setEditRating] = useState(0);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [lastReviewSubmitTime, setLastReviewSubmitTime] = useState(0);
-  const REVIEW_COOLDOWN_MS = 5000;
 
+  // ===== Place Form State =====
   const [newPlace, setNewPlace] = useState({
     title: '', title_en: '', description: '', detailDescription: '',
     description_en: '', detailDescription_en: '',
@@ -302,20 +318,23 @@ function MainApp() {
     subCategory: 'other',
     mapUrl: '', workingHours: '', phone: '', lat: '', lng: ''
   });
-
   const [imageFileName, setImageFileName] = useState('');
-  const [likes, setLikes] = useState({});
-  const [reviewsData, setReviewsData] = useState({});
+  const [formLang, setFormLang] = useState('th');
 
-  // ===== Crop Related =====
+  // ===== Firestore Data =====
+  const [reviewsData, setReviewsData] = useState({});
+  const [ratingsData, setRatingsData] = useState({});
+
+  // ===== Crop =====
   const [cropModal, setCropModal] = useState({ isOpen: false, imageSrc: null, mode: 'main' });
   const cropperRef = useRef(null);
 
   // ===== Cursor Glow =====
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [formLang, setFormLang] = useState('th');
 
-  // ===== Effects =====
+  // ============================================================
+  // Effects
+  // ============================================================
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePos({ x: e.clientX, y: e.clientY });
@@ -330,6 +349,7 @@ function MainApp() {
     localStorage.setItem('my_trip_plan', JSON.stringify(selectedPlaces));
   }, [selectedPlaces]);
 
+  // Auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -344,6 +364,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  // Places
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "places"), (snapshot) => {
       setPlaces(snapshot.docs.map(d => ({ id: d.id, docId: d.id, ...d.data() })));
@@ -352,15 +373,22 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  // Ratings
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "likes"), (snapshot) => {
-      const likesMap = {};
-      snapshot.docs.forEach(d => { likesMap[d.id] = d.data().count || 0; });
-      setLikes(likesMap);
+    const unsubscribe = onSnapshot(collection(db, "ratings"), (snapshot) => {
+      const ratingsMap = {};
+      snapshot.docs.forEach(d => {
+        const data = d.data();
+        const key = data.placeId || 'unknown';
+        if (!ratingsMap[key]) ratingsMap[key] = [];
+        ratingsMap[key].push({ id: d.id, ...data });
+      });
+      setRatingsData(ratingsMap);
     });
     return () => unsubscribe();
   }, []);
 
+  // Reviews
   useEffect(() => {
     const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -375,7 +403,7 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
-  // ===== Fetch Analytics (ยอดรวม) =====
+  // Analytics
   useEffect(() => {
     if (!isAdmin) return;
     const unsub = onSnapshot(doc(db, 'analytics', 'pageViews'), (snap) => {
@@ -384,61 +412,8 @@ function MainApp() {
     return () => unsub();
   }, [isAdmin]);
 
-  // ===== ฟังก์ชันดึงข้อมูลสถิติรายวัน =====
-  const fetchDailyStats = async () => {
-    setDailyStats(prev => ({ ...prev, loading: true }));
-    try {
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const startDate = thirtyDaysAgo.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
-
-      const q = query(
-        collection(db, 'dailyViews'),
-        where('__name__', '>=', startDate),
-        where('__name__', '<=', today)
-      );
-      const querySnapshot = await getDocs(q);
-      let totalDailySum = 0;
-      let todayTotal = 0;
-      let lastUpdated = null;
-
-      querySnapshot.forEach(doc => {
-        const data = doc.data();
-        const dayTotal = data.total || 0;
-        totalDailySum += dayTotal;
-        if (doc.id === today) {
-          todayTotal = dayTotal;
-        }
-        if (data.lastUpdated && (!lastUpdated || data.lastUpdated.seconds > lastUpdated.seconds)) {
-          lastUpdated = data.lastUpdated;
-        }
-      });
-
-      const avgDaily = Math.round((totalDailySum / 30) * 10) / 10;
-
-      setDailyStats({
-        todayTotal,
-        avgDaily,
-        dailyData: querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })),
-        lastUpdated: lastUpdated ? new Date(lastUpdated.seconds * 1000) : null,
-        loading: false
-      });
-    } catch (error) {
-      console.error('Error fetching daily stats:', error);
-      setDailyStats(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  // เมื่อเปิด Analytics Modal ให้ดึงข้อมูล
-  useEffect(() => {
-    if (showAnalytics && isAdmin) {
-      fetchDailyStats();
-    }
-  }, [showAnalytics, isAdmin]);
-
   // ============================================================
-  // TRIP PLANNER FUNCTIONS (คงเดิม)
+  // Trip Planner Functions
   // ============================================================
   const handleAddPlaceToTrip = (place) => {
     if (!place) return;
@@ -497,7 +472,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // MAP FUNCTIONS (คงเดิม)
+  // Map Functions
   // ============================================================
   const getEmbedMapUrl = (place) => {
     if (!place) return '';
@@ -516,6 +491,9 @@ function MainApp() {
     if (!place) return;
     const coords = getPlaceCoords(place);
     if (coords) {
+      const placeId = place.id || place.docId;
+      const userId = user?.uid || null;
+      trackNavigationClick(placeId, userId, 'card');
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`, '_blank');
     } else {
       showToast(isEn ? 'No location data found' : 'ไม่พบพิกัดของสถานที่นี้');
@@ -528,12 +506,14 @@ function MainApp() {
     setShowEmbedMap(false);
     setEmbedMapUrl('');
     setReviewText('');
+    setUserRating(0);
     setEditingReviewId(null);
     setEditReviewText('');
+    setEditRating(0);
   };
 
   // ============================================================
-  // LOGIN / LOGOUT (คงเดิม)
+  // Login / Logout
   // ============================================================
   const handleLogin = async () => {
     try {
@@ -561,7 +541,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // IMAGE HANDLERS (คงเดิม)
+  // Image Handlers
   // ============================================================
   const handleImageBrowse = async (e) => {
     const file = e.target.files[0];
@@ -671,7 +651,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // ADD / EDIT PLACE (คงเดิม)
+  // Add / Edit Place
   // ============================================================
   const handleAddPlaceSubmit = async (e) => {
     e.preventDefault();
@@ -735,20 +715,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // LIKE (คงเดิม)
-  // ============================================================
-  const handleLike = async (placeId) => {
-    const isLiked = localStorage.getItem(`like_${placeId}`) === 'true';
-    try {
-      await setDoc(doc(db, "likes", String(placeId)), { count: increment(isLiked ? -1 : 1) }, { merge: true });
-      localStorage.setItem(`like_${placeId}`, isLiked ? 'false' : 'true');
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // ============================================================
-  // EDIT / DELETE PLACE (คงเดิม)
+  // Edit / Delete Place
   // ============================================================
   const handleEditPlace = (place) => {
     const targetId = place.id || place.docId;
@@ -805,12 +772,12 @@ function MainApp() {
   };
 
   // ============================================================
-  // LANGUAGE (คงเดิม)
+  // Language
   // ============================================================
   const handleLanguageChange = (nextLang) => i18n.changeLanguage(nextLang);
 
   // ============================================================
-  // REVIEW FUNCTIONS (คงเดิม)
+  // Review & Rating Functions (Integrated)
   // ============================================================
   const validateReviewText = (text) => {
     const clean = sanitizeInput(text.trim());
@@ -839,16 +806,36 @@ function MainApp() {
       showToast(isEn ? 'Place ID not found' : 'ไม่พบ ID ของสถานที่');
       return;
     }
-    const now = Date.now();
-    if (now - lastReviewSubmitTime < REVIEW_COOLDOWN_MS) {
-      const waitSeconds = Math.ceil((REVIEW_COOLDOWN_MS - (now - lastReviewSubmitTime)) / 1000);
-      showToast(isEn ? `Please wait ${waitSeconds}s before posting again` : `กรุณารอ ${waitSeconds} วินาทีก่อนส่งอีกครั้ง`);
+
+    // Rate Limit
+    const rateLimitCheck = checkRateLimit(user.uid);
+    if (!rateLimitCheck.allowed) {
+      showToast(isEn 
+        ? `Please wait ${rateLimitCheck.remainingMinutes} min before next review`
+        : `กรุณารออีก ${rateLimitCheck.remainingMinutes} นาทีก่อนส่งรีวิวครั้งถัดไป`
+      );
       return;
     }
+
+    if (userRating < 1 || userRating > 5) {
+      showToast(isEn ? 'Please select a rating (1-5 stars)' : 'กรุณาให้คะแนนดาว (1-5)');
+      return;
+    }
+
     const validated = validateReviewText(reviewText);
     if (!validated) return;
+
     setIsSubmittingReview(true);
     try {
+      // 1. Save rating via analytics (creates/updates ratings collection)
+      const result = await submitRating(placeId, user.uid, userRating, validated);
+      if (!result.success) {
+        showToast(isEn ? 'Failed to submit rating: ' + result.message : 'ไม่สามารถส่งคะแนนได้: ' + result.message);
+        setIsSubmittingReview(false);
+        return;
+      }
+
+      // 2. Save review (text only, rating is separate in ratings collection)
       await addDoc(collection(db, 'reviews'), {
         placeId: placeId,
         name: user.displayName || 'Anonymous',
@@ -857,9 +844,13 @@ function MainApp() {
         userId: user.uid,
         createdAt: serverTimestamp()
       });
+
+      // 3. Update rate limit
+      setRateLimit(user.uid);
+
       setReviewText('');
-      setLastReviewSubmitTime(now);
-      showToast(isEn ? 'Review submitted!' : 'ส่งรีวิวเรียบร้อย!');
+      setUserRating(0);
+      showToast(isEn ? 'Review and rating submitted!' : 'ส่งรีวิวและคะแนนเรียบร้อย!');
     } catch (err) {
       console.error('Submit error:', err);
       showToast(`${isEn ? 'Failed: ' : 'ส่งไม่สำเร็จ: '}${err.message}`);
@@ -877,6 +868,10 @@ function MainApp() {
       showToast(isEn ? 'Please sign in first' : 'กรุณาเข้าสู่ระบบก่อน');
       return;
     }
+    if (editRating < 1 || editRating > 5) {
+      showToast(isEn ? 'Please select a rating (1-5 stars)' : 'กรุณาเลือกคะแนน (1-5)');
+      return;
+    }
     const isOwner = review.userId === user.uid;
     const isAdminUser = ADMIN_EMAILS.some(email => email.toLowerCase() === user.email?.toLowerCase());
     if (!isOwner && !isAdminUser) {
@@ -885,14 +880,26 @@ function MainApp() {
     }
     const validated = validateReviewText(editReviewText);
     if (!validated) return;
+
     try {
+      // 1. Update rating
+      const placeId = review.placeId;
+      const result = await submitRating(placeId, user.uid, editRating, validated, review.id);
+      if (!result.success) {
+        showToast(isEn ? 'Failed to update rating: ' + result.message : 'ไม่สามารถอัปเดตคะแนนได้: ' + result.message);
+        return;
+      }
+
+      // 2. Update review text
       await updateDoc(doc(db, 'reviews', review.id), {
         text: validated,
         updatedAt: serverTimestamp()
       });
+
       setEditingReviewId(null);
       setEditReviewText('');
-      showToast(isEn ? 'Review updated!' : 'แก้ไขรีวิวเรียบร้อย!');
+      setEditRating(0);
+      showToast(isEn ? 'Review and rating updated!' : 'แก้ไขรีวิวและคะแนนเรียบร้อย!');
     } catch (err) {
       console.error('Update error:', err);
       showToast(isEn ? 'Failed to update: ' + err.message : 'แก้ไขไม่สำเร็จ: ' + err.message);
@@ -914,10 +921,23 @@ function MainApp() {
       showToast(isEn ? 'You can only delete your own reviews' : 'คุณสามารถลบได้เฉพาะรีวิวของคุณ');
       return;
     }
-    if (!window.confirm(isEn ? 'Delete this review?' : 'ลบรีวิวนี้?')) return;
+    if (!window.confirm(isEn ? 'Delete this review and rating?' : 'ลบรีวิวและคะแนนนี้?')) return;
+
     try {
+      // 1. Delete rating
+      const q = query(collection(db, 'ratings'), where('placeId', '==', review.placeId), where('userId', '==', review.userId));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+
+      // 2. Delete review
       await deleteDoc(doc(db, 'reviews', review.id));
-      showToast(isEn ? 'Review deleted!' : 'ลบรีวิวแล้ว');
+
+      // 3. Recalculate average
+      await recalculatePlaceRating(review.placeId);
+
+      showToast(isEn ? 'Review and rating deleted!' : 'ลบรีวิวและคะแนนเรียบร้อย!');
     } catch (err) {
       console.error('Delete error:', err);
       showToast(isEn ? 'Failed to delete: ' + err.message : 'ลบไม่สำเร็จ: ' + err.message);
@@ -925,7 +945,7 @@ function MainApp() {
   };
 
   // ============================================================
-  // OPEN PLANNER (คงเดิม)
+  // Open Planner
   // ============================================================
   const handleOpenPlanner = () => {
     navigate('/planner');
@@ -943,6 +963,20 @@ function MainApp() {
     return () => window.removeEventListener('click', handler);
   }, []);
 
+  // ============================================================
+  // Helper: Get Average Rating
+  // ============================================================
+  const getPlaceRating = (placeId) => {
+    if (!placeId) return { avg: 0, total: 0 };
+    const ratings = ratingsData[placeId] || [];
+    if (ratings.length === 0) return { avg: 0, total: 0 };
+    const total = ratings.reduce((sum, r) => sum + (r.rating || 0), 0);
+    return { avg: Math.round((total / ratings.length) * 10) / 10, total: ratings.length };
+  };
+
+  // ============================================================
+  // Render helpers
+  // ============================================================
   const inputStyle = {
     padding: '10px 12px',
     background: '#2b2d31',
@@ -966,9 +1000,6 @@ function MainApp() {
     '/planner': isEn ? 'Planner' : 'วางแผนทริป'
   };
 
-  const currentPlaceId = detailModal.placeData?.id || detailModal.placeData?.docId;
-  const currentReviews = currentPlaceId ? (reviewsData[currentPlaceId] || []) : [];
-
   const previewPlace = {
     id: 'preview',
     title: formLang === 'en' ? (newPlace.title_en || 'Place Name EN') : (newPlace.title || 'ชื่อสถานที่'),
@@ -982,12 +1013,11 @@ function MainApp() {
     img: newPlace.img || '',
     category: newPlace.category || 'travel',
     type: newPlace.type || 'travel',
-    subCategory: newPlace.subCategory || 'other',
-    likesCount: 0
+    subCategory: newPlace.subCategory || 'other'
   };
 
   // ============================================================
-  // RENDER
+  // Main Render
   // ============================================================
   return (
     <HelmetProvider>
@@ -1144,8 +1174,6 @@ function MainApp() {
               places={places} 
               loading={loadingPlaces} 
               onOpenMap={openDetail} 
-              likes={likes} 
-              onLike={handleLike}
               lang={currentLang} 
               selectedPlaces={selectedPlaces} 
               setSelectedPlaces={setSelectedPlaces}
@@ -1160,8 +1188,6 @@ function MainApp() {
               places={places} 
               loading={loadingPlaces} 
               onOpenMap={openDetail} 
-              likes={likes} 
-              onLike={handleLike}
               googleUser={user} 
               handleGoogleLogin={handleLogin} 
               handleGoogleLogout={handleLogout}
@@ -1180,8 +1206,6 @@ function MainApp() {
               places={places} 
               loading={loadingPlaces} 
               onOpenMap={openDetail} 
-              likes={likes} 
-              onLike={handleLike}
               lang={currentLang} 
               isAdmin={isAdmin} 
               onEditPlace={handleEditPlace} 
@@ -1196,8 +1220,6 @@ function MainApp() {
               places={places} 
               loading={loadingPlaces} 
               onOpenMap={openDetail} 
-              likes={likes} 
-              onLike={handleLike}
               lang={currentLang} 
               isAdmin={isAdmin} 
               onEditPlace={handleEditPlace} 
@@ -1212,8 +1234,6 @@ function MainApp() {
               places={places} 
               loading={loadingPlaces} 
               onOpenMap={openDetail} 
-              likes={likes} 
-              onLike={handleLike}
               lang={currentLang} 
               isAdmin={isAdmin} 
               onEditPlace={handleEditPlace} 
@@ -1233,9 +1253,17 @@ function MainApp() {
               generateMultiStopMapUrl={generateMultiStopMapUrl}
               estimateTripTime={estimateTripTime}
               onRemoveFromPlan={handleRemovePlaceFromTrip}
+              user={user}
             />
           } />
-          <Route path="/detail/:id" element={<Detail places={places} onOpenMap={openMap} lang={currentLang} />} />
+          <Route path="/detail/:id" element={
+            <Detail 
+              places={places} 
+              onOpenMap={openMap} 
+              lang={currentLang}
+              user={user}
+            />
+          } />
         </Routes>
       </Suspense>
       <Footer />
@@ -1585,8 +1613,6 @@ function MainApp() {
                   <Card 
                     place={previewPlace}
                     onOpenMap={() => {}}
-                    likesCount={0}
-                    onLike={() => {}}
                     lang={formLang}
                     isAdmin={isAdmin}
                     onEdit={() => {}}
@@ -1604,7 +1630,7 @@ function MainApp() {
         </div>
       )}
 
-      {/* ===== DETAIL MODAL ===== */}
+      {/* ===== DETAIL MODAL (Review + Rating Integrated) ===== */}
       <div className={`map-modal-overlay ${detailModal.isOpen ? 'active' : ''}`} style={{ zIndex: 2100 }} onClick={() => {
         setDetailModal({ isOpen: false, placeData: null });
         setShowEmbedMap(false);
@@ -1619,6 +1645,9 @@ function MainApp() {
             const embedUrl = getEmbedMapUrl(p);
             const placeId = p.id || p.docId;
             const placeReviews = reviewsData[placeId] || [];
+            const placeRatingInfo = getPlaceRating(placeId);
+            // ✅ เพิ่ม currentRatings เพื่อใช้ใน loop reviews
+            const currentRatings = ratingsData[placeId] || [];
 
             return (
               <div>
@@ -1716,6 +1745,20 @@ function MainApp() {
                   <h2 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '8px', fontSize: '1.3rem' }}>
                     {title}
                   </h2>
+
+                  {/* Average Rating Display */}
+                  {placeRatingInfo.total > 0 && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <StarDisplay
+                        average={placeRatingInfo.avg}
+                        total={placeRatingInfo.total}
+                        size={16}
+                        variant="inline"
+                        showTotal={true}
+                      />
+                    </div>
+                  )}
+
                   <p style={{ color: '#ddd', lineHeight: '1.7', whiteSpace: 'pre-line', marginBottom: '12px', fontSize: '0.95rem' }}>
                     {desc}
                   </p>
@@ -1760,6 +1803,8 @@ function MainApp() {
                       onClick={() => {
                         const coords = getPlaceCoords(p);
                         if (coords) {
+                          const userId = user?.uid || null;
+                          trackNavigationClick(placeId, userId, 'detail_modal');
                           window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`, '_blank');
                         } else {
                           showToast(isEn ? 'No location data found' : 'ไม่พบพิกัดของสถานที่นี้');
@@ -1830,7 +1875,7 @@ function MainApp() {
                     </div>
                   )}
 
-                  {/* ===== REVIEW SECTION ===== */}
+                  {/* ===== REVIEW SECTION (Integrated with Rating) ===== */}
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
                     <h3 style={{ fontFamily: 'Mitr, sans-serif', color: '#00a854', marginBottom: '12px', fontSize: '1rem' }}>
                       {isEn ? 'Reviews' : 'รีวิว'} ({placeReviews.length})
@@ -1838,6 +1883,19 @@ function MainApp() {
 
                     {user ? (
                       <div style={{ marginBottom: '16px' }}>
+                        {/* StarRating for new review */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                          <span style={{ color: '#aaa', fontSize: '0.9rem' }}>
+                            {isEn ? 'Your rating:' : 'คะแนนของคุณ:'}
+                          </span>
+                          <StarRating
+                            rating={userRating}
+                            onChange={(value) => setUserRating(value)}
+                            size={28}
+                            showLabels={true}
+                          />
+                        </div>
+
                         <textarea
                           value={reviewText}
                           onChange={e => setReviewText(e.target.value)}
@@ -1894,6 +1952,13 @@ function MainApp() {
                       ) : (
                         placeReviews.map((review) => {
                           const isOwner = user && review.userId === user.uid;
+                          const isAdminUser = user && ADMIN_EMAILS.some(e => e.toLowerCase() === user.email?.toLowerCase());
+                          const canEditDelete = isOwner || isAdminUser;
+
+                          // ✅ ใช้ currentRatings ที่ประกาศไว้ข้างบน
+                          const reviewRating = currentRatings.find(r => r.userId === review.userId);
+                          const displayRating = reviewRating ? reviewRating.rating : 0;
+
                           return (
                             <div key={review.id} style={{ 
                               padding: '10px 14px', 
@@ -1908,10 +1973,14 @@ function MainApp() {
                                   )}
                                   <strong style={{ fontSize: '0.85rem', color: '#ddd' }}>{review.name}</strong>
                                 </div>
-                                {isOwner && editingReviewId !== review.id && (
+                                {canEditDelete && editingReviewId !== review.id && (
                                   <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem' }}>
                                     <button 
-                                      onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.text); }} 
+                                      onClick={() => { 
+                                        setEditingReviewId(review.id); 
+                                        setEditReviewText(review.text);
+                                        setEditRating(displayRating);
+                                      }} 
                                       style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer' }}
                                     >
                                       {isEn ? 'Edit' : 'แก้ไข'}
@@ -1925,8 +1994,34 @@ function MainApp() {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Display the rating stars for this review */}
+                              {displayRating > 0 && (
+                                <div style={{ marginBottom: '4px' }}>
+                                  <StarDisplay
+                                    average={displayRating}
+                                    total={1}
+                                    size={14}
+                                    variant="inline"
+                                    showTotal={false}
+                                  />
+                                </div>
+                              )}
+
                               {editingReviewId === review.id ? (
                                 <div>
+                                  {/* Edit Rating */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                    <span style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                      {isEn ? 'Rating:' : 'คะแนน:'}
+                                    </span>
+                                    <StarRating
+                                      rating={editRating}
+                                      onChange={(value) => setEditRating(value)}
+                                      size={24}
+                                      showLabels={true}
+                                    />
+                                  </div>
                                   <textarea 
                                     value={editReviewText} 
                                     onChange={e => setEditReviewText(e.target.value)} 

@@ -9,10 +9,14 @@ import 'cropperjs/dist/cropper.css';
 import { db } from '../firebase';
 import { 
   collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp,
-  onSnapshot, query, orderBy
+  onSnapshot, query, orderBy, getDocs, where, writeBatch
 } from 'firebase/firestore';
 import { sanitizeInput, compressImage } from '../App';
 import { bannedWords } from '../utils/wordlist';
+import StarRating from '../components/StarRating';
+import StarDisplay from '../components/StarDisplay';
+import { checkRateLimit, setRateLimit } from '../utils/rateLimit';
+import { trackNavigationClick, submitRating, recalculatePlaceRating } from '../utils/analytics';
 
 // ============================================================
 // Utility: แปลง YouTube Watch URL เป็น Embed URL
@@ -183,9 +187,9 @@ function PromotionSlider({ image, videoUrl, title, lang }) {
 }
 
 // ============================================================
-// Component: PromotionCard
+// Component: PromotionCard (เพิ่ม Analytics)
 // ============================================================
-function PromotionCard({ promo, lang, isAdmin, onEdit, onDelete }) {
+function PromotionCard({ promo, lang, isAdmin, onEdit, onDelete, userId }) {
   const isEn = lang === 'en';
   const title = isEn && promo.titleEn ? promo.titleEn : promo.title;
   const description = isEn && promo.descriptionEn ? promo.descriptionEn : promo.description;
@@ -202,6 +206,8 @@ function PromotionCard({ promo, lang, isAdmin, onEdit, onDelete }) {
       lng = promo.lng;
     }
     if (lat && lng) {
+      // ✅ บันทึก Analytics
+      trackNavigationClick(promo.id, userId, 'checkin_promo');
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
     }
   };
@@ -244,11 +250,11 @@ function PromotionCard({ promo, lang, isAdmin, onEdit, onDelete }) {
         e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.6), 0 0 40px rgba(0,168,84,0.05)';
       }}
     >
-      {/* ด้านซ้าย: Slider (รูปภาพ + วิดีโอ) */}
+      {/* ด้านซ้าย: Slider */}
       <div style={{ flex: '0 0 50%', maxWidth: '50%', minHeight: '340px', background: '#111', position: 'relative' }}>
         <PromotionSlider image={promo.image} videoUrl={promo.videoUrl} title={title} lang={lang} />
         
-        {/* ปุ่ม Admin (Edit/Delete) */}
+        {/* ปุ่ม Admin */}
         {isAdmin && (
           <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px', zIndex: 10 }}>
             <button
@@ -342,7 +348,7 @@ function PromotionCard({ promo, lang, isAdmin, onEdit, onDelete }) {
 }
 
 // ============================================================
-// Main Component (ส่วนที่เหลือเหมือนเดิม)
+// Main Component
 // ============================================================
 export default function CheckInPoints({
   places = [],
@@ -363,13 +369,13 @@ export default function CheckInPoints({
 
   const [isVisible, setIsVisible] = useState(false);
 
-  // ===== Review States =====
+  // ===== Review States (เพิ่ม userRating) =====
   const [inputText, setInputText] = useState('');
+  const [userRating, setUserRating] = useState(0); // 0 = ยังไม่เลือก
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editText, setEditText] = useState('');
+  const [editRating, setEditRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmitTime, setLastSubmitTime] = useState(0);
-  const COOLDOWN_MS = 5000;
 
   const pageId = 'checkin_page';
   const pageReviews = reviewsData[pageId] || [];
@@ -431,7 +437,7 @@ export default function CheckInPoints({
   };
 
   // ============================================================
-  // REVIEW FUNCTIONS (เหมือนเดิม)
+  // REVIEW FUNCTIONS (เพิ่ม Rating และ Rate Limit)
   // ============================================================
   const validateReviewText = (text) => {
     const cleanText = sanitizeInput(text);
@@ -458,44 +464,59 @@ export default function CheckInPoints({
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    const now = Date.now();
-    if (now - lastSubmitTime < COOLDOWN_MS) {
-      const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
-      showToast(isEn ? `Please wait ${waitSeconds}s` : `กรุณารอ ${waitSeconds} วินาที`);
-      return;
-    }
-    if (!inputText.trim()) {
-      showToast(isEn ? "Please write a review" : "กรุณาเขียนรีวิวก่อนส่ง");
-      return;
-    }
+
+    // ✅ ตรวจสอบ Rate Limit (ใช้ UID)
     if (!googleUser) {
       showToast(isEn ? "Please sign in first" : "กรุณาเข้าสู่ระบบก่อน");
       return;
     }
+    const rateLimitCheck = checkRateLimit(googleUser.uid);
+    if (!rateLimitCheck.allowed) {
+      showToast(isEn 
+        ? `Please wait ${rateLimitCheck.remainingMinutes} min before next review`
+        : `กรุณารออีก ${rateLimitCheck.remainingMinutes} นาทีก่อนส่งรีวิวครั้งถัดไป`
+      );
+      return;
+    }
+
+    // ✅ ตรวจสอบข้อความและคะแนน
+    if (!inputText.trim()) {
+      showToast(isEn ? "Please write a review" : "กรุณาเขียนรีวิวก่อนส่ง");
+      return;
+    }
+    if (userRating < 1 || userRating > 5) {
+      showToast(isEn ? "Please select a rating (1-5 stars)" : "กรุณาให้คะแนนดาว (1-5)");
+      return;
+    }
+
     if (isSubmitting) {
       showToast(isEn ? "Please wait..." : "กรุณารอสักครู่...");
       return;
     }
+
     const validatedText = validateReviewText(inputText);
     if (!validatedText) return;
 
     setIsSubmitting(true);
     try {
-      const reviewsRef = collection(db, "reviews");
-      await addDoc(reviewsRef, {
-        placeId: pageId,
-        name: sanitizeInput(googleUser.displayName || 'Anonymous'),
-        userPhoto: googleUser.photoURL || '',
-        text: validatedText,
-        userId: googleUser.uid,
-        createdAt: serverTimestamp()
-      });
+      // ✅ ใช้ submitRating จาก analytics (บันทึก ratings collection และอัปเดต avg)
+      const result = await submitRating(pageId, googleUser.uid, userRating, validatedText);
+      if (!result.success) {
+        showToast(isEn ? "Failed to submit rating: " + result.message : "ไม่สามารถส่งคะแนนได้: " + result.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ✅ บันทึก Rate Limit
+      setRateLimit(googleUser.uid);
+
+      // ✅ รีเซ็ตฟอร์ม
       setInputText('');
-      setLastSubmitTime(now);
-      showToast(isEn ? "Review submitted!" : "ส่งรีวิวเรียบร้อย!");
+      setUserRating(0);
+      showToast(isEn ? "Review and rating submitted!" : "ส่งรีวิวและคะแนนเรียบร้อย!");
     } catch (error) {
-      console.error("Error saving review:", error);
-      showToast(isEn ? "Failed to submit: " + error.message : "ไม่สามารถส่งรีวิวได้: " + error.message);
+      console.error("Error saving review/rating:", error);
+      showToast(isEn ? "Failed to submit: " + error.message : "ไม่สามารถส่งได้: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -511,20 +532,34 @@ export default function CheckInPoints({
       showToast(isEn ? "Please write something" : "กรุณาเขียนข้อความ");
       return;
     }
+    if (!editRating || editRating < 1 || editRating > 5) {
+      showToast(isEn ? "Please select a rating" : "กรุณาเลือกคะแนน");
+      return;
+    }
     if (googleUser && review.userId !== googleUser.uid) {
       showToast(isEn ? "You can only edit your own reviews" : "คุณสามารถแก้ไขได้เฉพาะรีวิวของคุณ");
       return;
     }
     const validatedText = validateReviewText(editText);
     if (!validatedText) return;
+
     try {
+      // ✅ อัปเดต ratings collection
+      // เราจะใช้ submitRating โดยส่ง reviewId เข้าไป (เพื่ออัปเดต)
+      const result = await submitRating(pageId, googleUser.uid, editRating, validatedText, targetId);
+      if (!result.success) {
+        showToast(isEn ? "Failed to update: " + result.message : "ไม่สามารถอัปเดตได้: " + result.message);
+        return;
+      }
+      // ✅ อัปเดต reviews collection (text, updatedAt)
       await updateDoc(doc(db, "reviews", targetId), {
         text: validatedText,
         updatedAt: serverTimestamp()
       });
       setEditingReviewId(null);
       setEditText('');
-      showToast(isEn ? "Review updated!" : "แก้ไขรีวิวเรียบร้อย!");
+      setEditRating(0);
+      showToast(isEn ? "Review and rating updated!" : "แก้ไขรีวิวและคะแนนเรียบร้อย!");
     } catch (error) {
       console.error("Error updating review:", error);
       showToast(isEn ? "Failed to update: " + error.message : "ไม่สามารถแก้ไขได้: " + error.message);
@@ -541,10 +576,19 @@ export default function CheckInPoints({
       showToast(isEn ? "You can only delete your own reviews" : "คุณสามารถลบได้เฉพาะรีวิวของคุณ");
       return;
     }
-    if (!window.confirm(isEn ? "Delete this comment?" : "ลบคอมเมนต์นี้?")) return;
+    if (!window.confirm(isEn ? "Delete this comment and rating?" : "ลบคอมเมนต์และคะแนนนี้?")) return;
     try {
+      // ✅ ลบ ratings
+      const q = query(collection(db, 'ratings'), where('placeId', '==', pageId), where('userId', '==', review.userId));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      // ✅ ลบ reviews
       await deleteDoc(doc(db, "reviews", targetId));
-      showToast(isEn ? "Review deleted!" : "ลบรีวิวเรียบร้อย!");
+      // ✅ คำนวณค่าเฉลี่ยใหม่
+      await recalculatePlaceRating(pageId);
+      showToast(isEn ? "Review and rating deleted!" : "ลบรีวิวและคะแนนเรียบร้อย!");
     } catch (error) {
       console.error("Error deleting review:", error);
       showToast(isEn ? "Failed to delete" : "ไม่สามารถลบได้");
@@ -557,7 +601,7 @@ export default function CheckInPoints({
   };
 
   // ============================================================
-  // PROMOTION FUNCTIONS (เหมือนเดิม ไม่ต้องแก้ เพราะใช้ image กับ videoUrl แยกกัน)
+  // PROMOTION FUNCTIONS
   // ============================================================
   const resetPromoForm = () => {
     setEditingPromoId(null);
@@ -720,7 +764,7 @@ export default function CheckInPoints({
   };
 
   // ============================================================
-  // RENDER (เหมือนเดิม)
+  // RENDER
   // ============================================================
   return (
     <div className="page-wrapper" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#2b2b2b' }}>
@@ -840,13 +884,14 @@ export default function CheckInPoints({
                 isAdmin={isAdmin}
                 onEdit={handleEditPromo}
                 onDelete={handleDeletePromo}
+                userId={googleUser?.uid || null}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* REVIEW SECTION (เหมือนเดิม) */}
+      {/* REVIEW SECTION (เพิ่ม StarRating) */}
       <div className="page-container" style={{ 
         width: '100%',
         maxWidth: '800px',
@@ -883,6 +928,19 @@ export default function CheckInPoints({
 
           {googleUser ? (
             <form onSubmit={handleReviewSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' }}>
+              {/* ✅ เพิ่ม StarRating */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{ color: '#aaa', fontSize: '0.9rem' }}>
+                  {isEn ? 'Your rating:' : 'คะแนนของคุณ:'}
+                </span>
+                <StarRating
+                  rating={userRating}
+                  onChange={(value) => setUserRating(value)}
+                  size={28}
+                  showLabels={true}
+                />
+              </div>
+
               <textarea 
                 placeholder={isEn ? "Write a review about these check-in points... (2-200 chars)" : "เขียนรีวิวเกี่ยวกับ 10 จุดเช็คอินนี้... (2-200 ตัวอักษร)"} 
                 value={inputText} 
@@ -964,6 +1022,22 @@ export default function CheckInPoints({
                 const safeReviewText = renderReviewText(review.text);
                 const safeReviewName = renderReviewText(review.name);
 
+                // ✅ ดึง rating ของ review นี้ (จาก ratings collection)
+                const [reviewRating, setReviewRating] = useState(0);
+                useEffect(() => {
+                  const fetchRating = async () => {
+                    try {
+                      const q = query(collection(db, 'ratings'), where('placeId', '==', pageId), where('userId', '==', review.userId));
+                      const snap = await getDocs(q);
+                      if (!snap.empty) {
+                        const data = snap.docs[0].data();
+                        setReviewRating(data.rating || 0);
+                      }
+                    } catch (e) { /* ignore */ }
+                  };
+                  fetchRating();
+                }, [review.userId]);
+
                 return (
                   <div key={reviewId ? `rev-${reviewId}` : `rev-idx-${rIdx}`} style={{ padding: '15px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -977,7 +1051,15 @@ export default function CheckInPoints({
                         {isOwner && editingReviewId !== reviewId && (
                           <div style={{ display: 'flex', gap: '10px', fontSize: '0.85rem' }}>
                             <button 
-                              onClick={() => { setEditingReviewId(reviewId); setEditText(review.text); }} 
+                              onClick={() => { 
+                                setEditingReviewId(reviewId); 
+                                setEditText(review.text); 
+                                // ดึง rating ปัจจุบัน
+                                const q = query(collection(db, 'ratings'), where('placeId', '==', pageId), where('userId', '==', review.userId));
+                                getDocs(q).then(snap => {
+                                  if (!snap.empty) setEditRating(snap.docs[0].data().rating || 0);
+                                });
+                              }} 
                               style={{ background: 'none', border: 'none', color: '#ffb300', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                             >
                               {isEn ? 'Edit' : 'แก้ไข'}
@@ -996,8 +1078,27 @@ export default function CheckInPoints({
                       </div>
                     </div>
 
+                    {/* ✅ แสดงดาว */}
+                    <div style={{ marginBottom: '6px' }}>
+                      {reviewRating > 0 ? (
+                        <StarDisplay average={reviewRating} total={1} size={14} variant="inline" showTotal={false} />
+                      ) : null}
+                    </div>
+
                     {editingReviewId === reviewId ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '5px' }}>
+                        {/* ✅ StarRating สำหรับแก้ไข */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                            {isEn ? 'Rating:' : 'คะแนน:'}
+                          </span>
+                          <StarRating
+                            rating={editRating}
+                            onChange={(value) => setEditRating(value)}
+                            size={24}
+                            showLabels={true}
+                          />
+                        </div>
                         <textarea 
                           value={editText} 
                           onChange={(e) => setEditText(e.target.value)} 
@@ -1042,7 +1143,7 @@ export default function CheckInPoints({
         </div>
       </div>
 
-      {/* MODAL: ADD/EDIT PROMOTION (เหมือนเดิม) */}
+      {/* MODAL: ADD/EDIT PROMOTION */}
       {showPromoModal && (
         <div className="map-modal-overlay active" style={{ zIndex: 2200 }} onClick={() => { setShowPromoModal(false); resetPromoForm(); }}>
           <div className="map-modal-content" style={{ backgroundColor: '#1e1e1e', color: '#fff', maxWidth: '760px', padding: '24px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
@@ -1147,7 +1248,7 @@ export default function CheckInPoints({
         </div>
       )}
 
-      {/* CROP MODAL (เหมือนเดิม) */}
+      {/* CROP MODAL */}
       {promoCropModal.isOpen && (
         <div 
           className="map-modal-overlay active" 

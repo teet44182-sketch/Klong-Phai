@@ -22,11 +22,9 @@ const resources = {
       hero_description: "ค้นพบสถานที่ วางแผนการเดินทาง และออกไปสัมผัสคลองไผ่ได้ง่าย ๆ ในที่เดียว",
       hero_button: "สำรวจคลองไผ่",
       hero_more_info: "ข้อมูลเพิ่มเติม",
-
-      // ===== Hero Alt =====
       hero_alt: "วัดเขาพริก",
 
-      // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
+      // ===== Feature Cards =====
       features_title: "เที่ยวคลองไผ่ได้ง่ายขึ้น",
       features_subtitle: "เครื่องมือช่วยค้นหาสถานที่ สำรวจแผนที่ วางแผนทริป และค้นหากิจกรรม",
       feature_1_title: "แนะนำสถานที่",
@@ -37,6 +35,31 @@ const resources = {
       feature_3_desc: "เลือกสถานที่ที่สนใจ แล้วจัดแผนการเดินทางของคุณได้ง่าย ๆ ในที่เดียว",
       feature_4_title: "กิจกรรมน่าสนใจ",
       feature_4_desc: "หลากหลายกิจกรรม ทั้งเดินเขา ล่องเรือ SUP และเรียนรู้ภูมิปัญญาท้องถิ่น",
+
+      // ===== Rating System =====
+      rating: {
+        select: "เลือกคะแนน",
+        average: "คะแนนเฉลี่ย",
+        poor: "แย่",
+        fair: "พอใช้",
+        good: "ดี",
+        very_good: "ดีมาก",
+        excellent: "ยอดเยี่ยม",
+        click_to_rate: "คลิกเพื่อให้คะแนน",
+        no_ratings: "ยังไม่มีคะแนน",
+        reviews: "รีวิว",
+        from: "จาก",
+        your_rating: "คะแนนของคุณ",
+        submit_rating: "ให้คะแนน",
+        rating_success: "ให้คะแนนสำเร็จ!",
+        rating_failed: "ไม่สามารถให้คะแนนได้",
+        rate_limit: "กรุณารออีก {minutes} นาทีก่อนให้คะแนนครั้งถัดไป",
+        please_signin: "กรุณาเข้าสู่ระบบเพื่อให้คะแนน",
+        already_rated: "คุณให้คะแนนสถานที่นี้แล้ว",
+        update_rating: "อัปเดตคะแนน",
+        delete_rating: "ลบคะแนน",
+        confirm_delete_rating: "คุณต้องการลบคะแนนและรีวิวนี้ใช่หรือไม่?"
+      },
 
       // ===== Search =====
       search_placeholder: "ค้นหาสถานที่ท่องเที่ยว...",
@@ -100,7 +123,7 @@ const resources = {
 
       // ===== Trip Planner =====
       planner_title: "วางแผนเส้นทางท่องเที่ยว",
-      planner_subtitle: "ปัดขวา = เพิ่ม · ปัดซ้าย = ลบออกจากคิว",
+      planner_subtitle: "ลากเพื่อเปลี่ยนลำดับ หรือใช้ปุ่มเพิ่ม/ลบ",
       combo_recommend: "Combo แนะนำ",
       selected_places: "จุดแวะในทริป",
       est_time: "เวลาโดยประมาณ",
@@ -260,11 +283,9 @@ const resources = {
       hero_description: "Discover places, plan your journey, and experience KhlongPhai all in one place.",
       hero_button: "Explore KhlongPhai",
       hero_more_info: "More information",
-
-      // ===== Hero Alt =====
       hero_alt: "Wat Khao Phrik",
 
-      // ===== Feature Cards (ระหว่าง Hero กับ Description) =====
+      // ===== Feature Cards =====
       features_title: "Explore KhlongPhai with Ease",
       features_subtitle: "Tools to discover places, explore the map, plan your trip, and find activities.",
       feature_1_title: "Recommended Places",
@@ -275,6 +296,31 @@ const resources = {
       feature_3_desc: "Choose the places you want to visit and easily create your own itinerary in one place.",
       feature_4_title: "Interesting Activities",
       feature_4_desc: "Various activities including hiking, SUP boating, and learning local wisdom",
+
+      // ===== Rating System =====
+      rating: {
+        select: "Select Rating",
+        average: "Average Rating",
+        poor: "Poor",
+        fair: "Fair",
+        good: "Good",
+        very_good: "Very Good",
+        excellent: "Excellent",
+        click_to_rate: "Click to rate",
+        no_ratings: "No ratings yet",
+        reviews: "reviews",
+        from: "from",
+        your_rating: "Your Rating",
+        submit_rating: "Submit Rating",
+        rating_success: "Rating submitted!",
+        rating_failed: "Failed to submit rating",
+        rate_limit: "Please wait {minutes} minutes before rating again",
+        please_signin: "Please sign in to rate",
+        already_rated: "You already rated this place",
+        update_rating: "Update Rating",
+        delete_rating: "Delete Rating",
+        confirm_delete_rating: "Are you sure you want to delete this rating and review?"
+      },
 
       // ===== Search =====
       search_placeholder: "Search attractions...",
@@ -338,7 +384,7 @@ const resources = {
 
       // ===== Trip Planner =====
       planner_title: "Trip Planner",
-      planner_subtitle: "Swipe right = add · Swipe left = remove from queue",
+      planner_subtitle: "Drag to reorder or use buttons to add/remove",
       combo_recommend: "Recommended Combos",
       selected_places: "Places in Trip",
       est_time: "Estimated Time",

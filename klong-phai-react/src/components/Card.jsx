@@ -1,6 +1,7 @@
 // src/components/Card.jsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import StarDisplay from './StarDisplay';
 
 const getCategoryColor = (category, subCategory) => {
   const cat = (category || '').toString().toLowerCase().trim();
@@ -69,6 +70,10 @@ export default function Card({
 
   const borderColor = getCategoryColor(category, subCategory);
 
+  // ✅ ดึงข้อมูลคะแนนจาก place
+  const avgRating = place.avgRating || 0;
+  const totalRatings = place.totalRatings || 0;
+
   const handleLikeClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -93,7 +98,8 @@ export default function Card({
         cursor: 'pointer',
         borderLeft: borderColor === 'transparent' ? 'none' : `6px solid ${borderColor}`,
         borderRadius: '12px',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        background: '#fff'
       }}
     >
       {isAdmin && (
@@ -105,7 +111,7 @@ export default function Card({
           )}
           {onDelete && (
             <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(place); }} style={{ background: 'none', border: 'none', color: '#ff4b4b', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', padding: '2px 4px' }}>
-              {isEn ? 'Delete' : 'ลบออกจากทริป'}
+              {isEn ? 'Delete' : 'ลบ'}
             </button>
           )}
         </div>
@@ -113,11 +119,20 @@ export default function Card({
 
       <img className="card-img" src={imageSrc} alt={displayTitle || 'Place image'} onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x250?text=Image+Not+Found'; }} loading="lazy" />
       
-      
-      
       <div className="card-content">
         <div className="card-title" style={{ fontFamily: 'Mitr, sans-serif' }}>
           {displayTitle || 'ไม่มีชื่อสถานที่'}
+        </div>
+
+        {/* ✅ แสดงคะแนนดาว */}
+        <div style={{ marginTop: '4px', marginBottom: '6px' }}>
+          <StarDisplay
+            average={avgRating}
+            total={totalRatings}
+            size={14}
+            variant="inline"
+            showTotal={true}
+          />
         </div>
 
         {displayDesc && (
@@ -131,7 +146,6 @@ export default function Card({
             {t('btn_map_view', isEn ? 'Details & Map' : 'ดูรายละเอียดและแผนที่')}
           </span>
 
-          {/* ✅ เปลี่ยนจาก span เป็นปุ่มกดที่คลิกได้ */}
           <button
             type="button"
             onClick={(e) => {

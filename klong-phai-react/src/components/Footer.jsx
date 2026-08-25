@@ -69,13 +69,13 @@ export default function Footer() {
               <span>
                 {isEn 
                   ? 'Address : KhlongPhai, Sikhio, Nakhon Ratchasima 30140'
-                  : 'ที่อยู่ : คลองไผ่ อ.สีคิ้ว จ.นครราชสีมา 30140'
+                  : 'ที่อยู่ : ต.คลองไผ่ อ.สีคิ้ว จ.นครราชสีมา 30340'
                 }
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span>Tel :</span>
-              <span>044-XXX-XXXX</span>
+              <span>044-323 380</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span>Gmail :</span>

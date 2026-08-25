@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } fro
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useToast } from '../context/ToastContext';
+import { trackNavigationClick } from '../utils/analytics';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -37,7 +38,7 @@ const createNumberedIcon = (number, color = '#00a854') =>
   });
 
 // ============================================================
-// ✅ Parse iFrame URL
+// Parse iFrame URL
 // ============================================================
 const parseIframeUrl = (input) => {
   if (!input) return '';
@@ -145,7 +146,8 @@ export default function TripPlanner({
   setSelectedPlaces,
   generateMultiStopMapUrl: propsGenerateMultiStopMapUrl,
   estimateTripTime: propsEstimateTripTime,
-  onRemoveFromPlan
+  onRemoveFromPlan,
+  user = null, // ✅ เพิ่ม prop user สำหรับ Analytics
 }) {
   const { i18n } = useTranslation();
   const { showToast } = useToast();
@@ -233,11 +235,22 @@ export default function TripPlanner({
     showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
   };
 
+  // ✅ เพิ่ม Analytics ใน handleNavigate
   const handleNavigate = () => {
     if (activeSelected.length === 0) {
       showToast('กรุณาเลือกสถานที่ก่อน');
       return;
     }
+
+    // ✅ บันทึก Analytics สำหรับทุกสถานที่ในทริป
+    const userId = user?.uid || null;
+    activeSelected.forEach(place => {
+      const placeId = place.id || place.docId;
+      if (placeId) {
+        trackNavigationClick(placeId, userId, 'planner');
+      }
+    });
+
     if (typeof propsGenerateMultiStopMapUrl === 'function') {
       const url = propsGenerateMultiStopMapUrl(activeSelected);
       if (url && url !== '#') {
@@ -324,7 +337,6 @@ export default function TripPlanner({
     const [moved] = updated.splice(fromIndex, 1);
     updated.splice(toIndex, 0, moved);
     setActiveSelected(updated);
-    // ✅ ไม่มี showToast ที่นี่ (ลบออกแล้ว)
   };
 
   const routePolyline = activeSelected.map(p => getPlaceCoords(p)).filter(Boolean);
@@ -350,7 +362,7 @@ export default function TripPlanner({
       background: '#1a1a1a',
       color: '#fff',
       fontFamily: 'Prompt, sans-serif',
-      touchAction: 'pan-y', // ✅ อนุญาตให้เลื่อนขึ้นลง แต่ป้องกันการซูม pinch
+      touchAction: 'pan-y',
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 60px' }}>
 
@@ -532,9 +544,9 @@ export default function TripPlanner({
                 center={mapCenter}
                 zoom={13}
                 style={{ height: '340px', width: '100%' }}
-                scrollWheelZoom={false}   // ✅ ไม่ซูมด้วยเมาส์
-                touchZoom={false}         // ✅ ไม่ซูมด้วยสองนิ้ว
-                dragging={true}           // ✅ ยังลากแผนที่ได้
+                scrollWheelZoom={false}
+                touchZoom={false}
+                dragging={true}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
