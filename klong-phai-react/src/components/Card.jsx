@@ -168,7 +168,7 @@ export default function Card({
               boxShadow: isAddedToPlan ? 'none' : '0 2px 10px rgba(0,168,84,0.3)'
             }}
           >
-            {isAddedToPlan ? (isEn ? 'Added' : 'เพิ่มแล้ว') : (isEn ? 'Add' : 'เพิ่มลงทริป')}
+            {isAddedToPlan ? (isEn ? 'Added' : 'นำออกจากทริป') : (isEn ? 'Add' : 'เพิ่มลงทริป')}
           </button>
         </div>
       </div>
