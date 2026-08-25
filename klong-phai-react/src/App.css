@@ -420,9 +420,34 @@ body {
   color: #aaaaaa;
 }
 
-@media (max-width: 600px) {
-  .search-container-inside h1 { font-size: 2.2rem; }
-  .home-page-wrapper:has(.lift-up) .search-container-inside h1 { font-size: 1.7rem; }
+/* ✅ ปรับ Hero สำหรับมือถือ */
+@media (max-width: 768px) {
+  .search-container-inside h1 { 
+    font-size: 2rem !important; 
+  }
+  .search-container-inside {
+    padding: 0 16px;
+  }
+  .home-page-wrapper:has(.lift-up) .search-container-inside h1 { 
+    font-size: 1.6rem !important; 
+  }
+}
+
+@media (max-width: 480px) {
+  .search-container-inside h1 { 
+    font-size: 1.5rem !important;
+    margin-bottom: 12px;
+  }
+  .search-container-inside {
+    padding: 0 12px;
+  }
+  .home-page-wrapper:has(.lift-up) .search-container-inside h1 { 
+    font-size: 1.2rem !important; 
+  }
+  .search-box input {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
 }
 
 /* ==========================================
@@ -480,13 +505,20 @@ body {
   padding-bottom: 50px; 
 }
 
+/* ✅ ปรับ Results Grid สำหรับมือถือ */
 @media (max-width: 768px) {
   .results-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
   .search-panel-bottom { 
     padding: 80px 15px 40px 15px;
     height: calc(100vh - 70px);
@@ -494,9 +526,6 @@ body {
   }
   .search-panel-bottom.lift-up {
     margin-top: 0;
-  }
-  .results-grid { 
-    grid-template-columns: 1fr;
   }
 }
 
@@ -583,6 +612,18 @@ body {
   color: #00a854;
 }
 
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.2rem;
+  }
+}
+
 /* ==========================================
    8. INFO SECTIONS
    ========================================== */
@@ -659,6 +700,7 @@ body {
   text-indent: 1.5em;
 }
 
+/* ✅ ปรับ Info Sections สำหรับมือถือ */
 @media (max-width: 768px) {
   .info-sections {
     padding: 40px 20px;
@@ -681,41 +723,50 @@ body {
   }
 
   .info-text {
-    padding: 0;
+    padding: 0 8px;
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 24px;
+    padding-top: 20px;
   }
 
   .info-row.reverse .info-text {
     border-right: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
-}
-
-@keyframes fadeInText {
-  from {
-    opacity: 0;
-    transform: translateY(-3px);
+  
+  .info-text h2 {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .info-text p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    text-indent: 1.2em;
   }
 }
 
-.lang-switch-btn:hover {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
-  transform: translateY(-1px);
-}
-
-.lang-switch-btn:active {
-  transform: scale(0.95) !important;
-}
-
-.lang-switch-btn:hover svg {
-  transform: rotate(25deg);
+@media (max-width: 480px) {
+  .info-sections {
+    padding: 30px 14px;
+  }
+  
+  .info-row,
+  .info-row.reverse {
+    padding: 24px 0;
+    gap: 16px;
+  }
+  
+  .info-text h2 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+  
+  .info-text p {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    text-indent: 0.8em;
+  }
 }
 
 /* ==========================================
@@ -1120,6 +1171,7 @@ select:focus {
   transition: all 0.3s ease;
 }
 
+/* ✅ Responsive Typography */
 @media (max-width: 768px) {
   h1 { font-size: 2rem; }
   h2 { font-size: 1.5rem; }
@@ -1130,6 +1182,7 @@ select:focus {
 @media (max-width: 480px) {
   h1 { font-size: 1.6rem; }
   h2 { font-size: 1.2rem; }
+  h3 { font-size: 1rem; }
   .page-title { font-size: 1.1rem; }
 }
 
@@ -1455,6 +1508,7 @@ h1, h2, h3, .nav-logo, .panel-title {
   background: rgba(255, 255, 255, 0.8);
 }
 
+/* ✅ ปรับ Image Slider สำหรับมือถือ */
 @media (max-width: 768px) {
   .image-slider {
     min-height: 200px;
@@ -1463,6 +1517,17 @@ h1, h2, h3, .nav-logo, .panel-title {
   .dot {
     width: 8px;
     height: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-slider {
+    min-height: 160px;
+  }
+  
+  .dot {
+    width: 6px;
+    height: 6px;
   }
 }
 
@@ -1597,7 +1662,7 @@ h1, h2, h3, .nav-logo, .panel-title {
   margin: 0;
 }
 
-/* ✅ Responsive */
+/* ✅ Feature Cards Responsive */
 @media (max-width: 992px) {
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1654,13 +1719,29 @@ h1, h2, h3, .nav-logo, .panel-title {
 }
 
 @media (max-width: 480px) {
+  .features-section {
+    padding: 40px 12px 40px 12px;
+  }
+  
+  .features-title {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+  }
+  
+  .features-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 24px;
+    padding: 0 4px;
+  }
+  
   .features-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px;
   }
 
   .feature-card {
-    padding: 18px 10px 16px;
+    padding: 16px 8px 14px;
+    border-radius: 12px;
   }
 
   .feature-icon {
@@ -1669,21 +1750,72 @@ h1, h2, h3, .nav-logo, .panel-title {
   }
   
   .feature-icon-img {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     margin-bottom: 8px;
   }
 
   .feature-card-title {
     font-size: 0.82rem;
+    margin-bottom: 4px;
   }
 
   .feature-card-desc {
     font-size: 0.7rem;
     line-height: 1.5;
   }
+}
 
-  .features-title {
-    font-size: 1.3rem;
+/* ==========================================
+   16. MOBILE SAFE ZONE
+   ========================================== */
+
+/* ✅ ป้องกันข้อความล้นจอบนมือถือ */
+@media (max-width: 480px) {
+  .page-wrapper {
+    overflow-x: hidden;
+  }
+  
+  body {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 1.8rem !important;
+    word-wrap: break-word;
+  }
+  h2 {
+    font-size: 1.3rem !important;
+    word-wrap: break-word;
+  }
+  h3 {
+    font-size: 1rem !important;
+    word-wrap: break-word;
+  }
+  
+  p, span, div, a {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .btn-green, .explore-btn {
+    padding: 12px 24px !important;
+    font-size: 0.9rem !important;
+    white-space: nowrap;
   }
 }
+
+/* ✅ ปรับ Padding ของหน้าให้พอดีกับมือถือ */
+@media (max-width: 480px) {
+  .page-container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  
+  .map-modal-content {
+    width: 95%;
+    max-width: 95%;
+    padding: 12px;
+  }
+}
+
