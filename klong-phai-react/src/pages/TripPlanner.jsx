@@ -147,7 +147,7 @@ export default function TripPlanner({
   generateMultiStopMapUrl: propsGenerateMultiStopMapUrl,
   estimateTripTime: propsEstimateTripTime,
   onRemoveFromPlan,
-  user = null, // ✅ เพิ่ม prop user สำหรับ Analytics
+  user = null,
 }) {
   const { i18n } = useTranslation();
   const { showToast } = useToast();
@@ -235,14 +235,12 @@ export default function TripPlanner({
     showToast(`${isEn ? 'Removed' : 'ลบ'} "${placeTitle}" ${isEn ? 'from trip' : 'ออกจากทริปแล้ว'}`);
   };
 
-  // ✅ เพิ่ม Analytics ใน handleNavigate
   const handleNavigate = () => {
     if (activeSelected.length === 0) {
       showToast('กรุณาเลือกสถานที่ก่อน');
       return;
     }
 
-    // ✅ บันทึก Analytics สำหรับทุกสถานที่ในทริป
     const userId = user?.uid || null;
     activeSelected.forEach(place => {
       const placeId = place.id || place.docId;
@@ -355,6 +353,29 @@ export default function TripPlanner({
         return `~${h} ${isEn ? 'hr' : 'ชม.'} ${m} ${isEn ? 'min' : 'นาที'}`;
       })();
 
+  // ============================================================
+  // Hamburger Icon Component (วางไว้หน้าเลข)
+  // ============================================================
+  const HamburgerIcon = () => (
+    <span style={{
+      display: 'inline-flex',
+      flexDirection: 'column',
+      gap: '2.5px',
+      cursor: 'grab',
+      padding: '4px 6px',
+      borderRadius: '4px',
+      transition: 'background 0.2s',
+      flexShrink: 0,
+    }}
+    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+    >
+      <span style={{ display: 'block', width: '18px', height: '2.5px', background: '#999', borderRadius: '2px' }}></span>
+      <span style={{ display: 'block', width: '18px', height: '2.5px', background: '#999', borderRadius: '2px' }}></span>
+      <span style={{ display: 'block', width: '18px', height: '2.5px', background: '#999', borderRadius: '2px' }}></span>
+    </span>
+  );
+
   return (
     <div style={{
       paddingTop: '80px',
@@ -372,7 +393,7 @@ export default function TripPlanner({
             {isEn ? 'Trip Planner' : 'วางแผนเส้นทางท่องเที่ยว'}
           </h1>
           <p style={{ color: '#aaa', fontSize: '0.85rem' }}>
-            {isEn ? 'Drag to reorder or use buttons' : 'ลากเพื่อเปลี่ยนลำดับ หรือใช้ปุ่มเพิ่ม/ลบ'}
+            {isEn ? 'Drag ☰ to reorder or use buttons' : 'ลาก ☰ เพื่อเปลี่ยนลำดับ หรือใช้ปุ่มเพิ่ม/ลบ'}
           </p>
         </div>
 
@@ -496,26 +517,29 @@ export default function TripPlanner({
                           position: 'relative'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
-                          <span style={{
-                            background: '#00a854',
-                            color: '#fff',
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            fontSize: '0.8rem',
-                            flexShrink: 0
-                          }}>
-                            {index + 1}
-                          </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
+                          {/* ✅ เปลี่ยนลำดับ: Hamburger อยู่หน้าเลข */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <HamburgerIcon />
+                            <span style={{
+                              background: '#00a854',
+                              color: '#fff',
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 'bold',
+                              fontSize: '0.8rem',
+                              flexShrink: 0
+                            }}>
+                              {index + 1}
+                            </span>
+                          </div>
                           <span style={{ fontSize: '0.9rem', textAlign: 'left' }}>{title}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ color: '#777', fontSize: '1.2rem', cursor: 'grab' }}></span>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleRemove(place); }}
                             style={{
@@ -538,7 +562,7 @@ export default function TripPlanner({
               )}
             </div>
 
-            {/* Map - ล็อกการซูม */}
+            {/* Map */}
             <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
               <MapContainer
                 center={mapCenter}
