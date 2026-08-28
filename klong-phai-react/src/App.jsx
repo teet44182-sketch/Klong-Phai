@@ -49,13 +49,7 @@ const Attractions = lazy(() => import('./pages/Attractions'));
 import { ToastProvider, useToast } from './context/ToastContext';
 
 const ADMIN_EMAILS = [
-  'teet44182@gmail.com',
-  'klongpaitravel@gmail.com',
-  'admin2@gmail.com',
-  'adisonbb2@gmail.com',
-  'pppurpg@gmail.com',
-  'monsichasungsanit@gmail.com',
-  'khunyoi16@gmail.com'
+  'klongpaitravel@gmail.com'
 ];
 
 // ============================================================
